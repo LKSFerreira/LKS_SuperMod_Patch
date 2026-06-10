@@ -1,0 +1,11 @@
+name=LKS SuperMod Patch
+description=Super Mod Patch faz diversas correcoes, melhorias de UX/UI, bugs de scripts e traducoes PT-BR para a colecao de mods Build 42. TODOS OS CREDITOS AOS CRIADORES ORIGINAIS.
+id=LKSSuperModPatch
+poster=poster.png
+icon=icon.png
+modversion=1.0
+author=LKSFerreira
+homepage=https://github.com/LKSFerreira
+require=buildinggenpowerv2
+tags=Tools,Translation,Fix,Improvement,Features
+versionMin=42.15
