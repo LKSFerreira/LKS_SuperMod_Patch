@@ -1290,7 +1290,7 @@ function PB_GeneratorInfoWindow:onMouseMoveOutside(dx, dy)
 end
 
 -- ============================================================
--- MANIPULADORES DE AQUECIMENTO
+-- MANIPULADORES DE AQUECIMENTO (TERMOSTATO)
 -- ============================================================
 
 local function CountHeatingSources(md)
@@ -1951,13 +1951,13 @@ function PB_GeneratorInfoWindow:render()
         end
 
         y                = y + 4
-        y                = self:drawSection(x0, y, getText("IGUI_PB_SectionHeating") or "AQUECIMENTO")
+        y                = self:drawSection(x0, y, getText("IGUI_PB_SectionHeating") or "TERMOSTATO DO AMBIENTE INTERNO")
 
         self._heatOnTex  = self._heatOnTex or getTexture(HEAT_ON_PATH)
         self._heatOffTex = self._heatOffTex or getTexture(HEAT_OFF_PATH)
 
         if not self._heatingHasData then
-            self:drawText(getText("IGUI_PB_HeatingNA") or "Sem Dados de Aquecimento", x0, y + 5, 0.55, 0.55, 0.55, 1,
+            self:drawText(getText("IGUI_PB_HeatingNA") or "Sem Dados do termostato", x0, y + 5, 0.55, 0.55, 0.55, 1,
                 FONT_S)
             y                    = y + LINE_H
             self._heatOnBtnArea  = nil; self._heatOffBtnArea = nil; self._heatMinusArea = nil; self._heatPlusArea = nil
