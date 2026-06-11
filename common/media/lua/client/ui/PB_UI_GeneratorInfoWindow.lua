@@ -1,17 +1,25 @@
--- PB_UI_GeneratorInfoWindow.lua
--- Janela de Informações de Energia da Construção - Painel de status central acessível de qualquer interruptor de luz
--- Recursos: Barras de Combustível/Condição, estimativa de duração, detalhamento de consumidores,
---            contagem de Eletrodomésticos/Luzes, aviso de carga, botão Mostrar Alcance,
---            clique para caminhar até o gerador
--- Fonte de dados: generator:get*() + Gen_Stats_* ModData (sincronizado por PB_Power_Distributor ~10s)
--- LOCALIZAÇÃO: client/ui/
+-- ============================================================================
+-- ARQUIVO: PB_UI_GeneratorInfoWindow.lua
+-- MOD ORIGINAL: Generator Powered Buildings (ID Workshop: 3597471949)
+-- EXTENSÃO: LKS SuperMod Patch (Build 42)
+-- OBJETIVO: Correção de alinhamento visual, UX/UI e tradução adaptativa
+-- AUTOR: LKSFERREIRA
+-- DATA DE ATUALIZAÇÃO: 10/06/2026
+-- ============================================================================
+-- Descrição: Janela de Informações de Energia da Construção - Painel de status
+-- central acessível de qualquer interruptor de luz.
+-- Recursos: Barras de Combustível/Condição, estimativa de duração, detalhamento
+-- de consumidores, contagem de Eletrodomésticos/Luzes, aviso de carga, botão
+-- Mostrar Alcance, clique para caminhar até o gerador.
+-- Fonte de dados: generator:get*() + Gen_Stats_* ModData (sincronizado ~10s)
+-- ============================================================================
 
 if not PoweredBuildings then
-    print("[PB_UI_GeneratorInfoWindow] namespace PoweredBuildings não encontrado - pulando carregamento do módulo")
+    print("[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] namespace PoweredBuildings não encontrado - pulando carregamento do módulo")
     return
 end
 
-print("[PB_UI_GeneratorInfoWindow] Carregando Janela de Informações do Gerador...")
+print("[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] Carregando Janela de Informações do Gerador com correções de HUD...")
 
 require "ISUI/ISCollapsableWindow"
 require "ISUI/ISButton"
@@ -19,31 +27,34 @@ require "ISUI/ISButton"
 PoweredBuildings.RegisterModule("PB_UI_GeneratorInfoWindow")
 PoweredBuildings.UI   = PoweredBuildings.UI or {}
 
--- ============================================================
--- CONSTANTES
--- ============================================================
-
-local MIN_WIN_W       = 485 -- Aumenta largura da janela para caber textos longos por extenso
-local MARGIN          = 14
-local BAR_W           = 140
-local BAR_H           = 11
-local LINE_H          = 22 -- Altura de linha aumentada para respiro vertical (Item 2)
+-- ============================================================================
+-- ⚙️ CONFIGURAÇÕES DE LAYOUT E DESIGN (MANUTENÇÃO DE INTERFACE)
+-- ============================================================================
+local MIN_WIN_W       = 485 -- Largura ampliada para evitar quebra de textos por extenso
+local MARGIN          = 14  -- Espaçamento das bordas internas da janela
+local BAR_W           = 140 -- Largura padrão das barras de status
+local BAR_H           = 11  -- Altura padrão das barras de status
+local LINE_H          = 22  -- Altura da linha para garantir respiro vertical na interface
 local FONT_S          = UIFont.Small
 local FONT_M          = UIFont.Medium
-local GEN_ICON_PATH   = "Item_Generator" -- Corrigido para buscar o ícone vanilla nativo do jogo
+
+-- ============================================================================
+-- 🖼️ CAMINHOS DE TEXTURAS E ASSETS NATIVOS/MODDED
+-- ============================================================================
+local GEN_ICON_PATH   = "Item_Generator" -- Busca o ícone vanilla nativo do jogo
 local WARN_TEX_PATH   = "media/ui/PB_Warning.png"
 local OVERL_TEX_PATH  = "media/ui/PB_Overload.png"
-local THERM_UP_PATH   = "media/ui/therm_up.png"
-local THERM_DOWN_PATH = "media/ui/therm_down.png"
-local HEAT_ON_PATH    = "media/ui/heat_on.png"            -- ícone de chama (aquecimento ativo)
-local HEAT_OFF_PATH   = "media/ui/heat_off.png"           -- ícone de floco de neve (aquecimento inativo)
-local STRAIN_SEG_PATH = "media/ui/progressbar_strain.png" -- textura de um único segmento
+local THERM_UP_PATH   = "media/ui/PB_Therm_Up.png"
+local THERM_DOWN_PATH = "media/ui/PB_Therm_Down.png"
+local HEAT_ON_PATH    = "media/ui/PB_Heat_On.png"            -- Ícone de chama (termostato ativo)
+local HEAT_OFF_PATH   = "media/ui/PB_Heat_Off.png"           -- Ícone de floco de neve (termostato inativo)
+local STRAIN_SEG_PATH = "media/ui/PB_Progressbar_Strain.png" -- Textura de um único segmento da barra
 
--- ============================================================
--- TABELA DE CALIBRAÇÃO DE PIXELS (LKS SUPERMOD PATCH)
+-- ============================================================================
+-- 🎯 TABELA DE CALIBRAÇÃO DE PIXELS (MÉTODO DE AJUSTE FINO LKS)
 -- Eixo X: + Move Direita, - Move Esquerda
 -- Eixo Y: + Move Cima,    - Move Baixo
--- ============================================================
+-- ============================================================================
 local HUD_Offsets     = {
     iconGenerator         = { x = 0, y = -6 },
     iconGallon            = { x = 0, y = 0 },
@@ -55,12 +66,12 @@ local HUD_Offsets     = {
     arrowAndHotIcon       = { x = 0, y = -5 }
 }
 
--- ============================================================
+-- ============================================================================
 -- AUXILIARES
--- ============================================================
+-- ============================================================================
 
 --- Encontra o quadrado caminhável mais próximo adjacente a um quadrado alvo,
---- ordenado por proximidade a fromChar para que o jogador se aproxima naturalmente.
+--- ordenado por proximidade a fromChar para que o jogador se aproxime naturalmente.
 --- Retorna: adjSquare, valor IsoDirections para olhar em direção a targetSq (or nil, nil).
 local function FindAdjacentWalkable(targetSq, fromChar)
     if not targetSq then return nil, nil end
@@ -211,7 +222,6 @@ function PB_GeneratorInfoWindow:calculateLayout()
 
     local barCol = maxLabelW + 12
 
-    -- ITEM 3: Mede o maior comprimento possível dos valores da direita para calcular a largura real necessária
     local maxValueW = 0
     local sampleValues = {
         "213.5 " .. (getText("IGUI_PB_UnitsPerGen") or "Unidades por gerador"),
@@ -2136,7 +2146,7 @@ end
 
 function PB_GeneratorInfoWindow.Open(character, generator, anchorSquare, buildingHint)
     if not character then
-        PoweredBuildings.Error("[GeneratorInfoWindow] Personagem inválido")
+        PoweredBuildings.Error("[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] Personagem inválido")
         return
     end
 
@@ -2154,7 +2164,7 @@ function PB_GeneratorInfoWindow.Open(character, generator, anchorSquare, buildin
 
     if not generator then
         PoweredBuildings.Warn(
-            "[GeneratorInfoWindow] Gerador fora de alcance – aproxime-se mais do gerador e tente novamente")
+            "[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] Gerador fora de alcance – aproxime-se mais do gerador e tente novamente")
         return
     end
 
@@ -2198,4 +2208,4 @@ end
 -- ============================================================
 
 PoweredBuildings.UI.GeneratorInfoWindow = PB_GeneratorInfoWindow
-print("[PB_UI_GeneratorInfoWindow] Janela de Informações do Gerador carregada com sucesso")
+print("[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] Janela de Informações do Gerador carregada com sucesso")
