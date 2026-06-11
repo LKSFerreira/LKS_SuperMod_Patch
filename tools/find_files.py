@@ -3,7 +3,9 @@ import re
 from pathlib import Path
 
 # Configuração dos caminhos do Mod
-MOD_PATH = Path(r"C:\Users\LKSFERREIRA\Zomboid\mods\GeneratorPlus2")
+# Caminho absoluto da raiz do repositório (diretório pai da pasta 'tools')
+MOD_PATH = Path(__file__).resolve().parent.parent
+
 
 print("=" * 70)
 print(f"🚀 INICIANDO AUDITORIA DE INTERFACE - LKS SUPERMOD PATCH")
