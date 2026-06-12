@@ -123,46 +123,17 @@ local function IsInventoryItem(val)
     return ok and res
 end
 
-local function GetTextureFromInventoryItem(item)
-    if not item then return nil end
-
-    if item.getTex then
-        local ok, tex = pcall(item.getTex, item)
-        if ok and tex then return tex end
-    end
-
-    if item.getTexture then
-        local ok, tex = pcall(item.getTexture, item)
-        if ok and tex then return tex end
-    end
-
-    if item.texture then
-        return item.texture
-    end
-
-    if item.getTexName then
-        local ok, name = pcall(item.getTexName, item)
-        if ok and name then
-            local tex = getTexture(name)
-            if tex then return tex end
-        end
-    end
-
-    return nil
-end
-
-local function ExtractContainerTextureFromOption(opt)
+local function ExtractContainerItemFromOption(opt)
     if not opt then return nil end
 
-    if opt.iconTexture then
-        return opt.iconTexture
+    if IsInventoryItem(opt.itemForTexture) then
+        return opt.itemForTexture
     end
 
     -- 1. Verifica campos diretos do opt que sejam InventoryItem (como param1, param2, item, etc.)
     for k, v in pairs(opt) do
         if IsInventoryItem(v) then
-            local tex = GetTextureFromInventoryItem(v)
-            if tex then return tex end
+            return v
         end
     end
 
@@ -172,8 +143,7 @@ local function ExtractContainerTextureFromOption(opt)
             if k ~= "subOption" and k ~= "parent" and k ~= "target" then
                 for _, subVal in pairs(v) do
                     if IsInventoryItem(subVal) then
-                        local tex = GetTextureFromInventoryItem(subVal)
-                        if tex then return tex end
+                        return subVal
                     end
                 end
             end
@@ -535,32 +505,37 @@ function ContextMenu.Build(player, context, worldobjects, test)
         return nil
     end
 
-    local function applyIconsDeep(menuObj, parentOpt, inheritedIcon, rootContext)
+    local function applyIconsDeep(menuObj, parentOpt, inheritedItem, rootContext)
         if not menuObj or not menuObj.options then return end
 
         for _, opt in ipairs(menuObj.options) do
             if opt and opt.name then
-                if not opt.iconTexture and iconMap[opt.name] then
-                    opt.iconTexture = getTexture(iconMap[opt.name])
+                local currentItem = nil
+                if not isAddAll(opt.name) then
+                    if isAddOne(opt.name) and inheritedItem then
+                        currentItem = inheritedItem
+                    else
+                        currentItem = opt.itemForTexture or ExtractContainerItemFromOption(opt)
+                    end
                 end
 
-                if isAddAll(opt.name) then
-                    opt.iconTexture = getTexture(TEX_GAS_REFUEL_AL)
-                end
+                if currentItem then
+                    opt.itemForTexture = currentItem
+                    opt.iconTexture = nil -- Garante a renderização dinâmica do fluido no motor do PZ
+                else
+                    if not opt.iconTexture and iconMap[opt.name] then
+                        opt.iconTexture = getTexture(iconMap[opt.name])
+                    end
 
-                if isAddOne(opt.name) and inheritedIcon then
-                    opt.iconTexture = inheritedIcon
-                end
-
-                local currentContainerTex = ExtractContainerTextureFromOption(opt)
-                if currentContainerTex and not opt.iconTexture then
-                    opt.iconTexture = currentContainerTex
+                    if isAddAll(opt.name) then
+                        opt.iconTexture = getTexture(TEX_GAS_REFUEL_AL)
+                    end
                 end
 
                 local subMenu = getSubMenuFromOption(menuObj, opt, rootContext)
                 if subMenu then
-                    local nextInheritedIcon = currentContainerTex or inheritedIcon
-                    applyIconsDeep(subMenu, opt, nextInheritedIcon, rootContext)
+                    local nextInheritedItem = currentItem or inheritedItem
+                    applyIconsDeep(subMenu, opt, nextInheritedItem, rootContext)
                 end
             end
         end
