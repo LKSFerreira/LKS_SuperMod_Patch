@@ -162,6 +162,20 @@ def print_image_properties(file_path, idx, Image_lib):
 def search_and_inspect(target, search_dir="."):
     Image_lib = check_pillow()
     
+    # Verifica se target é um arquivo direto absoluto ou relativo
+    direct_file = None
+    if os.path.isabs(target) and os.path.isfile(target):
+        direct_file = target
+    else:
+        potential_file = os.path.normpath(os.path.join(search_dir, target))
+        if os.path.isfile(potential_file):
+            direct_file = potential_file
+
+    if direct_file:
+        print(f"\n{GREEN}✨ Inspecionando arquivo direto:{RESET}\n")
+        print_image_properties(direct_file, 1, Image_lib)
+        return
+    
     # Normaliza e verifica se target é um caminho direto absoluto ou relativo para um diretório
     direct_dir = None
     if os.path.isabs(target) and os.path.isdir(target):
