@@ -5,54 +5,57 @@
 -- OBJETIVO: Menu de contexto do gerador (opções de clique direito no mundo)
 --           Tradução completa de engenharia e padronização de prefixos PB_
 -- AUTOR: LKSFERREIRA
--- DATA DE ATUALIZAÇÃO: 11/06/2026
+-- DATA DE ATUALIZAÇÃO: 12/06/2026
 -- ============================================================================
 
 if not PoweredBuildings then
-    print("[LKS PATCH - PB_ContextMenu_Generator.lua] namespace PoweredBuildings não encontrado - pulando carregamento do módulo")
+    print(
+    "[LKS PATCH - PB_ContextMenu_Generator.lua] namespace PoweredBuildings não encontrado - pulando carregamento do módulo")
     return
 end
 
 print("[LKS PATCH - PB_ContextMenu_Generator.lua] Carregando Menu de Contexto do Gerador com padronização de ícones...")
 
--- Registro do Módulo
 PoweredBuildings.RegisterModule("PB_ContextMenu_Generator")
 
--- Criação do Namespace local
-PoweredBuildings.ContextMenu = PoweredBuildings.ContextMenu or {}
+PoweredBuildings.ContextMenu           = PoweredBuildings.ContextMenu or {}
 PoweredBuildings.ContextMenu.Generator = {}
 
-local ContextMenu = PoweredBuildings.ContextMenu.Generator
+local ContextMenu                      = PoweredBuildings.ContextMenu.Generator
 
 -- ============================================================================
 -- ⚙️ CONFIGURAÇÕES DE ASSETS E TEXTURAS (PADRÃO DE NOMENCLATURA PB)
 -- ============================================================================
-local TEX_ITEM_GEN     = "media/textures/Item_Generator.png"
-local TEX_PWR_ON       = "media/ui/PB_Pwr_On.png"
-local TEX_PWR_OFF      = "media/ui/PB_Pwr_Off.png"
-local TEX_TAKE_GEN     = "media/ui/PB_Take_Gen.png"
-local TEX_CONNECT      = "media/ui/PB_Connect.png"
-local TEX_DISCONNECT   = "media/ui/PB_Disconnect.png"
-local TEX_GEN_INFO     = "media/ui/PB_Gen_Info.png"
-local TEX_HOUSE_ELE    = "media/ui/PB_House_Eletricity.png"
-local TEX_HOUSE_ELE_OFF= "media/ui/PB_House_Eletricity_Off.png"
-local TEX_REP_GEN      = "media/ui/PB_Rep_Gen.png"
-local TEX_GAS_REFUEL   = "media/ui/vehicles/PB_Gas_Refuel.png"
-local TEX_GAS_REFUEL_AL= "media/ui/vehicles/PB_Gas_Refuel_All.png"
+local TEX_ITEM_GEN                     = "media/textures/Item_Generator.png"
+local TEX_PWR_ON                       = "media/ui/PB_Pwr_On.png"
+local TEX_PWR_OFF                      = "media/ui/PB_Pwr_Off.png"
+local TEX_TAKE_GEN                     = "media/ui/PB_Take_Gen.png"
+local TEX_CONNECT                      = "media/ui/PB_Connect.png"
+local TEX_DISCONNECT                   = "media/ui/PB_Disconnect.png"
+local TEX_GEN_INFO                     = "media/ui/PB_Gen_Info.png"
+local TEX_HOUSE_ELE                    = "media/ui/PB_House_Eletricity.png"
+local TEX_HOUSE_ELE_OFF                = "media/ui/PB_House_Eletricity_Off.png"
+local TEX_REP_GEN                      = "media/ui/PB_Rep_Gen.png"
+local TEX_GAS_REFUEL                   = "media/ui/PB_Gas_Refuel.png"
+local TEX_GAS_REFUEL_AL                = "media/ui/PB_Gas_Refuel_All.png"
 
--- Cache local para busca de ícones baseados no sprite do gerador colocado no mundo
-local _genIconCache = {}
-local _genIconFallback = nil
+local _genIconCache                    = {}
+local _genIconFallback                 = nil
 
 local function GetGeneratorIcon(gen)
     _genIconFallback = _genIconFallback or getTexture(TEX_ITEM_GEN)
     if not gen then return _genIconFallback end
+
     local spriteName = gen.getSpriteName and gen:getSpriteName()
     if not spriteName and gen.getSprite and gen:getSprite() then
         spriteName = gen:getSprite():getName()
     end
     if not spriteName then return _genIconFallback end
-    if _genIconCache[spriteName] ~= nil then return _genIconCache[spriteName] end
+
+    if _genIconCache[spriteName] ~= nil then
+        return _genIconCache[spriteName]
+    end
+
     local tex = getTexture("media/textures/" .. spriteName .. ".png") or _genIconFallback
     _genIconCache[spriteName] = tex
     return tex
@@ -62,7 +65,6 @@ end
 -- 🛠️ FUNÇÕES AUXILIARES DE VERIFICAÇÃO
 -- ============================================================================
 
--- Encontra o objeto gerador nos objetos clicados no mundo
 local function FindGenerator(worldobjects)
     if not worldobjects then return nil end
     for _, obj in ipairs(worldobjects) do
@@ -73,14 +75,12 @@ local function FindGenerator(worldobjects)
     return nil
 end
 
--- Verifica se o gerador está operando no modo de construção (conectado a um prédio)
 local function IsGeneratorInBuildingMode(generator)
     if not generator then return false end
     local md = generator:getModData()
     return md and md.Gen_BuildingPoolID ~= nil
 end
 
--- Retorna a porcentagem de combustível do gerador
 local function GetFuelPercentage(generator)
     if not generator then return 0 end
     local fuel = generator:getFuel()
@@ -89,13 +89,11 @@ local function GetFuelPercentage(generator)
     return math.floor((fuel / maxFuel) * 100)
 end
 
--- Retorna a porcentagem de condição mecânica do gerador
 local function GetConditionPercentage(generator)
     if not generator then return 0 end
     return math.floor(generator:getCondition())
 end
 
--- Verifica se o gerador possui os requisitos mínimos para ser ligado
 local function CanActivateGenerator(generator)
     if not generator then return false end
     if generator:isActivated() then return false end
@@ -104,107 +102,166 @@ local function CanActivateGenerator(generator)
     return true
 end
 
--- Verifica se o jogador está perto o suficiente para interagir com o gerador
 local function CanReachGenerator(player, generator)
     if not player or not generator then return false end
     local playerSquare = player:getSquare()
     local generatorSquare = generator:getSquare()
     if not playerSquare or not generatorSquare then return false end
-    
+
     local dx = math.abs(playerSquare:getX() - generatorSquare:getX())
     local dy = math.abs(playerSquare:getY() - generatorSquare:getY())
     return dx <= 1 and dy <= 1
 end
 
 -- ============================================================================
+-- 🔎 AUXILIARES DE ÍCONE DE RECIPIENTE
+-- ============================================================================
+
+local function GetTextureFromInventoryItem(item)
+    if not item then return nil end
+
+    if item.getTex then
+        local ok, tex = pcall(item.getTex, item)
+        if ok and tex then return tex end
+    end
+
+    if item.getTexture then
+        local ok, tex = pcall(item.getTexture, item)
+        if ok and tex then return tex end
+    end
+
+    if item.texture then
+        return item.texture
+    end
+
+    return nil
+end
+
+local function ExtractContainerTextureFromOption(opt)
+    if not opt then return nil end
+
+    if opt.iconTexture then
+        return opt.iconTexture
+    end
+
+    local candidateFields = {
+        "item",
+        "inventoryItem",
+        "invItem",
+        "target"
+    }
+
+    for _, field in ipairs(candidateFields) do
+        local value = opt[field]
+        if value then
+            local tex = GetTextureFromInventoryItem(value)
+            if tex then return tex end
+        end
+    end
+
+    local listFields = {
+        "items",
+        "objects"
+    }
+
+    for _, field in ipairs(listFields) do
+        local list = opt[field]
+        if list and type(list) == "table" then
+            for _, value in ipairs(list) do
+                local tex = GetTextureFromInventoryItem(value)
+                if tex then return tex end
+            end
+        end
+    end
+
+    return nil
+end
+
+-- ============================================================================
 -- ⚡ GATILHOS DE AÇÕES DO MENU DE CONTEXTO
 -- ============================================================================
 
--- Ação: Ligar o Gerador
 function ContextMenu.OnTurnOn(worldobjects, player)
     if not player or not worldobjects then return end
     local generator = FindGenerator(worldobjects)
     if not generator then return end
     local playerObj = getSpecificPlayer(player)
     if not playerObj then return end
-    
-    -- Caminha até o gerador se estiver longe
+
     if not CanReachGenerator(playerObj, generator) then
         if luautils.walkAdj then
             luautils.walkAdj(playerObj, generator:getSquare())
         end
     end
-    
-    -- Adiciona a ação na fila cronometrada do jogador
+
     if PoweredBuildings.Actions and PoweredBuildings.Actions.ActivateGenerator then
         ISTimedActionQueue.add(PoweredBuildings.Actions.ActivateGenerator:new(playerObj, generator, true))
     else
-        print("[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.ActivateGenerator não encontrado!")
+        print(
+        "[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.ActivateGenerator não encontrado!")
     end
 end
 
--- Ação: Desligar o Gerador
 function ContextMenu.OnTurnOff(worldobjects, player)
     if not player or not worldobjects then return end
     local generator = FindGenerator(worldobjects)
     if not generator then return end
     local playerObj = getSpecificPlayer(player)
     if not playerObj then return end
-    
-    -- Caminha até o gerador se estiver longe
+
     if not CanReachGenerator(playerObj, generator) then
         if luautils.walkAdj then
             luautils.walkAdj(playerObj, generator:getSquare())
         end
     end
-    
-    -- Adiciona a ação na fila cronometrada do jogador
+
     if PoweredBuildings.Actions and PoweredBuildings.Actions.ActivateGenerator then
         ISTimedActionQueue.add(PoweredBuildings.Actions.ActivateGenerator:new(playerObj, generator, false))
     else
-        print("[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.ActivateGenerator não encontrado!")
+        print(
+        "[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.ActivateGenerator não encontrado!")
     end
 end
 
--- Ação: Conectar Gerador à Rede da Construção
 function ContextMenu.OnConnectBuilding(worldobjects, player)
     if not player or not worldobjects then return end
     local generator = FindGenerator(worldobjects)
     if not generator then return end
     local playerObj = getSpecificPlayer(player)
     if not playerObj then return end
-    
+
     if not CanReachGenerator(playerObj, generator) then
         if luautils.walkAdj then
             luautils.walkAdj(playerObj, generator:getSquare())
         end
     end
-    
+
     if PoweredBuildings.Actions and PoweredBuildings.Actions.ConnectBuilding then
         ISTimedActionQueue.add(PoweredBuildings.Actions.ConnectBuilding:new(playerObj, generator))
     else
-        print("[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.ConnectBuilding não encontrado!")
+        print(
+        "[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.ConnectBuilding não encontrado!")
     end
 end
 
--- Ação: Desconectar Gerador da Rede da Construção
 function ContextMenu.OnDisconnectBuilding(worldobjects, player)
     if not player or not worldobjects then return end
     local generator = FindGenerator(worldobjects)
     if not generator then return end
     local playerObj = getSpecificPlayer(player)
     if not playerObj then return end
-    
+
     if not CanReachGenerator(playerObj, generator) then
         if luautils.walkAdj then
             luautils.walkAdj(playerObj, generator:getSquare())
         end
     end
-    
+
     if PoweredBuildings.Actions and PoweredBuildings.Actions.DisconnectBuilding then
         ISTimedActionQueue.add(PoweredBuildings.Actions.DisconnectBuilding:new(playerObj, generator))
     else
-        print("[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.DisconnectBuilding não encontrado!")
+        print(
+        "[LKS PATCH - PB_ContextMenu_Generator.lua] ERRO: PoweredBuildings.Actions.DisconnectBuilding não encontrado!")
     end
 end
 
@@ -216,21 +273,20 @@ function ContextMenu.Build(player, context, worldobjects, test)
     if not player or not context or not worldobjects then return end
     local playerObj = getSpecificPlayer(player)
     if not playerObj then return end
-    
+
     local generator = FindGenerator(worldobjects)
     if not generator then return end
-    if test then return true end -- Modo de teste rápido do jogo para validar clique
-    
+    if test then return true end
+
     local isActivated = generator:isActivated()
     local isInBuildingMode = IsGeneratorInBuildingMode(generator)
     local fuelPercent = GetFuelPercentage(generator)
     local conditionPercent = GetConditionPercentage(generator)
     local canActivate = CanActivateGenerator(generator)
-    
-    -- Procura se o submenu padrão "Gerador" do próprio jogo já existe no clique
+
     local generatorSubmenu = nil
     local generatorOption = nil
-    
+
     for _, option in ipairs(context.options) do
         if option.name == getText("ContextMenu_Generator") then
             generatorOption = option
@@ -238,25 +294,23 @@ function ContextMenu.Build(player, context, worldobjects, test)
             break
         end
     end
-    
-    -- Se o menu não existir (ex: gerador desligado da tomada vanilla), cria um novo
+
     if not generatorSubmenu then
         generatorSubmenu = context:getNew(context)
         generatorOption = context:addOption(getText("ContextMenu_Generator"), worldobjects, nil, generatorSubmenu)
     end
-   
-    -- ========================================================================
-    -- MODO: GERADOR EM REDE DE CONSTRUÇÃO (MODDED)
-    -- ========================================================================
+
+    if generatorOption and not generatorOption.iconTexture then
+        generatorOption.iconTexture = GetGeneratorIcon(generator)
+    end
+
     if isInBuildingMode then
-        -- Remove as opções vanilla do jogo para evitar conflitos de script
         pcall(function() generatorSubmenu:removeOptionByName(getText("ContextMenu_GeneratorPlug")) end)
         pcall(function() generatorSubmenu:removeOptionByName(getText("ContextMenu_GeneratorTake")) end)
         pcall(function() generatorSubmenu:removeOptionByName(getText("ContextMenu_Turn_Off")) end)
         pcall(function() generatorSubmenu:removeOptionByName(getText("IGUI_Turn_Off")) end)
         pcall(function() generatorSubmenu:removeOptionByName(getText("ContextMenu_Turn_On")) end)
-        
-        -- Opção: Desligar
+
         if isActivated then
             local turnOffOption = generatorSubmenu:addOption(
                 getText("ContextMenu_Turn_Off") or "Desligar",
@@ -265,7 +319,6 @@ function ContextMenu.Build(player, context, worldobjects, test)
                 player
             )
             turnOffOption.iconTexture = getTexture(TEX_PWR_OFF)
-        -- Opção: Ligar
         else
             local turnOnOption = generatorSubmenu:addOption(
                 getText("ContextMenu_Turn_On") or "Ligar",
@@ -274,8 +327,7 @@ function ContextMenu.Build(player, context, worldobjects, test)
                 player
             )
             turnOnOption.iconTexture = getTexture(TEX_PWR_ON)
-            
-            -- Bloqueia o botão se o maquinário estiver quebrado ou sem combustível
+
             if not canActivate then
                 turnOnOption.notAvailable = true
                 local tooltip = ISInventoryPaneContextMenu.addToolTip()
@@ -289,8 +341,7 @@ function ContextMenu.Build(player, context, worldobjects, test)
                 turnOnOption.toolTip = tooltip
             end
         end
-        
-        -- Opção: Desconectar do Prédio
+
         local disconnectOption = generatorSubmenu:addOption(
             getText("IGUI_DisconnectFromBuilding") or "Desconectar da Construção",
             worldobjects,
@@ -299,7 +350,6 @@ function ContextMenu.Build(player, context, worldobjects, test)
         )
         disconnectOption.iconTexture = getTexture(TEX_HOUSE_ELE_OFF)
 
-        -- Opção: Informações de Energia da Construção (HUD Principal)
         local infoOption = generatorSubmenu:addOption(
             getText("IGUI_BuildingPowerInfoMenu") or "Informações de Energia",
             worldobjects,
@@ -315,28 +365,24 @@ function ContextMenu.Build(player, context, worldobjects, test)
             player
         )
         infoOption.iconTexture = getTexture(TEX_HOUSE_ELE)
-
-    -- ========================================================================
-    -- MODO: GERADOR ISOLADO / INDEPENDENTE (VANILLA)
-    -- ========================================================================
     else
         local square = generator:getSquare()
         local nearBuilding = false
-        
+
         if square then
             local building = square:getBuilding()
             if building then nearBuilding = true end
-            
+
             if not nearBuilding and square.haveBuilding and square:haveBuilding() then
                 nearBuilding = true
             end
-            
-            -- Varredura de segurança nos quadrados adjacentes para validação de paredes
+
             if not nearBuilding then
                 for dx = -1, 1 do
                     for dy = -1, 1 do
                         if dx ~= 0 or dy ~= 0 then
-                            local adjSquare = getCell():getGridSquare(square:getX() + dx, square:getY() + dy, square:getZ())
+                            local adjSquare = getCell():getGridSquare(square:getX() + dx, square:getY() + dy,
+                                square:getZ())
                             if adjSquare then
                                 if adjSquare:getBuilding() or (adjSquare.haveBuilding and adjSquare:haveBuilding()) then
                                     nearBuilding = true
@@ -349,8 +395,7 @@ function ContextMenu.Build(player, context, worldobjects, test)
                 end
             end
         end
-        
-        -- Oculta a opção de conectar caso o gerador já esteja plugado no modo vanilla convencional
+
         local vanillaUnplugExists = false
         local unplugName = getText("ContextMenu_GeneratorUnplug")
         if generatorSubmenu and generatorSubmenu.options then
@@ -371,58 +416,147 @@ function ContextMenu.Build(player, context, worldobjects, test)
             )
             connectOption.iconTexture = getTexture(TEX_HOUSE_ELE)
 
-            -- Validação de Requisito Técnico: Eletricidade Nível 3 + Receita aprendida
-            local playerObj = getSpecificPlayer(player)
-            local knowsRecipe = playerObj:isRecipeActuallyKnown("Generator")
-            if not knowsRecipe then
+            local playerObj2 = getSpecificPlayer(player)
+            if not playerObj2:isRecipeActuallyKnown("Generator") then
                 connectOption.notAvailable = true
                 local tooltip = ISInventoryPaneContextMenu.addToolTip()
                 tooltip:setName(getText("IGUI_ConnectToBuilding") or "Conectar à Construção")
-                tooltip.description = getText("IGUI_ConnectRequiresKnowledge") or "Requer a receita de Gerador (Eletricidade nível 3)"
+                tooltip.description = getText("IGUI_ConnectRequiresKnowledge") or
+                    "Requer a receita de Gerador (Eletricidade nível 3)"
                 connectOption.toolTip = tooltip
-            -- Validação de Posicionamento: O gerador precisa estar encostado na estrutura
             elseif not nearBuilding then
                 connectOption.notAvailable = true
                 local tooltip = ISInventoryPaneContextMenu.addToolTip()
                 tooltip:setName(getText("IGUI_NoBuildingNearby") or "Nenhuma construção próxima")
-                tooltip.description = getText("IGUI_NoBuildingNearby_Desc") or "O gerador deve ser colocado ao lado de uma construção com paredes"
+                tooltip.description = getText("IGUI_NoBuildingNearby_Desc") or
+                    "O gerador deve ser colocado ao lado de uma construção com paredes"
                 connectOption.toolTip = tooltip
             end
         end
     end
 
-    -- ========================================================================
-    -- MAPEAMENTO E INJEÇÃO AUTOMÁTICA DE ÍCONES (SISTEMA FILTRADO)
-    -- ========================================================================
+    -- ============================================================================
+    -- MAPEAMENTO DE ÍCONES
+    -- ============================================================================
     local iconMap = {
-        [getText("ContextMenu_GeneratorTake")    or "Pegar Gerador"]                    = TEX_TAKE_GEN,
-        [getText("ContextMenu_GeneratorPlug")    or "Conectar Gerador"]                 = TEX_CONNECT,
-        [getText("ContextMenu_GeneratorUnplug")  or "Desconectar Gerador"]              = TEX_DISCONNECT,
-        [getText("ContextMenu_GeneratorInfo")    or "Informações do Gerador"]           = TEX_GEN_INFO,
-        [getText("ContextMenu_Examine")          or "Examinar"]                         = TEX_GEN_INFO,
-        [getText("IGUI_BuildingPowerInfoMenu")   or "Informações de Energia da Construção"] = TEX_HOUSE_ELE,
-        [getText("ContextMenu_Turn_On")          or "Ligar"]                            = TEX_PWR_ON,
-        [getText("IGUI_Turn_On")                 or "Ligar"]                            = TEX_PWR_ON,
-        [getText("ContextMenu_Turn_Off")         or "Desligar"]                         = TEX_PWR_OFF,
-        [getText("IGUI_Turn_Off")                or "Desligar"]                         = TEX_PWR_OFF,
-        [getText("ContextMenu_Repair")           or "Reparar"]                          = TEX_REP_GEN,
-        [getText("ContextMenu_GeneratorAddFuel") or "Adicionar Combustível"]            = TEX_GAS_REFUEL,
-        [getText("ContextMenu_AddAll")           or "Adicionar Tudo"]                   = TEX_GAS_REFUEL_AL,
-        [getText("ContextMenu_GeneratorFix")     or "Reparar Gerador"]                = TEX_REP_GEN,
+        [getText("ContextMenu_GeneratorTake")] = TEX_TAKE_GEN,
+        ["Pegar Gerador"] = TEX_TAKE_GEN,
+
+        [getText("ContextMenu_GeneratorPlug")] = TEX_CONNECT,
+        ["Conectar Gerador"] = TEX_CONNECT,
+
+        [getText("ContextMenu_GeneratorUnplug")] = TEX_DISCONNECT,
+        ["Desconectar Gerador"] = TEX_DISCONNECT,
+
+        [getText("ContextMenu_GeneratorInfo")] = TEX_GEN_INFO,
+        ["Informações do Gerador"] = TEX_GEN_INFO,
+        [getText("ContextMenu_Examine")] = TEX_GEN_INFO,
+        ["Examinar"] = TEX_GEN_INFO,
+
+        [getText("IGUI_BuildingPowerInfoMenu")] = TEX_HOUSE_ELE,
+        ["Informações de Energia"] = TEX_HOUSE_ELE,
+        ["Informações Elétricas da Construção"] = TEX_HOUSE_ELE,
+
+        [getText("ContextMenu_Turn_On")] = TEX_PWR_ON,
+        [getText("IGUI_Turn_On")] = TEX_PWR_ON,
+        ["Ligar"] = TEX_PWR_ON,
+
+        [getText("ContextMenu_Turn_Off")] = TEX_PWR_OFF,
+        [getText("IGUI_Turn_Off")] = TEX_PWR_OFF,
+        ["Desligar"] = TEX_PWR_OFF,
+
+        [getText("ContextMenu_Repair")] = TEX_REP_GEN,
+        [getText("ContextMenu_GeneratorFix")] = TEX_REP_GEN,
+        ["Reparar"] = TEX_REP_GEN,
+        ["Reparar Gerador"] = TEX_REP_GEN,
+
+        [getText("ContextMenu_AddFuel")] = TEX_GAS_REFUEL,
+        [getText("ContextMenu_GeneratorAddFuel")] = TEX_GAS_REFUEL,
+        ["Colocar Combustível"] = TEX_GAS_REFUEL,
+        ["Adicionar Combustível"] = TEX_GAS_REFUEL,
+
+        [getText("ContextMenu_AddAll")] = TEX_GAS_REFUEL_AL,
+        ["Adicionar Tudo"] = TEX_GAS_REFUEL_AL,
     }
 
-    local function applyIcons(optList)
-        if not optList then return end
-        for _, opt in ipairs(optList) do
-            if not opt.iconTexture and opt.name and iconMap[opt.name] then
-                opt.iconTexture = getTexture(iconMap[opt.name])
+    local function isAddOne(name)
+        return name == getText("ContextMenu_AddOne") or name == "Adicionar Um"
+    end
+
+    local function isAddAll(name)
+        return name == getText("ContextMenu_AddAll") or name == "Adicionar Tudo"
+    end
+
+    local function getSubMenuFromOption(menuObj, opt)
+        if not menuObj or not opt or not opt.subOption then
+            return nil
+        end
+
+        if menuObj.getSubMenu then
+            local ok, sub = pcall(menuObj.getSubMenu, menuObj, opt.subOption)
+            if ok and sub then
+                return sub
+            end
+        end
+
+        if menuObj.subMenus and menuObj.subMenus[opt.subOption] then
+            return menuObj.subMenus[opt.subOption]
+        end
+
+        if menuObj.subOption and menuObj.subOption[opt.subOption] then
+            return menuObj.subOption[opt.subOption]
+        end
+
+        return nil
+    end
+
+    local function applyIconsDeep(menuObj, parentOpt)
+        if not menuObj or not menuObj.options then return end
+
+        for _, opt in ipairs(menuObj.options) do
+            if opt and opt.name then
+                if not opt.iconTexture and iconMap[opt.name] then
+                    opt.iconTexture = getTexture(iconMap[opt.name])
+                end
+
+                if isAddAll(opt.name) then
+                    opt.iconTexture = getTexture(TEX_GAS_REFUEL_AL)
+                end
+
+                if opt.subOption and not opt.iconTexture then
+                    local inheritedContainerTex = ExtractContainerTextureFromOption(opt)
+                    if inheritedContainerTex then
+                        opt.iconTexture = inheritedContainerTex
+                    end
+                end
+
+                local subMenu = getSubMenuFromOption(menuObj, opt)
+                if subMenu then
+                    if opt.subOption then
+                        local inheritedContainerTex = ExtractContainerTextureFromOption(opt)
+                        if inheritedContainerTex and not opt.iconTexture then
+                            opt.iconTexture = inheritedContainerTex
+                        end
+                    end
+                    applyIconsDeep(subMenu, opt)
+                end
+
+                if isAddOne(opt.name) then
+                    local inheritedTex = nil
+
+                    if parentOpt then
+                        inheritedTex = ExtractContainerTextureFromOption(parentOpt)
+                    end
+
+                    if inheritedTex then
+                        opt.iconTexture = inheritedTex
+                    end
+                end
             end
         end
     end
 
-    -- Aplica os ícones tanto no submenu modded quanto nas opções injetadas no menu global
-    if generatorSubmenu then applyIcons(generatorSubmenu.options) end
-    applyIcons(context.options)
+    applyIconsDeep(context, nil)
 end
 
 -- ============================================================================
