@@ -117,6 +117,12 @@ end
 -- 🔎 AUXILIARES DE ÍCONE DE RECIPIENTE
 -- ============================================================================
 
+local function IsInventoryItem(val)
+    if not val then return false end
+    local ok, res = pcall(instanceof, val, "InventoryItem")
+    return ok and res
+end
+
 local function GetTextureFromInventoryItem(item)
     if not item then return nil end
 
@@ -134,6 +140,14 @@ local function GetTextureFromInventoryItem(item)
         return item.texture
     end
 
+    if item.getTexName then
+        local ok, name = pcall(item.getTexName, item)
+        if ok and name then
+            local tex = getTexture(name)
+            if tex then return tex end
+        end
+    end
+
     return nil
 end
 
@@ -144,32 +158,24 @@ local function ExtractContainerTextureFromOption(opt)
         return opt.iconTexture
     end
 
-    local candidateFields = {
-        "item",
-        "inventoryItem",
-        "invItem",
-        "target"
-    }
-
-    for _, field in ipairs(candidateFields) do
-        local value = opt[field]
-        if value then
-            local tex = GetTextureFromInventoryItem(value)
+    -- 1. Verifica campos diretos do opt que sejam InventoryItem (como param1, param2, item, etc.)
+    for k, v in pairs(opt) do
+        if IsInventoryItem(v) then
+            local tex = GetTextureFromInventoryItem(v)
             if tex then return tex end
         end
     end
 
-    local listFields = {
-        "items",
-        "objects"
-    }
-
-    for _, field in ipairs(listFields) do
-        local list = opt[field]
-        if list and type(list) == "table" then
-            for _, value in ipairs(list) do
-                local tex = GetTextureFromInventoryItem(value)
-                if tex then return tex end
+    -- 2. Verifica tabelas que possam conter InventoryItems (listas de itens para "Adicionar Todos")
+    for k, v in pairs(opt) do
+        if type(v) == "table" and not IsInventoryItem(v) then
+            if k ~= "subOption" and k ~= "parent" and k ~= "target" then
+                for _, subVal in pairs(v) do
+                    if IsInventoryItem(subVal) then
+                        local tex = GetTextureFromInventoryItem(subVal)
+                        if tex then return tex end
+                    end
+                end
             end
         end
     end
@@ -480,14 +486,22 @@ function ContextMenu.Build(player, context, worldobjects, test)
     }
 
     local function isAddOne(name)
-        return name == getText("ContextMenu_AddOne") or name == "Adicionar Um"
+        if not name then return false end
+        local nameLower = string.lower(name)
+        return nameLower == string.lower(getText("ContextMenu_AddOne") or "")
+            or nameLower == "adicionar um"
+            or nameLower == "adicionar uma"
     end
 
     local function isAddAll(name)
-        return name == getText("ContextMenu_AddAll") or name == "Adicionar Tudo"
+        if not name then return false end
+        local nameLower = string.lower(name)
+        return nameLower == string.lower(getText("ContextMenu_AddAll") or "")
+            or nameLower == "adicionar todos"
+            or nameLower == "adicionar tudo"
     end
 
-    local function getSubMenuFromOption(menuObj, opt)
+    local function getSubMenuFromOption(menuObj, opt, rootContext)
         if not menuObj or not opt or not opt.subOption then
             return nil
         end
@@ -499,8 +513,19 @@ function ContextMenu.Build(player, context, worldobjects, test)
             end
         end
 
+        if rootContext and rootContext ~= menuObj and rootContext.getSubMenu then
+            local ok, sub = pcall(rootContext.getSubMenu, rootContext, opt.subOption)
+            if ok and sub then
+                return sub
+            end
+        end
+
         if menuObj.subMenus and menuObj.subMenus[opt.subOption] then
             return menuObj.subMenus[opt.subOption]
+        end
+
+        if rootContext and rootContext ~= menuObj and rootContext.subMenus and rootContext.subMenus[opt.subOption] then
+            return rootContext.subMenus[opt.subOption]
         end
 
         if menuObj.subOption and menuObj.subOption[opt.subOption] then
@@ -510,7 +535,7 @@ function ContextMenu.Build(player, context, worldobjects, test)
         return nil
     end
 
-    local function applyIconsDeep(menuObj, parentOpt)
+    local function applyIconsDeep(menuObj, parentOpt, inheritedIcon, rootContext)
         if not menuObj or not menuObj.options then return end
 
         for _, opt in ipairs(menuObj.options) do
@@ -523,40 +548,25 @@ function ContextMenu.Build(player, context, worldobjects, test)
                     opt.iconTexture = getTexture(TEX_GAS_REFUEL_AL)
                 end
 
-                if opt.subOption and not opt.iconTexture then
-                    local inheritedContainerTex = ExtractContainerTextureFromOption(opt)
-                    if inheritedContainerTex then
-                        opt.iconTexture = inheritedContainerTex
-                    end
+                if isAddOne(opt.name) and inheritedIcon then
+                    opt.iconTexture = inheritedIcon
                 end
 
-                local subMenu = getSubMenuFromOption(menuObj, opt)
+                local currentContainerTex = ExtractContainerTextureFromOption(opt)
+                if currentContainerTex and not opt.iconTexture then
+                    opt.iconTexture = currentContainerTex
+                end
+
+                local subMenu = getSubMenuFromOption(menuObj, opt, rootContext)
                 if subMenu then
-                    if opt.subOption then
-                        local inheritedContainerTex = ExtractContainerTextureFromOption(opt)
-                        if inheritedContainerTex and not opt.iconTexture then
-                            opt.iconTexture = inheritedContainerTex
-                        end
-                    end
-                    applyIconsDeep(subMenu, opt)
-                end
-
-                if isAddOne(opt.name) then
-                    local inheritedTex = nil
-
-                    if parentOpt then
-                        inheritedTex = ExtractContainerTextureFromOption(parentOpt)
-                    end
-
-                    if inheritedTex then
-                        opt.iconTexture = inheritedTex
-                    end
+                    local nextInheritedIcon = currentContainerTex or inheritedIcon
+                    applyIconsDeep(subMenu, opt, nextInheritedIcon, rootContext)
                 end
             end
         end
     end
 
-    applyIconsDeep(context, nil)
+    applyIconsDeep(context, nil, nil, context)
 end
 
 -- ============================================================================
