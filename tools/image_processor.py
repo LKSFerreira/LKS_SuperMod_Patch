@@ -36,8 +36,8 @@ GRAY = "\033[90m"
 
 BANNER = f"""
 {MAGENTA}{BOLD}╔══════════════════════════════════════════════════════════╗
-║             🎨  PROCESSADOR E OTIMIZADOR DE IMAGEM  🎨   ║
-║                (VETORIZAÇÃO E CONVERSÃO DE BITS)         ║
+║        🎨 PROCESSADOR E OTIMIZADOR DE IMAGEM  🎨         ║
+║            (VETORIZAÇÃO E CONVERSÃO DE BITS)             ║
 ╚══════════════════════════════════════════════════════════╝{RESET}
 """
 
