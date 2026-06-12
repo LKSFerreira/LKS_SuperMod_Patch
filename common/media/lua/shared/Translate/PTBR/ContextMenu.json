@@ -1,3 +1,5 @@
 {
-    "ContextMenu_InstallLightswitch": "Instalar Interruptor"
+    "ContextMenu_InstallLightswitch": "Instalar Interruptor",
+    "ContextMenu_PB_Generator": "Gerador",
+    "ContextMenu_PB_AddFuel": "Colocar Combustível"
 }
