@@ -36,7 +36,7 @@ Para entender como esses princípios genéricos são aplicados na prática, veja
 
 | Termo Original (EN) | Contexto do Sistema | Tradução Literal (Incorreta) | Tradução Localizada (Padrão) | Princípio Aplicado |
 | :--- | :--- | :--- | :--- | :--- |
-| *Building Power Info* | Cabeçalho de Painel | Info. de Energia do Edifício | **Informações de Energia da Construção** | Regra 1 (Sem pontos) e Regra 2 (Contexto) |
+| *Building Power Info* | Cabeçalho de Painel | Info. de Energia do Edifício | **Informações Elétricas da Construção** | Regra 1 (Sem pontos) e Regra 2 (Contexto) |
 | *Building Power Pool:* | Indicador de Conexão | Grupo de Energia do Edifício: | **Rede de Energia da Construção:** | Regra 3 (Infraestrutura real sobre "Grupo") |
 | *Est. Runtime:* | Tempo de Duração | Tempo Est.: | **Duração Estimada:** | Regra 1 (Eliminação completa de abreviação) |
 | *Building Coverage:* | Raio de Alcance Elétrico | Cobertura do Edifício: | **Alcance na Construção:** | Regra 2 e 3 (Evita ambiguidade imobiliária) |
