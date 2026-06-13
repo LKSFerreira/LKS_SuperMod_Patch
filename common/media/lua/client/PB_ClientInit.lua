@@ -6,6 +6,7 @@
 -- ============================================================================
 
 -- PB_ClientInit.lua
+print("[LKS PATCH - PB_ClientInit.lua] Carregando Inicialização de Cliente do PoweredBuildings...")
 -- Client-side initialization
 -- Loads UI, context menus, and input handlers
 -- LOCATION: client
@@ -72,3 +73,5 @@ require "PB_ClientCommands"
 
 -- TODO: Debug overlay (Phase 10)
 -- require "rendering/PB_Render_DebugOverlay"
+
+print("[LKS PATCH - PB_ClientInit.lua] Carregado com sucesso!")

@@ -13,6 +13,7 @@
 
 -- ============================================================================
 -- ARQUIVO: fridgesoff_client.lua
+print("[LKS PATCH - fridgesoff_client.lua] Carregando Lógica Cliente do Fridges Off!...")
 -- EXTENSÃO: LKS SuperMod Patch (Fagocitado nativamente)
 -- CRÉDITOS DO MOD ORIGINAL: Fridges Off! (ID Workshop: 2853974107) por 4422 (Erick)
 -- OBJETIVO: Gerenciamento cliente para ligar/desligar geladeiras e congeladores.
@@ -229,3 +230,5 @@ end
 Events.OnGameBoot.Add(loadNewIcons)
 Events.OnPreFillWorldObjectContextMenu.Add(customizedContextMenu)
 Events.OnServerCommand.Add(onServerCommand)
+
+print("[LKS PATCH - fridgesoff_client.lua] Carregado com sucesso!")

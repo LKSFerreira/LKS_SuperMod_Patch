@@ -6,6 +6,7 @@
 -- ============================================================================
 
 -- PB_ContextMenu_Barrel.lua
+print("[LKS PATCH - PB_ContextMenu_Barrel.lua] Carregando Menu de Contexto do Barril...")
 -- PoweredBuildings V2 - Right-click context menu for petrol barrels.
 -- Shows Link / Unlink options when a linkable barrel is right-clicked
 -- near a powered building.
@@ -349,3 +350,5 @@ Events.OnFillWorldObjectContextMenu.Add(function(playerNum, context, worldobject
         end
     end
 end)
+
+print("[LKS PATCH - PB_ContextMenu_Barrel.lua] Carregado com sucesso!")

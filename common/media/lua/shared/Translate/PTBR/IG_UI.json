@@ -1,4 +1,5 @@
 {
+  "IGUI_RequiresWaterSupply": "Requer fornecimento de água",
   "IGUI_ItemCat_WaterContainer": "Recipiente de Líquido",
   "IGUI_ContainerTitle_geladeira_desligada": "Geladeira desligada",
   "IGUI_ContainerTitle_congelador_desligado": "Freezer desligado",
@@ -100,5 +101,6 @@
   "UI_Close": "Fechar",
   "IGUI_StrainWarning": "Consumo moderado de combustível",
   "IGUI_StrainWarning2": "Consumo alto de combustível",
-  "IGUI_NotConnectedToBuilding": "Não conectado a uma construção"
+  "IGUI_NotConnectedToBuilding": "Não conectado a uma construção",
+  "IGUI_LKS_RequerEnergiaProxima": "Requer uma fonte de energia próxima."
 }
