@@ -13,7 +13,7 @@ Este documento detalha o plano técnico para corrigir o bug visual no menu de co
 
 ### Menu de Contexto do Gerador
 
-#### [MODIFY] [PB_ContextMenu_Generator.lua](file:///c:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/common/media/lua/client/PB_ContextMenu_Generator.lua)
+#### [MODIFY] [PB_ContextMenu_Generator.lua](common/media/lua/client/PB_ContextMenu_Generator.lua)
 
 Propomos as seguintes alterações estruturais:
 
@@ -33,7 +33,7 @@ Propomos as seguintes alterações estruturais:
 
 ### Documentação de Dívidas Técnicas
 
-#### [NEW] [ROADMAP.md](file:///c:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/ROADMAP.md)
+#### [NEW] [roadmap.md](.metadocs/roadmap.md)
 
 Criar o arquivo `ROADMAP.md` na raiz do repositório para documentar a dívida técnica solicitada:
 - A tradução da categoria de recipientes contendo líquidos não-água deve ser alterada de "Recipiente de Água" para "Recipiente de Líquido" para melhor precisão conceitual.
@@ -51,4 +51,4 @@ Criar o arquivo `ROADMAP.md` na raiz do repositório para documentar a dívida t
 3. Verifique se o menu renderiza o ícone do Balde com o líquido amarelo (gasolina) em vez do balde de metal vazio.
 4. Abra o submenu de "Balde com Gasolina (2)" (se houver mais de um) e verifique se a opção "Adicionar Um" renderiza com o mesmo ícone do balde com líquido.
 5. Verifique se a opção "Adicionar Tudo" continua renderizando com o ícone vermelho de reabastecimento geral (`PB_Gas_Refuel_All.png`).
-6. Verifique se o arquivo [ROADMAP.md](file:///c:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/ROADMAP.md) foi criado com a pendência de tradução devidamente registrada.
+6. Verifique se o arquivo [roadmap.md](.metadocs/roadmap.md) foi criado com a pendência de tradução devidamente registrada.

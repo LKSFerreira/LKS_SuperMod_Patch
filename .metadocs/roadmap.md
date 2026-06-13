@@ -20,7 +20,11 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 - [ ] **Botão de Ajuda (?) na Interface**: Criar um botão com o ícone "?" na barra da janela de informações de energia. Ao clicar, exibir uma explicação didática da mecânica de compartilhamento de carga de múltiplos geradores e das regras de controle de temperatura (ex: ligar aquecimento no inverno e standby/snowflake no verão para economizar combustível).
 
+- [ ] **Atenção à Compatibilidade com [B42] Useful Barrels**: O criador de *Generator Powered Buildings* (Beathoven) pode ter reaproveitado lógica/arquivos do mod *[B42] Useful Barrels* (particularmente nas mecânicas de barris/combustível). Ao traduzir ou alterar o *Useful Barrels* no futuro, deve-se auditar possíveis colisões de escopo, arquivos clonados ou hooks conflitantes para evitar falhas ou quebras em ambos os sistemas.
+
 ## Concluído
 
 - [x] **Melhorias Visuais do Termostato (12/06/2026)**: Ampliação das setas para 24px, alinhamento vertical matemático, resolução de crashes por valor nulo, espaçamento de respiro vertical para evitar cortes e tradução adaptativa para PT-BR.
 - [x] **Tradução da Categoria de Recipientes (12/06/2026)**: Sobrescrita da chave nativa do jogo no mod de 'Recipiente de Água' para 'Recipiente de Líquido' estático para todos os recipientes de fluidos.
+- [x] **Integração e Correção do Fridges Off! (12/06/2026)**: Incorporação nativa das mecânicas de ligar/desligar geladeiras e congeladores. Solução definitiva do bug de refrigeração infinita sem energia na Build 42 usando os novos tipos 'geladeira_desligada' e 'congelador_desligado'.
+- [x] **Ocultação Dinâmica da Conexão Vanilla do Gerador (13/06/2026)**: Ocultação da opção nativa "Conectar Gerador" caso haja edifícios em um raio de 20x20 tiles do aparelho, incentivando a integração à malha realista ("Conectar à Construção") e preservando a conexão nativa apenas para uso ao ar livre/selva.

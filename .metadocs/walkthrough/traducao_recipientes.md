@@ -6,7 +6,7 @@ Este documento descreve a resolução da dívida técnica de tradução onde o j
 
 ### 1. Sobrescrita de Tradução da Categoria
 - Identificamos nos arquivos de tradução originais da Build 42 do Project Zomboid (localizado em `Downloads/ProjectZomboid`) que a chave responsável por exibir a categoria na interface é `"IGUI_ItemCat_WaterContainer"`.
-- Sobrescrevemos essa chave de forma limpa adicionando-a ao arquivo de tradução de interface existente do mod, [IG_UI.json](file:///c:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/common/media/lua/shared/Translate/PTBR/IG_UI.json):
+- Sobrescrevemos essa chave de forma limpa adicionando-a ao arquivo de tradução de interface existente do mod, [IG_UI.json](common/media/lua/shared/Translate/PTBR/IG_UI.json):
   ```json
   "IGUI_ItemCat_WaterContainer": "Recipiente de Líquido",
   ```

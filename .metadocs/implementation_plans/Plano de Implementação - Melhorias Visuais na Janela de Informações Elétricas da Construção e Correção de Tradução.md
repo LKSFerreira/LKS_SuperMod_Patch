@@ -15,7 +15,7 @@ Este documento detalha o plano técnico para ajustar a hierarquia de fontes, cen
 
 ### Interface do Usuário (UI)
 
-#### [MODIFY] [PB_UI_GeneratorInfoWindow.lua](file:///c:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/common/media/lua/client/ui/PB_UI_GeneratorInfoWindow.lua)
+#### [MODIFY] [PB_UI_GeneratorInfoWindow.lua](common/media/lua/client/ui/PB_UI_GeneratorInfoWindow.lua)
 
 Propomos as seguintes alterações estruturais e de estilização:
 
@@ -92,7 +92,7 @@ Propomos as seguintes alterações estruturais e de estilização:
 
 ### Tradução (Localization)
 
-#### [MODIFY] [IG_UI.json](file:///c:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/common/media/lua/shared/Translate/PTBR/IG_UI.json)
+#### [MODIFY] [IG_UI.json](common/media/lua/shared/Translate/PTBR/IG_UI.json)
 
 - Garantir que a chave `IGUI_PB_SectionHeating` esteja configurada como `"SISTEMA DE CALEFAÇÃO"`.
 
