@@ -1,3 +1,10 @@
+-- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3097103233) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
 -- PB_ActionsInit.lua
 -- Shared actions initialization
 -- Loads all TimedActions (run on both client and server)

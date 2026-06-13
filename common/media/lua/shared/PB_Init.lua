@@ -1,3 +1,10 @@
+-- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3097103233) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
 -- PB_Init.lua
 -- PoweredBuildings V2 - Main Initialization File
 -- This is the entry point for the mod - loads all core systems in correct order

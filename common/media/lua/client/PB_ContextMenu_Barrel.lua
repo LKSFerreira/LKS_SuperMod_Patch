@@ -1,3 +1,10 @@
+-- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3097103233) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
 -- PB_ContextMenu_Barrel.lua
 -- PoweredBuildings V2 - Right-click context menu for petrol barrels.
 -- Shows Link / Unlink options when a linkable barrel is right-clicked

@@ -1,4 +1,11 @@
 -- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3097103233) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
+-- ============================================================================
 -- ARQUIVO: PB_UI_DebugPanel.lua
 -- MOD ORIGINAL: Generator Powered Buildings (ID Workshop: 3597471949)
 -- EXTENSÃO: LKS SuperMod Patch (Build 42)
@@ -33,8 +40,8 @@ local BTN_H         = 25
 local BTN_SPACING   = 5
 
 -- Texturas da Interface de Debug (Corrigidas para o padrão LKS de prefixos)
-local TEX_QUAD      = "media/ui/PB_Quad.png"   -- Corrigido de quadPB.png (Padrão V2)
-local TEX_HOUSE     = "media/ui/PB_House.png"  -- Corrigido de housePB.png (Padrão V2)
+local TEX_QUAD      = "media/ui/LKS_Quad.png"
+local TEX_HOUSE     = "media/ui/LKS_House.png"
 
 -- ============================================================================
 -- CLASSE

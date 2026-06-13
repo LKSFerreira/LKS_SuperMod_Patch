@@ -1,4 +1,11 @@
 -- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3097103233) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
+-- ============================================================================
 -- ARQUIVO: PB_ContextMenu_Generator.lua
 -- MOD ORIGINAL: Generator Powered Buildings (ID Workshop: 3597471949)
 -- EXTENSÃO: LKS SuperMod Patch (Build 42)
@@ -27,17 +34,17 @@ local ContextMenu                      = PoweredBuildings.ContextMenu.Generator
 -- ⚙️ CONFIGURAÇÕES DE ASSETS E TEXTURAS (PADRÃO DE NOMENCLATURA PB)
 -- ============================================================================
 local TEX_ITEM_GEN                     = "media/textures/Item_Generator.png"
-local TEX_PWR_ON                       = "media/ui/PB_Pwr_On.png"
-local TEX_PWR_OFF                      = "media/ui/PB_Pwr_Off.png"
-local TEX_TAKE_GEN                     = "media/ui/PB_Take_Gen.png"
-local TEX_CONNECT                      = "media/ui/PB_Connect.png"
-local TEX_DISCONNECT                   = "media/ui/PB_Disconnect.png"
-local TEX_GEN_INFO                     = "media/ui/PB_Gen_Info.png"
-local TEX_HOUSE_ELE                    = "media/ui/PB_House_Eletricity.png"
-local TEX_HOUSE_ELE_OFF                = "media/ui/PB_House_Eletricity_Off.png"
-local TEX_REP_GEN                      = "media/ui/PB_Rep_Gen.png"
-local TEX_GAS_REFUEL                   = "media/ui/PB_Gas_Refuel.png"
-local TEX_GAS_REFUEL_AL                = "media/ui/PB_Gas_Refuel_All.png"
+local TEX_PWR_ON                       = "media/ui/LKS_Pwr_On.png"
+local TEX_PWR_OFF                      = "media/ui/LKS_Pwr_Off.png"
+local TEX_TAKE_GEN                     = "media/ui/LKS_Take_Gen.png"
+local TEX_CONNECT                      = "media/ui/LKS_Connect.png"
+local TEX_DISCONNECT                   = "media/ui/LKS_Disconnect.png"
+local TEX_GEN_INFO                     = "media/ui/LKS_Gen_Info.png"
+local TEX_HOUSE_ELE                    = "media/ui/LKS_House_Eletricity.png"
+local TEX_HOUSE_ELE_OFF                = "media/ui/LKS_House_Eletricity_Off.png"
+local TEX_REP_GEN                      = "media/ui/LKS_Rep_Gen.png"
+local TEX_GAS_REFUEL                   = "media/ui/LKS_Gas_Refuel.png"
+local TEX_GAS_REFUEL_AL                = "media/ui/LKS_Gas_Refuel_All.png"
 
 local _genIconCache                    = {}
 local _genIconFallback                 = nil
@@ -61,9 +68,36 @@ local function GetGeneratorIcon(gen)
     return tex
 end
 
--- ============================================================================
--- 🛠️ FUNÇÕES AUXILIARES DE VERIFICAÇÃO
--- ============================================================================
+--- Verifica se há alguma construção válida em um raio específico ao redor de um quadrado.
+---
+--- **Exemplo:**
+--- ```lua
+--- local temPredio = temConstrucaoNoRaio(quadrado, 20)
+--- ```
+---
+--- @param quadrado IsoGridSquare O quadrado de grade central (gerador).
+--- @param raio number O raio máximo de busca em tiles.
+--- @return boolean Retorna true se encontrar algum quadrado pertencente a uma construção.
+local function temConstrucaoNoRaio(quadrado, raio)
+    if not quadrado then return false end
+    local celulaMundo = getCell()
+    if not celulaMundo then return false end
+
+    local coordenadaX = quadrado:getX()
+    local coordenadaY = quadrado:getY()
+    local coordenadaZ = quadrado:getZ()
+    for deslocamentoY = -raio, raio do
+        for deslocamentoX = -raio, raio do
+            local quadradoAlvo = celulaMundo:getGridSquare(coordenadaX + deslocamentoX, coordenadaY + deslocamentoY, coordenadaZ)
+            if quadradoAlvo then
+                if quadradoAlvo:getBuilding() or (quadradoAlvo.haveBuilding and quadradoAlvo:haveBuilding()) then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
 
 local function FindGenerator(worldobjects)
     if not worldobjects then return nil end
@@ -398,7 +432,7 @@ function ContextMenu.Build(player, context, worldobjects, test)
                 local tooltip = ISInventoryPaneContextMenu.addToolTip()
                 tooltip:setName(getText("IGUI_ConnectToBuilding") or "Conectar à Construção")
                 tooltip.description = getText("IGUI_ConnectRequiresKnowledge") or
-                    "Requer a receita de Gerador (Eletricidade nível 3)"
+                    "Requer a receita de Gerador ou Elétrica Nível 3)"
                 connectOption.toolTip = tooltip
             elseif not nearBuilding then
                 connectOption.notAvailable = true
@@ -407,6 +441,11 @@ function ContextMenu.Build(player, context, worldobjects, test)
                 tooltip.description = getText("IGUI_NoBuildingNearby_Desc") or
                     "O gerador deve ser colocado ao lado de uma construção com paredes"
                 connectOption.toolTip = tooltip
+            end
+
+            -- Se existir alguma construção no raio de 20x20, remove a opção vanilla "Conectar Gerador"
+            if square and temConstrucaoNoRaio(square, 20) then
+                pcall(function() generatorSubmenu:removeOptionByName(getText("ContextMenu_GeneratorPlug")) end)
             end
         end
     end

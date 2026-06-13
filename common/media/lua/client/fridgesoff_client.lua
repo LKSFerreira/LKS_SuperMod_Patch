@@ -4,10 +4,36 @@
 --- DateTime: 24/08/2022 16:34
 ---
 
+-- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Erick (4422) pelo mod original "Fridges Off!"
+-- (ID Workshop: 2853974107) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
+-- ============================================================================
+-- ARQUIVO: fridgesoff_client.lua
+-- EXTENSÃO: LKS SuperMod Patch (Fagocitado nativamente)
+-- CRÉDITOS DO MOD ORIGINAL: Fridges Off! (ID Workshop: 2853974107) por 4422 (Erick)
+-- OBJETIVO: Gerenciamento cliente para ligar/desligar geladeiras e congeladores.
+-- ============================================================================
+-- FUNCIONAMENTO DO CLIENTE:
+-- 1. Cria a ação temporizada (Timed Action) 'ISToggleFridgesFreezers' para o
+--    personagem interagir com a geladeira/freezer no mundo.
+-- 2. Insere opções de menu de contexto ("Ligar" / "Desligar") nos aparelhos.
+-- 3. Escuta eventos do servidor para sincronizar graficamente os tipos de
+--    contêineres no inventário local quando religados ou desligados.
+-- ============================================================================
+
 ---@param text String
 local function customPrint(text)
     print("fridgesoff_client.lua: " .. text)
 end
+
+-- ============================================================================
+-- ⏳ AÇÃO TEMPORIZADA DE INTERAÇÃO (TIMED ACTION)
+-- Define a caminhada física e a face do personagem em direção ao objeto do mundo.
+-- ============================================================================
 
 ---@class ISToggleFridgesFreezers : ISBaseTimedAction
 ISToggleFridgesFreezers = ISBaseTimedAction:derive("ISToggleFridgesFreezers");
@@ -53,6 +79,11 @@ function ISToggleFridgesFreezers:new(objPlayer, state, obj)
     return o
 end
 
+-- ============================================================================
+-- 🖱️ MENU DE CONTEXTO DO MUNDO (WORLD OBJECT CONTEXT MENU)
+-- Insere as opções de menu de tomada baseadas no tipo atual do contêiner do item.
+-- ============================================================================
+
 ---@param player IsoPlayer
 ---@param context KahluaTable
 ---@param worldObjects KahluaTable
@@ -82,16 +113,22 @@ local function customizedContextMenu(player, context, worldObjects, _)
         if containerCount > 0 then
             local containerType = actualObject:getContainer():getType()
             if containerType == "fridge" or containerType == "freezer" then
-                context:addOptionOnTop(getText("ContextMenu_TurnOff"), worldObjects, changeFridgeFreezerState, objectPlayer, 0, actualObject)
+                local optionOff = context:addOptionOnTop(getText("ContextMenu_TurnOff") or "Desligar", worldObjects, changeFridgeFreezerState, objectPlayer, 0, actualObject)
+                optionOff.iconTexture = getTexture("media/ui/LKS_Pwr_Off.png")
             end
-            if containerType == "fridge_off" or containerType == "freezer_off" then
-                context:addOptionOnTop(getText("ContextMenu_TurnOn"), worldObjects, changeFridgeFreezerState, objectPlayer, 1, actualObject)
+            if containerType == "geladeira_desligada" or containerType == "congelador_desligado" then
+                local optionOn = context:addOptionOnTop(getText("ContextMenu_TurnOn") or "Ligar", worldObjects, changeFridgeFreezerState, objectPlayer, 1, actualObject)
+                optionOn.iconTexture = getTexture("media/ui/LKS_Pwr_On.png")
             end
         end
     end
 
 end
 
+-- ============================================================================
+-- 🎨 REGISTRO DE TEXTURAS DE CONTAINER DESLIGADO
+-- Carrega os ícones customizados de tomada nas abas laterais do inventário (Loot).
+-- ============================================================================
 local function loadNewIcons()
 
     ---@type Texture
@@ -100,11 +137,15 @@ local function loadNewIcons()
     ---@type Texture
     local textureFreezerOff = getTexture("media/ui/Container_FreezerOff.png")
 
-    ContainerButtonIcons.fridge_off = textureFridgeOff
-    ContainerButtonIcons.freezer_off = textureFreezerOff
+    ContainerButtonIcons.geladeira_desligada = textureFridgeOff
+    ContainerButtonIcons.congelador_desligado = textureFreezerOff
 
 end
 
+-- ============================================================================
+-- 📡 EVENTO DE SINCRONIZAÇÃO DO CLIENTE (SERVER COMMAND REACTION)
+-- Sincroniza localmente o estado visual e elétrico do aparelho no cliente.
+-- ============================================================================
 local function onServerCommand(module,command,args)
 
     if module == "fridges-off" then
@@ -119,7 +160,7 @@ local function onServerCommand(module,command,args)
             local gridSquare = getWorld():getCell():getGridSquare(args.x,args.y,args.z)
 
             if gridSquare == nil then
-                customPrint("can't find this square, probably a desync")
+                customPrint(getText("IGUI_PB_Debug_DesyncSquare") or "can't find this square, probably a desync")
                 return
             end
 
@@ -132,7 +173,7 @@ local function onServerCommand(module,command,args)
 
                 for i=0,objects:size()-1,1 do
                     if objects:get(i):getContainerCount() > 0 then
-                        if objects:get(i):getContainerByEitherType("fridge","freezer") or objects:get(i):getContainerByEitherType("fridge_off","freezer_off") then
+                        if objects:get(i):getContainerByEitherType("fridge","freezer") or objects:get(i):getContainerByEitherType("geladeira_desligada","congelador_desligado") then
                             object = objects:get(i)
                             break
                         end
@@ -142,31 +183,33 @@ local function onServerCommand(module,command,args)
                 if object ~= nil then
 
                     if args.fridge == "on" then
-                        if object:getContainerByType("fridge_off") ~= nil then
-                            object:getContainerByType("fridge_off"):setType("fridge")
+                        if object:getContainerByType("geladeira_desligada") ~= nil then
+                            object:getContainerByType("geladeira_desligada"):setType("fridge")
                         end
                     else
                         if args.fridge == "off" then
                             if object:getContainerByType("fridge") ~= nil then
-                                object:getContainerByType("fridge"):setType("fridge_off")
+                                object:getContainerByType("fridge"):setType("geladeira_desligada")
                             end
                         end
                     end
 
                     if args.freezer == "on" then
-                        if object:getContainerByType("freezer_off") ~= nil then
-                            object:getContainerByType("freezer_off"):setType("freezer")
+                        if object:getContainerByType("congelador_desligado") ~= nil then
+                            object:getContainerByType("congelador_desligado"):setType("freezer")
                         end
                     else
                         if args.freezer == "off" then
                             if object:getContainerByType("freezer") ~= nil then
-                                object:getContainerByType("freezer"):setType("freezer_off")
+                                object:getContainerByType("freezer"):setType("congelador_desligado")
                             end
                         end
                     end
 
+                    -- Força a atualização do gerador no mapa
                     IsoGenerator.updateGenerator(object:getSquare())
 
+                    -- Recalcula se o objeto tem eletricidade após a transição
                     object:checkHaveElectricity()
 
                     local playerData = getPlayerData(getPlayer():getPlayerNum())
@@ -177,7 +220,7 @@ local function onServerCommand(module,command,args)
 
                 end
             else
-                customPrint("can't find any object on this square, probably a desync")
+                customPrint(getText("IGUI_PB_Debug_DesyncObject") or "can't find any object on this square, probably a desync")
             end
         end
     end

@@ -1,4 +1,11 @@
 -- ============================================================================
+-- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3097103233) por sua fantástica contribuição para a comunidade!
+-- ============================================================================
+
+-- ============================================================================
 -- ARQUIVO: PB_UI_GeneratorInfoWindow.lua
 -- MOD ORIGINAL: Generator Powered Buildings (ID Workshop: 3597471949)
 -- EXTENSÃO: LKS SuperMod Patch (Build 42)
@@ -43,13 +50,13 @@ local FONT_M           = UIFont.Medium
 -- 🖼️ CAMINHOS DE TEXTURAS E ASSETS NATIVOS/MODDED
 -- ============================================================================
 local GEN_ICON_PATH    = "Item_Generator" -- Busca o ícone vanilla nativo do jogo
-local WARN_TEX_PATH    = "media/ui/PB_Warning.png"
-local OVERL_TEX_PATH   = "media/ui/PB_Overload.png"
-local THERM_UP_PATH    = "media/ui/PB_Therm_Up.png"
-local THERM_DOWN_PATH  = "media/ui/PB_Therm_Down.png"
-local HEAT_ON_PATH     = "media/ui/PB_Heat_On.png"            -- Ícone de chama (termostato ativo)
-local HEAT_OFF_PATH    = "media/ui/PB_Heat_Off.png"           -- Ícone de floco de neve (termostato inativo)
-local STRAIN_SEG_PATH  = "media/ui/PB_Progressbar_Strain.png" -- Textura de um único segmento da barra
+local WARN_TEX_PATH    = "media/ui/LKS_Warning.png"
+local OVERL_TEX_PATH   = "media/ui/LKS_Overload.png"
+local THERM_UP_PATH    = "media/ui/LKS_Therm_Up.png"
+local THERM_DOWN_PATH  = "media/ui/LKS_Therm_Down.png"
+local HEAT_ON_PATH     = "media/ui/LKS_Heat_On.png"            -- Ícone de chama (termostato ativo)
+local HEAT_OFF_PATH    = "media/ui/LKS_Heat_Off.png"           -- Ícone de floco de neve (termostato inativo)
+local STRAIN_SEG_PATH  = "media/ui/LKS_Progressbar_Strain.png" -- Textura de um único segmento da barra
 
 -- ============================================================================
 -- 🎯 TABELA DE CALIBRAÇÃO DE PIXELS (MÉTODO DE AJUSTE FINO LKS)
