@@ -15,7 +15,8 @@
 -- ============================================================================
 
 if not PoweredBuildings then
-    print("[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] namespace PoweredBuildings não encontrado - pulando carregamento do módulo")
+    print(
+        "[LKS PATCH - PB_UI_GeneratorInfoWindow.lua] namespace PoweredBuildings não encontrado - pulando carregamento do módulo")
     return
 end
 
@@ -25,37 +26,37 @@ require "ISUI/ISCollapsableWindow"
 require "ISUI/ISButton"
 
 PoweredBuildings.RegisterModule("PB_UI_GeneratorInfoWindow")
-PoweredBuildings.UI   = PoweredBuildings.UI or {}
+PoweredBuildings.UI    = PoweredBuildings.UI or {}
 
 -- ============================================================================
 -- ⚙️ CONFIGURAÇÕES DE LAYOUT E DESIGN (MANUTENÇÃO DE INTERFACE)
 -- ============================================================================
-local MIN_WIN_W       = 485 -- Largura ampliada para evitar quebra de textos por extenso
-local MARGIN          = 14  -- Espaçamento das bordas internas da janela
-local BAR_W           = 140 -- Largura padrão das barras de status
-local BAR_H           = 11  -- Altura padrão das barras de status
-local LINE_H          = 22  -- Altura da linha para garantir respiro vertical na interface
-local FONT_S          = UIFont.Small
-local FONT_M          = UIFont.Medium
+local MIN_WIN_W        = 485 -- Largura ampliada para evitar quebra de textos por extenso
+local MARGIN           = 14  -- Espaçamento das bordas internas da janela
+local BAR_W            = 140 -- Largura padrão das barras de status
+local BAR_H            = 11  -- Altura padrão das barras de status
+local LINE_H           = 22  -- Altura da linha para garantir respiro vertical na interface
+local FONT_S           = UIFont.Small
+local FONT_M           = UIFont.Medium
 
 -- ============================================================================
 -- 🖼️ CAMINHOS DE TEXTURAS E ASSETS NATIVOS/MODDED
 -- ============================================================================
-local GEN_ICON_PATH   = "Item_Generator" -- Busca o ícone vanilla nativo do jogo
-local WARN_TEX_PATH   = "media/ui/PB_Warning.png"
-local OVERL_TEX_PATH  = "media/ui/PB_Overload.png"
-local THERM_UP_PATH   = "media/ui/PB_Therm_Up.png"
-local THERM_DOWN_PATH = "media/ui/PB_Therm_Down.png"
-local HEAT_ON_PATH    = "media/ui/PB_Heat_On.png"            -- Ícone de chama (termostato ativo)
-local HEAT_OFF_PATH   = "media/ui/PB_Heat_Off.png"           -- Ícone de floco de neve (termostato inativo)
-local STRAIN_SEG_PATH = "media/ui/PB_Progressbar_Strain.png" -- Textura de um único segmento da barra
+local GEN_ICON_PATH    = "Item_Generator" -- Busca o ícone vanilla nativo do jogo
+local WARN_TEX_PATH    = "media/ui/PB_Warning.png"
+local OVERL_TEX_PATH   = "media/ui/PB_Overload.png"
+local THERM_UP_PATH    = "media/ui/PB_Therm_Up.png"
+local THERM_DOWN_PATH  = "media/ui/PB_Therm_Down.png"
+local HEAT_ON_PATH     = "media/ui/PB_Heat_On.png"            -- Ícone de chama (termostato ativo)
+local HEAT_OFF_PATH    = "media/ui/PB_Heat_Off.png"           -- Ícone de floco de neve (termostato inativo)
+local STRAIN_SEG_PATH  = "media/ui/PB_Progressbar_Strain.png" -- Textura de um único segmento da barra
 
 -- ============================================================================
 -- 🎯 TABELA DE CALIBRAÇÃO DE PIXELS (MÉTODO DE AJUSTE FINO LKS)
 -- Eixo X: + Move Direita, - Move Esquerda
 -- Eixo Y: + Move Cima,    - Move Baixo
 -- ============================================================================
-local HUD_Offsets     = {
+local HUD_Offsets      = {
     iconGenerator         = { x = 0, y = -6 },
     iconGallon            = { x = 0, y = 0 },
     barGas                = { x = 0, y = 0 },
@@ -63,7 +64,19 @@ local HUD_Offsets     = {
     barStrain             = { x = -4, y = -8 },
     valuePorcentageStrain = { x = 0, y = 0 },
     arrowAndColdIcon      = { x = 0, y = -5 },
-    arrowAndHotIcon       = { x = 0, y = -5 }
+    arrowAndHotIcon       = { x = 0, y = -5 },
+    labelStandby          = { x = 0, y = 6 },
+    labelActive           = { x = 0, y = 6 }
+}
+
+-- ============================================================================
+-- 🎨 AJUSTE DE OPACIDADE DO DESTAQUE DO TERMOSTATO (0% a 100%)
+-- Segue o modelo padrão do canal alfa RGBA:
+-- 100 = 100% Opaco (alfa = 1.0, cor sólida)
+-- 0   = 0% Opaco / Totalmente Transparente (alfa = 0.0, invisível)
+-- ============================================================================
+local Thermostat_Alpha = {
+    activeHighlight = 20 -- Opacidade do realce do botão selecionado (0% a 100%)
 }
 
 -- ============================================================================
@@ -138,7 +151,7 @@ function PB_GeneratorInfoWindow:createChildren()
     self:setResizable(false)
 
     -- Botão "Mostrar Alcance"
-    local btnW, btnH = 130, 22
+    local btnW, btnH = 135, 25
     self.coverageBtn = ISButton:new(
         MARGIN, 999,
         btnW, btnH,
@@ -152,7 +165,7 @@ function PB_GeneratorInfoWindow:createChildren()
     self.showCoverage = false
 
     -- Botão Fechar (a posição será atualizada em render)
-    local closeBtnW = 80
+    local closeBtnW = 90
     self.closeBtn = ISButton:new(
         MIN_WIN_W - MARGIN - closeBtnW, 999,
         closeBtnW, btnH,
@@ -161,7 +174,9 @@ function PB_GeneratorInfoWindow:createChildren()
     )
     self.closeBtn:initialise()
     self.closeBtn:instantiate()
-    self.closeBtn.borderColor = { r = 1, g = 1, b = 1, a = 0.15 }
+    self.closeBtn.borderColor = { r = 0.70, g = 0.15, b = 0.15, a = 1.0 }
+    self.closeBtn.backgroundColor = { r = 0.55, g = 0.10, b = 0.10, a = 1.0 }
+    self.closeBtn.backgroundColorMouseOver = { r = 0.90, g = 0.10, b = 0.10, a = 1.0 }
     self:addChild(self.closeBtn)
 
     -- Dados em cache (atualizados a cada 1 segundo)
@@ -414,8 +429,8 @@ end
 function PB_GeneratorInfoWindow:drawSection(x, y, title)
     self:drawRect(x, y, self.width - MARGIN * 2, 1, 0.55, 0.30, 0.30, 0.30)
     y = y + 5
-    self:drawText(title, x, y, 0.50, 0.78, 1.0, 1, FONT_S)
-    return y + 18
+    self:drawText(title, x, y, 0.50, 0.78, 1.0, 1, FONT_M)
+    return y + 22
 end
 
 --- Resolve uma textura para um sprite específico de gerador, com cache e fallback.
@@ -1004,8 +1019,23 @@ end
 -- ATUALIZAÇÃO
 -- ============================================================
 
+function PB_GeneratorInfoWindow:titleBarHeight()
+    return 26
+end
+
 function PB_GeneratorInfoWindow:prerender()
+    local titleText = self.title
+    self.title = ""
     ISCollapsableWindow.prerender(self)
+    self.title = titleText
+
+    local th = self:titleBarHeight()
+    local fontH = getTextManager():getFontHeight(FONT_M)
+    local titleY = math.floor((th - fontH) / 2) - 1
+    local titleWidth = getTextManager():MeasureStringX(FONT_M, titleText)
+    local titleX = math.floor((self.width - titleWidth) / 2)
+    self:drawText(titleText, titleX, titleY, 1, 1, 1, 1, FONT_M)
+
     local genValid = false
     if self.generator then
         local liveGenerator = GetLiveGeneratorObject(self.generator)
@@ -1805,12 +1835,12 @@ function PB_GeneratorInfoWindow:render()
         local secTitle   = getText("IGUI_PB_SectionBarrels") or "BARRIS"
         self:drawRect(x0, y, self.width - MARGIN * 2, 1, 0.55, 0.30, 0.30, 0.30)
         y = y + 5
-        self:drawText(secTitle, x0, y, 0.50, 0.78, 1.0, 1, FONT_S)
+        self:drawText(secTitle, x0, y, 0.50, 0.78, 1.0, 1, FONT_M)
         if totalStr ~= "" then
             local tw = getTextManager():MeasureStringX(FONT_S, totalStr)
-            self:drawText(totalStr, x0 + (self.width - MARGIN * 2) - tw, y, 0.97, 0.93, 0.55, 1, FONT_S)
+            self:drawText(totalStr, x0 + (self.width - MARGIN * 2) - tw, y + 3, 0.97, 0.93, 0.55, 1, FONT_S)
         end
-        y = y + 18
+        y = y + 22
 
         if #barrelList == 0 then
             self:drawText(getText("IGUI_PB_NoBarrels") or "Nenhum barril conectado", x0, y + 5, 0.50, 0.50, 0.50, 1,
@@ -1960,8 +1990,8 @@ function PB_GeneratorInfoWindow:render()
             y = y + LINE_H + 2
         end
 
-        y                = y + 4
-        y                = self:drawSection(x0, y, getText("IGUI_PB_SectionHeating") or "TERMOSTATO DO AMBIENTE INTERNO")
+        y                = y + 12 -- Espaçamentro entre o final do CONSTRUCAO e o início do SISTEMA DE CLIMATIZAÇÃO
+        y                = self:drawSection(x0, y, getText("IGUI_PB_SectionHeating") or "SISTEMA DE CLIMATIZAÇÃO")
 
         self._heatOnTex  = self._heatOnTex or getTexture(HEAT_ON_PATH)
         self._heatOffTex = self._heatOffTex or getTexture(HEAT_OFF_PATH)
@@ -1972,28 +2002,66 @@ function PB_GeneratorInfoWindow:render()
             y                    = y + LINE_H
             self._heatOnBtnArea  = nil; self._heatOffBtnArea = nil; self._heatMinusArea = nil; self._heatPlusArea = nil
         else
-            local ICO_SIZE   = (LINE_H - 2) * 2
-            local ICO_GAP    = 40
-            local iconsW     = ICO_SIZE * 2 + ICO_GAP
-            local offX       = math.floor((self.width - iconsW) / 2)
-            local onX        = offX + ICO_SIZE + ICO_GAP
+            y                    = y + 26
+            local labelStandby   = getText("IGUI_PB_HeatingStandby") or "Standby"
+            local labelActive    = getText("IGUI_PB_HeatingActive") or "Ligado"
+            local ICO_SIZE       = (LINE_H - 2) * 2
+            local ICO_GAP        = 40
+            local iconsW         = ICO_SIZE * 2 + ICO_GAP
+            local offX           = math.floor((self.width - iconsW) / 2)
+            local onX            = offX + ICO_SIZE + ICO_GAP
 
             -- INJEÇÃO DE VARIÁVEIS COLUNA ESQUERDA (arrowAndColdIcon) e DIREITA (arrowAndHotIcon)
-            local offX_final = offX + HUD_Offsets.arrowAndColdIcon.x
-            local onX_final  = onX + HUD_Offsets.arrowAndHotIcon.x
-            local offY_final = y - HUD_Offsets.arrowAndColdIcon.y
-            local onY_final  = y - HUD_Offsets.arrowAndHotIcon.y
+            local offX_final     = offX + HUD_Offsets.arrowAndColdIcon.x
+            local onX_final      = onX + HUD_Offsets.arrowAndHotIcon.x
+            local offY_final     = y - HUD_Offsets.arrowAndColdIcon.y
+            local onY_final      = y - HUD_Offsets.arrowAndHotIcon.y
 
-            -- Destaques dos botões redondos superiores
+            -- Destaque dos botões do termostato (utiliza a tabela Thermostat_Alpha para ajuste dinâmico de opacidade)
+            local alphaHighlight = (Thermostat_Alpha.activeHighlight or 100) / 100
+
             if self._heatingEnabled then
-                self:drawRect(onX_final - 3, onY_final, ICO_SIZE + 6, ICO_SIZE + 4, 0.30, 0.10, 0.55, 0.10)
+                -- Aquecimento Ativo: Chama acesa com realce forte, Floco de Neve apagado com borda sutil
+                self:drawRect(onX_final - 3, onY_final, ICO_SIZE + 6, ICO_SIZE + 4, alphaHighlight, 0.90, 0.30, 0.10)
+                self:drawRectBorder(onX_final - 3, onY_final, ICO_SIZE + 6, ICO_SIZE + 4, alphaHighlight, 0.90, 0.30,
+                    0.10)
+
+                -- Borda sutil de inatividade para o floco de neve
+                self:drawRectBorder(offX_final - 3, offY_final, ICO_SIZE + 6, ICO_SIZE + 4, alphaHighlight * 0.20, 0.20,
+                    0.60,
+                    0.90)
             else
-                self:drawRect(offX_final - 3, offY_final, ICO_SIZE + 6, ICO_SIZE + 4, 0.30, 0.10, 0.45, 0.70)
+                -- Refrigeração Ativa: Floco de Neve aceso com realce forte, Chama apagada com borda sutil
+                self:drawRect(offX_final - 3, offY_final, ICO_SIZE + 6, ICO_SIZE + 4, alphaHighlight, 0.20, 0.60, 0.90)
+                self:drawRectBorder(offX_final - 3, offY_final, ICO_SIZE + 6, ICO_SIZE + 4, alphaHighlight, 0.20, 0.60,
+                    0.90)
+
+                -- Borda sutil de inatividade para a chama
+                self:drawRectBorder(onX_final - 3, onY_final, ICO_SIZE + 6, ICO_SIZE + 4, alphaHighlight * 0.20, 0.90,
+                    0.30,
+                    0.10)
+            end
+
+            -- Rótulos textuais acima de cada botão
+            local textW1   = getTextManager():MeasureStringX(FONT_S, labelStandby)
+            local textX1   = offX_final + (ICO_SIZE - textW1) / 2 + HUD_Offsets.labelStandby.x
+            local textW2   = getTextManager():MeasureStringX(FONT_S, labelActive)
+            local textX2   = onX_final + (ICO_SIZE - textW2) / 2 + HUD_Offsets.labelActive.x
+
+            local standbyY = offY_final - 18 - HUD_Offsets.labelStandby.y
+            local activeY  = onY_final - 18 - HUD_Offsets.labelActive.y
+
+            if self._heatingEnabled then
+                self:drawText(labelStandby, textX1, standbyY, 0.55, 0.55, 0.55, 0.60, FONT_S)
+                self:drawText(labelActive, textX2, activeY, 0.90, 0.30, 0.10, 1.00, FONT_S)
+            else
+                self:drawText(labelStandby, textX1, standbyY, 0.20, 0.60, 0.90, 1.00, FONT_S)
+                self:drawText(labelActive, textX2, activeY, 0.55, 0.55, 0.55, 0.60, FONT_S)
             end
 
             -- Floco de neve (Esquerda)
             if self._heatOffTex then
-                self:drawTextureScaled(self._heatOffTex, offX_final, offY_final + 2, ICO_SIZE, ICO_SIZE, 1, 1, 1, 1)
+                self:drawTextureScaled(self._heatOffTex, offX_final, offY_final + 4, ICO_SIZE, ICO_SIZE, 1, 1, 1, 1)
             else
                 self:drawText(getText("IGUI_PB_HeatingOff") or "DESLIGADO", offX_final, offY_final + 8, 0.60, 0.60, 0.60,
                     1, FONT_S)
@@ -2001,7 +2069,7 @@ function PB_GeneratorInfoWindow:render()
 
             -- Chama (Direita)
             if self._heatOnTex then
-                self:drawTextureScaled(self._heatOnTex, onX_final, onY_final + 2, ICO_SIZE, ICO_SIZE, 1, 1, 1, 1)
+                self:drawTextureScaled(self._heatOnTex, onX_final, onY_final + 4, ICO_SIZE, ICO_SIZE, 1, 1, 1, 1)
             else
                 self:drawText(getText("IGUI_PB_HeatingOn") or "LIGADO", onX_final, onY_final + 8, 0.20, 0.80, 0.28, 1,
                     FONT_S)
@@ -2027,7 +2095,7 @@ function PB_GeneratorInfoWindow:render()
 
             self._thermDownTex   = self._thermDownTex or getTexture(THERM_DOWN_PATH)
             self._thermUpTex     = self._thermUpTex or getTexture(THERM_UP_PATH)
-            local ICON_SIZE      = 16
+            local ICON_SIZE      = 24
             local tempStr        = tostring(self._heatingTemp or 22) .. " C"
             local tempW          = getTextManager():MeasureStringX(FONT_S, tempStr)
 
@@ -2036,16 +2104,19 @@ function PB_GeneratorInfoWindow:render()
             local pX_base        = math.floor(onX + (ICO_SIZE / 2) - (ICON_SIZE / 2))
             local vX             = math.floor((self.width - tempW) / 2)
 
-            -- Aplicação dos offsets individuais nas setas de temperatura (acompanhando seus respectivos blocos)
             local mX_final       = mX_base + HUD_Offsets.arrowAndColdIcon.x
-            local mY_final       = y + 6 - HUD_Offsets.arrowAndColdIcon.y
-
             local pX_final       = pX_base + HUD_Offsets.arrowAndHotIcon.x
-            local pY_final       = y + 6 - HUD_Offsets.arrowAndHotIcon.y
+
+            local tempLineH      = 28
+            -- Centra verticalmente a seta de 24px dentro da linha de 28px
+            local mY_final       = y + math.floor((tempLineH - ICON_SIZE) / 2) - HUD_Offsets.arrowAndColdIcon.y
+            local pY_final       = y + math.floor((tempLineH - ICON_SIZE) / 2) - HUD_Offsets.arrowAndHotIcon.y
+            -- Centra verticalmente o texto (altura aproximada de 14px da fonte FONT_S)
+            local textY          = y + math.floor((tempLineH - 14) / 2)
 
             drawLabel            = getText("IGUI_PB_TargetTemp") or "Ajustar Temperatura"
             drawLabel            = string.gsub(drawLabel, ":%s*$", "")
-            self:drawText(drawLabel .. ":", x0, y + 5, 1, 1, 1, 0.80, FONT_S)
+            self:drawText(drawLabel .. ":", x0, textY, 1, 1, 1, 0.80, FONT_S)
 
             -- Seta Azul (Apanha o offset do Floco de Neve)
             if self._thermDownTex then
@@ -2055,7 +2126,7 @@ function PB_GeneratorInfoWindow:render()
             end
 
             -- Texto central da temperatura (Fica fixo no centro morto da janela)
-            self:drawText(tempStr, vX, y + 5, 0.90, 0.90, 0.50, 1, FONT_S)
+            self:drawText(tempStr, vX, textY, 0.90, 0.90, 0.50, 1, FONT_S)
 
             -- Seta Vermelha (Apanha o offset da Chama)
             if self._thermUpTex then
@@ -2066,20 +2137,18 @@ function PB_GeneratorInfoWindow:render()
 
             -- Amarra as áreas de clique das setas aos novos locais movidos
             self._heatMinusArea = {
-                y1 = y - HUD_Offsets.arrowAndColdIcon.y,
-                y2 = y + LINE_H -
-                    HUD_Offsets.arrowAndColdIcon.y,
+                y1 = mY_final,
+                y2 = mY_final + ICON_SIZE,
                 x1 = mX_final,
                 x2 = mX_final + ICON_SIZE
             }
             self._heatPlusArea  = {
-                y1 = y - HUD_Offsets.arrowAndHotIcon.y,
-                y2 = y + LINE_H -
-                    HUD_Offsets.arrowAndHotIcon.y,
+                y1 = pY_final,
+                y2 = pY_final + ICON_SIZE,
                 x1 = pX_final,
                 x2 = pX_final + ICON_SIZE
             }
-            y                   = y + LINE_H
+            y                   = y + tempLineH
         end
     else
         self:drawText(getText("IGUI_NotConnectedToBuilding") or "Não conectado a uma construção", x0, y + 5, 0.58, 0.58,
@@ -2087,7 +2156,7 @@ function PB_GeneratorInfoWindow:render()
         y = y + LINE_H
     end
 
-    local btnH = 22
+    local btnH = self.closeBtn and self.closeBtn.height or 25
     y = y + 8
 
     if self.coverageBtn then self.coverageBtn:setY(y) end
