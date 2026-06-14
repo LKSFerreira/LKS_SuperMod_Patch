@@ -1,0 +1,2060 @@
+{
+  "caminhos_assets": {
+    "icones_inventario_ui": {
+      "descricao": "Ícones de recipientes exibidos nas abas de inventário do jogador",
+      "arquivo_pack_origem": "media/texturepacks/UI.pack",
+      "diretorio_destino_mod": "common/media/ui/",
+      "mapeamento_padrao": {
+        "container_fridge": "Container_Fridge.png (Geladeira)",
+        "container_freezer": "Container_Freezer.png (Freezer)",
+        "container_microwave": "Container_Microwave.png (Micro-ondas)",
+        "container_oven": "Container_Stove.png (Fogão/Forno - extraído como 'container_oven')"
+      }
+    },
+    "texturas_mundo_tilesets": {
+      "descricao": "Spritesheets/Atlas das texturas dos blocos no mundo 3D",
+      "arquivos_pack_origem": [
+        "media/texturepacks/Tiles1x.pack (Resolução Padrão)",
+        "media/texturepacks/Tiles2x.pack (Alta Resolução - HD)"
+      ],
+      "arquivos_atlas_png_no_jogo": [
+        "media/textures/Tileset/appliances_laundry_01.png",
+        "media/textures/Tileset/appliances_cooking_01.png",
+        "media/textures/Tileset/appliances_refrigeration_01.png",
+        "media/textures/Tileset/appliances_television_01.png"
+      ]
+    }
+  },
+  "tilesets": {
+    "appliances_laundry_01": {
+      "descricao": "Tileset: appliances_laundry_01",
+      "itens": {
+        "appliances_laundry_01_0": {
+          "nome": "Combo Washer Dryer",
+          "grupo": "Blue",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Combo Washer Dryer (Blue) - Facing: S"
+        },
+        "appliances_laundry_01_1": {
+          "nome": "Combo Washer Dryer",
+          "grupo": "Blue",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Combo Washer Dryer (Blue) - Facing: E"
+        },
+        "appliances_laundry_01_2": {
+          "nome": "Combo Washer Dryer",
+          "grupo": "Blue",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Combo Washer Dryer (Blue) - Facing: N"
+        },
+        "appliances_laundry_01_3": {
+          "nome": "Combo Washer Dryer",
+          "grupo": "Blue",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Combo Washer Dryer (Blue) - Facing: W"
+        },
+        "appliances_laundry_01_4": {
+          "nome": "Washing Machine",
+          "grupo": "White",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Washing Machine (White) - Facing: S"
+        },
+        "appliances_laundry_01_5": {
+          "nome": "Washing Machine",
+          "grupo": "White",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Washing Machine (White) - Facing: E"
+        },
+        "appliances_laundry_01_6": {
+          "nome": "Washing Machine",
+          "grupo": "White",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Washing Machine (White) - Facing: N"
+        },
+        "appliances_laundry_01_7": {
+          "nome": "Washing Machine",
+          "grupo": "White",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Washing Machine (White) - Facing: W"
+        },
+        "appliances_laundry_01_12": {
+          "nome": "Clothing Dryer",
+          "grupo": "White",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Clothing Dryer (White) - Facing: S"
+        },
+        "appliances_laundry_01_13": {
+          "nome": "Clothing Dryer",
+          "grupo": "White",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Clothing Dryer (White) - Facing: E"
+        },
+        "appliances_laundry_01_14": {
+          "nome": "Clothing Dryer",
+          "grupo": "White",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Clothing Dryer (White) - Facing: N"
+        },
+        "appliances_laundry_01_15": {
+          "nome": "Clothing Dryer",
+          "grupo": "White",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Clothing Dryer (White) - Facing: W"
+        },
+        "appliances_laundry_01_16": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: S"
+        },
+        "appliances_laundry_01_17": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: S"
+        },
+        "appliances_laundry_01_18": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: S"
+        },
+        "appliances_laundry_01_19": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: S"
+        },
+        "appliances_laundry_01_20": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: E"
+        },
+        "appliances_laundry_01_21": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: E"
+        },
+        "appliances_laundry_01_22": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: E"
+        },
+        "appliances_laundry_01_23": {
+          "nome": "Sign",
+          "grupo": "Laundromat",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Sign (Laundromat) - Facing: E"
+        },
+        "appliances_laundry_01_24": {
+          "nome": "Bin",
+          "grupo": "Washing",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Bin (Washing) - Facing: N"
+        },
+        "appliances_laundry_01_25": {
+          "nome": "Bin",
+          "grupo": "Washing",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Bin (Washing) - Facing: W"
+        }
+      }
+    },
+    "appliances_cooking_01": {
+      "descricao": "Tileset: appliances_cooking_01",
+      "itens": {
+        "appliances_cooking_01_0": {
+          "nome": "Oven",
+          "grupo": "Green",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Green) - Facing: E"
+        },
+        "appliances_cooking_01_1": {
+          "nome": "Oven",
+          "grupo": "Green",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Green) - Facing: S"
+        },
+        "appliances_cooking_01_2": {
+          "nome": "Oven",
+          "grupo": "Green",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Green) - Facing: W"
+        },
+        "appliances_cooking_01_3": {
+          "nome": "Oven",
+          "grupo": "Green",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Green) - Facing: N"
+        },
+        "appliances_cooking_01_4": {
+          "nome": "Oven",
+          "grupo": "Grey",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Grey) - Facing: E"
+        },
+        "appliances_cooking_01_5": {
+          "nome": "Oven",
+          "grupo": "Grey",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Grey) - Facing: S"
+        },
+        "appliances_cooking_01_6": {
+          "nome": "Oven",
+          "grupo": "Grey",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Grey) - Facing: W"
+        },
+        "appliances_cooking_01_7": {
+          "nome": "Oven",
+          "grupo": "Grey",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Grey) - Facing: N"
+        },
+        "appliances_cooking_01_8": {
+          "nome": "Oven",
+          "grupo": "Red",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Red) - Facing: E"
+        },
+        "appliances_cooking_01_9": {
+          "nome": "Oven",
+          "grupo": "Red",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Red) - Facing: S"
+        },
+        "appliances_cooking_01_10": {
+          "nome": "Oven",
+          "grupo": "Red",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Red) - Facing: W"
+        },
+        "appliances_cooking_01_11": {
+          "nome": "Oven",
+          "grupo": "Red",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Red) - Facing: N"
+        },
+        "appliances_cooking_01_12": {
+          "nome": "Oven",
+          "grupo": "Modern",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Modern) - Facing: E"
+        },
+        "appliances_cooking_01_13": {
+          "nome": "Oven",
+          "grupo": "Modern",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Modern) - Facing: S"
+        },
+        "appliances_cooking_01_14": {
+          "nome": "Oven",
+          "grupo": "Modern",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Modern) - Facing: W"
+        },
+        "appliances_cooking_01_15": {
+          "nome": "Oven",
+          "grupo": "Modern",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Modern) - Facing: N"
+        },
+        "appliances_cooking_01_16": {
+          "nome": "Oven",
+          "grupo": "Antique",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Antique) - Facing: E"
+        },
+        "appliances_cooking_01_17": {
+          "nome": "Oven",
+          "grupo": "Antique",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Antique) - Facing: S"
+        },
+        "appliances_cooking_01_18": {
+          "nome": "Oven",
+          "grupo": "Antique",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Antique) - Facing: N"
+        },
+        "appliances_cooking_01_19": {
+          "nome": "Oven",
+          "grupo": "Antique",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Antique) - Facing: W"
+        },
+        "appliances_cooking_01_20": {
+          "nome": "Oven",
+          "grupo": "Industrial",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Industrial) - Facing: E"
+        },
+        "appliances_cooking_01_21": {
+          "nome": "Oven",
+          "grupo": "Industrial",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Industrial) - Facing: S"
+        },
+        "appliances_cooking_01_22": {
+          "nome": "Oven",
+          "grupo": "Industrial",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Industrial) - Facing: W"
+        },
+        "appliances_cooking_01_23": {
+          "nome": "Oven",
+          "grupo": "Industrial",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Industrial) - Facing: N"
+        },
+        "appliances_cooking_01_24": {
+          "nome": "Microwave",
+          "grupo": "White",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Microwave (White) - Facing: E"
+        },
+        "appliances_cooking_01_25": {
+          "nome": "Microwave",
+          "grupo": "White",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Microwave (White) - Facing: S"
+        },
+        "appliances_cooking_01_26": {
+          "nome": "Microwave",
+          "grupo": "White",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Microwave (White) - Facing: W"
+        },
+        "appliances_cooking_01_27": {
+          "nome": "Microwave",
+          "grupo": "White",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Microwave (White) - Facing: N"
+        },
+        "appliances_cooking_01_28": {
+          "nome": "Microwave",
+          "grupo": "Chrome",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Microwave (Chrome) - Facing: S"
+        },
+        "appliances_cooking_01_29": {
+          "nome": "Microwave",
+          "grupo": "Chrome",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Microwave (Chrome) - Facing: E"
+        },
+        "appliances_cooking_01_30": {
+          "nome": "Microwave",
+          "grupo": "Chrome",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Microwave (Chrome) - Facing: W"
+        },
+        "appliances_cooking_01_31": {
+          "nome": "Microwave",
+          "grupo": "Chrome",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Microwave (Chrome) - Facing: N"
+        },
+        "appliances_cooking_01_32": {
+          "nome": "Toaster",
+          "grupo": "Small Chrome",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Toaster (Small Chrome) - Facing: N"
+        },
+        "appliances_cooking_01_33": {
+          "nome": "Toaster",
+          "grupo": "Small Chrome",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Toaster (Small Chrome) - Facing: W"
+        },
+        "appliances_cooking_01_35": {
+          "nome": "Barbecue",
+          "grupo": "Charcoal",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "Barbecue (Charcoal)"
+        },
+        "appliances_cooking_01_36": {
+          "nome": "Barbecue",
+          "grupo": "Full Jorge Foreguy",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Barbecue (Full Jorge Foreguy) - Facing: S"
+        },
+        "appliances_cooking_01_37": {
+          "nome": "Barbecue",
+          "grupo": "Full Jorge Foreguy",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Barbecue (Full Jorge Foreguy) - Facing: E"
+        },
+        "appliances_cooking_01_38": {
+          "nome": "Barbecue",
+          "grupo": "Full Jorge Foreguy",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Barbecue (Full Jorge Foreguy) - Facing: N"
+        },
+        "appliances_cooking_01_39": {
+          "nome": "Barbecue",
+          "grupo": "Full Jorge Foreguy",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Barbecue (Full Jorge Foreguy) - Facing: W"
+        },
+        "appliances_cooking_01_40": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: E"
+        },
+        "appliances_cooking_01_41": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: E"
+        },
+        "appliances_cooking_01_42": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: S"
+        },
+        "appliances_cooking_01_43": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: S"
+        },
+        "appliances_cooking_01_44": {
+          "nome": "Barbecue",
+          "grupo": "Jorge Foreguy",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Barbecue (Jorge Foreguy) - Facing: S"
+        },
+        "appliances_cooking_01_45": {
+          "nome": "Barbecue",
+          "grupo": "Jorge Foreguy",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Barbecue (Jorge Foreguy) - Facing: E"
+        },
+        "appliances_cooking_01_46": {
+          "nome": "Barbecue",
+          "grupo": "Jorge Foreguy",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Barbecue (Jorge Foreguy) - Facing: N"
+        },
+        "appliances_cooking_01_47": {
+          "nome": "Barbecue",
+          "grupo": "Jorge Foreguy",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Barbecue (Jorge Foreguy) - Facing: W"
+        },
+        "appliances_cooking_01_48": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: W"
+        },
+        "appliances_cooking_01_49": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: W"
+        },
+        "appliances_cooking_01_50": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: N"
+        },
+        "appliances_cooking_01_51": {
+          "nome": "Oven",
+          "grupo": "Large Modern",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Oven (Large Modern) - Facing: N"
+        },
+        "appliances_cooking_01_52": {
+          "nome": "Industrial 2000",
+          "grupo": "Fryers Club",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Industrial 2000 (Fryers Club) - Facing: E"
+        },
+        "appliances_cooking_01_53": {
+          "nome": "Industrial 2000",
+          "grupo": "Fryers Club",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Industrial 2000 (Fryers Club) - Facing: S"
+        },
+        "appliances_cooking_01_54": {
+          "nome": "Industrial 2000",
+          "grupo": "Fryers Club",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Industrial 2000 (Fryers Club) - Facing: W"
+        },
+        "appliances_cooking_01_55": {
+          "nome": "Industrial 2000",
+          "grupo": "Fryers Club",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Industrial 2000 (Fryers Club) - Facing: N"
+        },
+        "appliances_cooking_01_56": {
+          "nome": "X-press",
+          "grupo": "Coffee",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "X-press (Coffee) - Facing: S"
+        },
+        "appliances_cooking_01_57": {
+          "nome": "X-press",
+          "grupo": "Coffee",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "X-press (Coffee) - Facing: E"
+        },
+        "appliances_cooking_01_58": {
+          "nome": "X-press",
+          "grupo": "Coffee",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "X-press (Coffee) - Facing: W"
+        },
+        "appliances_cooking_01_59": {
+          "nome": "X-press",
+          "grupo": "Coffee",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "X-press (Coffee) - Facing: N"
+        },
+        "appliances_cooking_01_60": {
+          "nome": "Deluxe",
+          "grupo": "Espresso",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Deluxe (Espresso) - Facing: E"
+        },
+        "appliances_cooking_01_61": {
+          "nome": "Deluxe",
+          "grupo": "Espresso",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Deluxe (Espresso) - Facing: S"
+        },
+        "appliances_cooking_01_62": {
+          "nome": "Deluxe",
+          "grupo": "Espresso",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Deluxe (Espresso) - Facing: N"
+        },
+        "appliances_cooking_01_63": {
+          "nome": "Deluxe",
+          "grupo": "Espresso",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Deluxe (Espresso) - Facing: W"
+        },
+        "appliances_cooking_01_64": {
+          "nome": "Industrial",
+          "grupo": "Bake-O-Matic",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Industrial (Bake-O-Matic) - Facing: E"
+        },
+        "appliances_cooking_01_65": {
+          "nome": "Industrial",
+          "grupo": "Bake-O-Matic",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Industrial (Bake-O-Matic) - Facing: S"
+        },
+        "appliances_cooking_01_66": {
+          "nome": "Industrial",
+          "grupo": "Bake-O-Matic",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Industrial (Bake-O-Matic) - Facing: W"
+        },
+        "appliances_cooking_01_67": {
+          "nome": "Industrial",
+          "grupo": "Bake-O-Matic",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Industrial (Bake-O-Matic) - Facing: N"
+        },
+        "appliances_cooking_01_68": {
+          "nome": "Hood",
+          "grupo": "Extractor",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Hood (Extractor) - Facing: E"
+        },
+        "appliances_cooking_01_69": {
+          "nome": "Hood",
+          "grupo": "Extractor",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Hood (Extractor) - Facing: S"
+        },
+        "appliances_cooking_01_70": {
+          "nome": "Hood",
+          "grupo": "Extractor",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Hood (Extractor) - Facing: N"
+        },
+        "appliances_cooking_01_71": {
+          "nome": "Hood",
+          "grupo": "Extractor",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Hood (Extractor) - Facing: W"
+        },
+        "appliances_cooking_01_72": {
+          "nome": "Dishwasher",
+          "grupo": "Brown",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Dishwasher (Brown) - Facing: E"
+        },
+        "appliances_cooking_01_73": {
+          "nome": "Dishwasher",
+          "grupo": "Brown",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Dishwasher (Brown) - Facing: S"
+        },
+        "appliances_cooking_01_74": {
+          "nome": "Dishwasher",
+          "grupo": "Brown",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Dishwasher (Brown) - Facing: W"
+        },
+        "appliances_cooking_01_75": {
+          "nome": "Dishwasher",
+          "grupo": "Brown",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Dishwasher (Brown) - Facing: N"
+        },
+        "appliances_cooking_01_76": {
+          "nome": "Dishwasher",
+          "grupo": "Metal",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Dishwasher (Metal) - Facing: E"
+        },
+        "appliances_cooking_01_77": {
+          "nome": "Dishwasher",
+          "grupo": "Metal",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Dishwasher (Metal) - Facing: S"
+        },
+        "appliances_cooking_01_78": {
+          "nome": "Dishwasher",
+          "grupo": "Metal",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Dishwasher (Metal) - Facing: W"
+        },
+        "appliances_cooking_01_79": {
+          "nome": "Dishwasher",
+          "grupo": "Metal",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Dishwasher (Metal) - Facing: N"
+        }
+      }
+    },
+    "appliances_refrigeration_01": {
+      "descricao": "Tileset: appliances_refrigeration_01",
+      "itens": {
+        "appliances_refrigeration_01_0": {
+          "nome": "Fridge",
+          "grupo": "White",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (White) - Facing: S"
+        },
+        "appliances_refrigeration_01_1": {
+          "nome": "Fridge",
+          "grupo": "White",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (White) - Facing: E"
+        },
+        "appliances_refrigeration_01_2": {
+          "nome": "Fridge",
+          "grupo": "White",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (White) - Facing: N"
+        },
+        "appliances_refrigeration_01_3": {
+          "nome": "Fridge",
+          "grupo": "White",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (White) - Facing: W"
+        },
+        "appliances_refrigeration_01_4": {
+          "nome": "Fridge",
+          "grupo": "Blue",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Blue) - Facing: S"
+        },
+        "appliances_refrigeration_01_5": {
+          "nome": "Fridge",
+          "grupo": "Blue",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Blue) - Facing: E"
+        },
+        "appliances_refrigeration_01_6": {
+          "nome": "Fridge",
+          "grupo": "Blue",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Blue) - Facing: N"
+        },
+        "appliances_refrigeration_01_7": {
+          "nome": "Fridge",
+          "grupo": "Blue",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Blue) - Facing: W"
+        },
+        "appliances_refrigeration_01_8": {
+          "nome": "Fridge",
+          "grupo": "Steel",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Steel) - Facing: S"
+        },
+        "appliances_refrigeration_01_9": {
+          "nome": "Fridge",
+          "grupo": "Steel",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Steel) - Facing: E"
+        },
+        "appliances_refrigeration_01_10": {
+          "nome": "Fridge",
+          "grupo": "Steel",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Steel) - Facing: N"
+        },
+        "appliances_refrigeration_01_11": {
+          "nome": "Fridge",
+          "grupo": "Steel",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Steel) - Facing: W"
+        },
+        "appliances_refrigeration_01_12": {
+          "nome": "Fridge",
+          "grupo": "Green",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Green) - Facing: S"
+        },
+        "appliances_refrigeration_01_13": {
+          "nome": "Fridge",
+          "grupo": "Green",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Green) - Facing: E"
+        },
+        "appliances_refrigeration_01_14": {
+          "nome": "Fridge",
+          "grupo": "Green",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Green) - Facing: N"
+        },
+        "appliances_refrigeration_01_15": {
+          "nome": "Fridge",
+          "grupo": "Green",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Green) - Facing: W"
+        },
+        "appliances_refrigeration_01_16": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: E"
+        },
+        "appliances_refrigeration_01_17": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: E"
+        },
+        "appliances_refrigeration_01_18": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: S"
+        },
+        "appliances_refrigeration_01_19": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: S"
+        },
+        "appliances_refrigeration_01_20": {
+          "nome": "Freezer",
+          "grupo": "Popsicle",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Freezer (Popsicle) - Facing: E"
+        },
+        "appliances_refrigeration_01_21": {
+          "nome": "Freezer",
+          "grupo": "Popsicle",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Freezer (Popsicle) - Facing: E"
+        },
+        "appliances_refrigeration_01_22": {
+          "nome": "Fridge",
+          "grupo": "Industrial",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Industrial) - Facing: S"
+        },
+        "appliances_refrigeration_01_23": {
+          "nome": "Fridge",
+          "grupo": "Industrial",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Industrial) - Facing: E"
+        },
+        "appliances_refrigeration_01_24": {
+          "nome": "Fridge",
+          "grupo": "Mini",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Mini) - Facing: E"
+        },
+        "appliances_refrigeration_01_25": {
+          "nome": "Fridge",
+          "grupo": "Mini",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Mini) - Facing: S"
+        },
+        "appliances_refrigeration_01_26": {
+          "nome": "Fridge",
+          "grupo": "Mini",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Mini) - Facing: W"
+        },
+        "appliances_refrigeration_01_27": {
+          "nome": "Fridge",
+          "grupo": "Mini",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Mini) - Facing: N"
+        },
+        "appliances_refrigeration_01_28": {
+          "nome": "Fridge",
+          "grupo": "Plain",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Plain) - Facing: S"
+        },
+        "appliances_refrigeration_01_29": {
+          "nome": "Fridge",
+          "grupo": "Plain",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Plain) - Facing: E"
+        },
+        "appliances_refrigeration_01_30": {
+          "nome": "Fridge",
+          "grupo": "Plain",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Plain) - Facing: N"
+        },
+        "appliances_refrigeration_01_31": {
+          "nome": "Fridge",
+          "grupo": "Plain",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Plain) - Facing: W"
+        },
+        "appliances_refrigeration_01_32": {
+          "nome": "Fridge",
+          "grupo": "Red",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (Red) - Facing: S"
+        },
+        "appliances_refrigeration_01_33": {
+          "nome": "Fridge",
+          "grupo": "Red",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (Red) - Facing: E"
+        },
+        "appliances_refrigeration_01_34": {
+          "nome": "Fridge",
+          "grupo": "Red",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Red) - Facing: N"
+        },
+        "appliances_refrigeration_01_35": {
+          "nome": "Fridge",
+          "grupo": "Red",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Red) - Facing: W"
+        },
+        "appliances_refrigeration_01_36": {
+          "nome": "Fridge",
+          "grupo": "Industrial",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Industrial) - Facing: N"
+        },
+        "appliances_refrigeration_01_37": {
+          "nome": "Fridge",
+          "grupo": "Industrial",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Industrial) - Facing: W"
+        },
+        "appliances_refrigeration_01_38": {
+          "nome": "Freezer",
+          "grupo": "Popsicle",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Freezer (Popsicle) - Facing: S"
+        },
+        "appliances_refrigeration_01_39": {
+          "nome": "Freezer",
+          "grupo": "Popsicle",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Freezer (Popsicle) - Facing: S"
+        },
+        "appliances_refrigeration_01_40": {
+          "nome": "Fridge",
+          "grupo": "White Industrial",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Fridge (White Industrial) - Facing: S"
+        },
+        "appliances_refrigeration_01_41": {
+          "nome": "Fridge",
+          "grupo": "White Industrial",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Fridge (White Industrial) - Facing: E"
+        },
+        "appliances_refrigeration_01_42": {
+          "nome": "Fridge",
+          "grupo": "White Industrial",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (White Industrial) - Facing: N"
+        },
+        "appliances_refrigeration_01_43": {
+          "nome": "Fridge",
+          "grupo": "White Industrial",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (White Industrial) - Facing: W"
+        },
+        "appliances_refrigeration_01_44": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: W"
+        },
+        "appliances_refrigeration_01_45": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: W"
+        },
+        "appliances_refrigeration_01_46": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: N"
+        },
+        "appliances_refrigeration_01_47": {
+          "nome": "Fridge",
+          "grupo": "Large",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Fridge (Large) - Facing: N"
+        },
+        "appliances_refrigeration_01_48": {
+          "nome": "Freezer",
+          "grupo": "Chest",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Freezer (Chest) - Facing: S"
+        },
+        "appliances_refrigeration_01_49": {
+          "nome": "Freezer",
+          "grupo": "Chest",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Freezer (Chest) - Facing: E"
+        },
+        "appliances_refrigeration_01_50": {
+          "nome": "Freezer",
+          "grupo": "Chest",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Freezer (Chest) - Facing: N"
+        },
+        "appliances_refrigeration_01_51": {
+          "nome": "Freezer",
+          "grupo": "Chest",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Freezer (Chest) - Facing: W"
+        }
+      }
+    },
+    "appliances_television_01": {
+      "descricao": "Tileset: appliances_television_01",
+      "itens": {
+        "appliances_television_01_0": {
+          "nome": "Television",
+          "grupo": "Premium Technologies",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Television (Premium Technologies) - Facing: E"
+        },
+        "appliances_television_01_1": {
+          "nome": "Television",
+          "grupo": "Premium Technologies",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Television (Premium Technologies) - Facing: S"
+        },
+        "appliances_television_01_2": {
+          "nome": "Television",
+          "grupo": "Premium Technologies",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Television (Premium Technologies) - Facing: W"
+        },
+        "appliances_television_01_3": {
+          "nome": "Television",
+          "grupo": "Premium Technologies",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Television (Premium Technologies) - Facing: N"
+        },
+        "appliances_television_01_4": {
+          "nome": "Television",
+          "grupo": "ValuTech",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Television (ValuTech) - Facing: S"
+        },
+        "appliances_television_01_5": {
+          "nome": "Television",
+          "grupo": "ValuTech",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Television (ValuTech) - Facing: E"
+        },
+        "appliances_television_01_6": {
+          "nome": "Television",
+          "grupo": "ValuTech",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Television (ValuTech) - Facing: N"
+        },
+        "appliances_television_01_7": {
+          "nome": "Television",
+          "grupo": "ValuTech",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Television (ValuTech) - Facing: W"
+        },
+        "appliances_television_01_8": {
+          "nome": "Television",
+          "grupo": "Antique",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Television (Antique) - Facing: E"
+        },
+        "appliances_television_01_9": {
+          "nome": "Television",
+          "grupo": "Antique",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Television (Antique) - Facing: S"
+        },
+        "appliances_television_01_10": {
+          "nome": "Television",
+          "grupo": "Antique",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Television (Antique) - Facing: W"
+        },
+        "appliances_television_01_11": {
+          "nome": "Television",
+          "grupo": "Antique",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Television (Antique) - Facing: N"
+        }
+      }
+    },
+    "appliances_radio_01": {
+      "descricao": "Tileset: appliances_radio_01",
+      "itens": {
+        "appliances_radio_01_0": {
+          "nome": "Radio",
+          "grupo": "ValuTech",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Radio (ValuTech) - Facing: S"
+        },
+        "appliances_radio_01_1": {
+          "nome": "Radio",
+          "grupo": "ValuTech",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Radio (ValuTech) - Facing: E"
+        },
+        "appliances_radio_01_2": {
+          "nome": "Radio",
+          "grupo": "ValuTech",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Radio (ValuTech) - Facing: N"
+        },
+        "appliances_radio_01_3": {
+          "nome": "Radio",
+          "grupo": "ValuTech",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Radio (ValuTech) - Facing: W"
+        },
+        "appliances_radio_01_4": {
+          "nome": "CustomName",
+          "grupo": "ValuTech",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (ValuTech)"
+        },
+        "appliances_radio_01_5": {
+          "nome": "CustomName",
+          "grupo": "ValuTech",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (ValuTech)"
+        },
+        "appliances_radio_01_6": {
+          "nome": "CustomName",
+          "grupo": "ValuTech",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (ValuTech)"
+        },
+        "appliances_radio_01_7": {
+          "nome": "CustomName",
+          "grupo": "ValuTech",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (ValuTech)"
+        },
+        "appliances_radio_01_8": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies) - Facing: S"
+        },
+        "appliances_radio_01_9": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies) - Facing: E"
+        },
+        "appliances_radio_01_10": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies) - Facing: N"
+        },
+        "appliances_radio_01_11": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies) - Facing: W"
+        },
+        "appliances_radio_01_12": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies)"
+        },
+        "appliances_radio_01_13": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies)"
+        },
+        "appliances_radio_01_14": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies)"
+        },
+        "appliances_radio_01_15": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies)"
+        },
+        "appliances_radio_01_16": {
+          "nome": "Radio",
+          "grupo": "Makeshift",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift) - Facing: S"
+        },
+        "appliances_radio_01_17": {
+          "nome": "Radio",
+          "grupo": "Makeshift",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift) - Facing: E"
+        },
+        "appliances_radio_01_18": {
+          "nome": "Radio",
+          "grupo": "Makeshift",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift) - Facing: N"
+        },
+        "appliances_radio_01_19": {
+          "nome": "Radio",
+          "grupo": "Makeshift",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift) - Facing: W"
+        }
+      }
+    },
+    "appliances_misc_01": {
+      "descricao": "Tileset: appliances_misc_01",
+      "itens": {
+        "appliances_misc_01_0": {
+          "nome": "Generator",
+          "grupo": "Red",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Generator (Red) - Facing: E"
+        },
+        "appliances_misc_01_1": {
+          "nome": "Generator",
+          "grupo": "Red",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Generator (Red) - Facing: S"
+        },
+        "appliances_misc_01_2": {
+          "nome": "Generator",
+          "grupo": "Red",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Generator (Red) - Facing: W"
+        },
+        "appliances_misc_01_3": {
+          "nome": "Generator",
+          "grupo": "Red",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Generator (Red) - Facing: N"
+        },
+        "appliances_misc_01_4": {
+          "nome": "Generator",
+          "grupo": "Old",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Generator (Old) - Facing: E"
+        },
+        "appliances_misc_01_5": {
+          "nome": "Generator",
+          "grupo": "Old",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Generator (Old) - Facing: S"
+        },
+        "appliances_misc_01_6": {
+          "nome": "Generator",
+          "grupo": "Old",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Generator (Old) - Facing: W"
+        },
+        "appliances_misc_01_7": {
+          "nome": "Generator",
+          "grupo": "Old",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Generator (Old) - Facing: N"
+        },
+        "appliances_misc_01_8": {
+          "nome": "Generator",
+          "grupo": "Yellow",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Generator (Yellow) - Facing: E"
+        },
+        "appliances_misc_01_9": {
+          "nome": "Generator",
+          "grupo": "Yellow",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Generator (Yellow) - Facing: S"
+        },
+        "appliances_misc_01_10": {
+          "nome": "Generator",
+          "grupo": "Yellow",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Generator (Yellow) - Facing: W"
+        },
+        "appliances_misc_01_11": {
+          "nome": "Generator",
+          "grupo": "Yellow",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Generator (Yellow) - Facing: N"
+        },
+        "appliances_misc_01_12": {
+          "nome": "Generator",
+          "grupo": "Blue",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Generator (Blue) - Facing: S"
+        },
+        "appliances_misc_01_13": {
+          "nome": "Generator",
+          "grupo": "Blue",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Generator (Blue) - Facing: E"
+        },
+        "appliances_misc_01_14": {
+          "nome": "Generator",
+          "grupo": "Blue",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Generator (Blue) - Facing: N"
+        },
+        "appliances_misc_01_15": {
+          "nome": "Generator",
+          "grupo": "Blue",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Generator (Blue) - Facing: W"
+        }
+      }
+    },
+    "appliances_com_01": {
+      "descricao": "Tileset: appliances_com_01",
+      "itens": {
+        "appliances_com_01_0": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies Ham) - Facing: S"
+        },
+        "appliances_com_01_1": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies Ham) - Facing: E"
+        },
+        "appliances_com_01_2": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies Ham) - Facing: N"
+        },
+        "appliances_com_01_3": {
+          "nome": "Radio",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Radio (Premium Technologies Ham) - Facing: W"
+        },
+        "appliances_com_01_4": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies Ham)"
+        },
+        "appliances_com_01_5": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies Ham)"
+        },
+        "appliances_com_01_6": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies Ham)"
+        },
+        "appliances_com_01_7": {
+          "nome": "CustomName",
+          "grupo": "Premium Technologies Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Premium Technologies Ham)"
+        },
+        "appliances_com_01_8": {
+          "nome": "Radio",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Radio (US ARMY COMM. Ham) - Facing: S"
+        },
+        "appliances_com_01_9": {
+          "nome": "Radio",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Radio (US ARMY COMM. Ham) - Facing: E"
+        },
+        "appliances_com_01_10": {
+          "nome": "Radio",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Radio (US ARMY COMM. Ham) - Facing: N"
+        },
+        "appliances_com_01_11": {
+          "nome": "Radio",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Radio (US ARMY COMM. Ham) - Facing: W"
+        },
+        "appliances_com_01_12": {
+          "nome": "CustomName",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (US ARMY COMM. Ham)"
+        },
+        "appliances_com_01_13": {
+          "nome": "CustomName",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (US ARMY COMM. Ham)"
+        },
+        "appliances_com_01_14": {
+          "nome": "CustomName",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (US ARMY COMM. Ham)"
+        },
+        "appliances_com_01_15": {
+          "nome": "CustomName",
+          "grupo": "US ARMY COMM. Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (US ARMY COMM. Ham)"
+        },
+        "appliances_com_01_16": {
+          "nome": "Walkie Talkie",
+          "grupo": "Toys-R-Mine",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Toys-R-Mine) - Facing: N"
+        },
+        "appliances_com_01_17": {
+          "nome": "Walkie Talkie",
+          "grupo": "Toys-R-Mine",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Toys-R-Mine) - Facing: W"
+        },
+        "appliances_com_01_18": {
+          "nome": "Walkie Talkie",
+          "grupo": "Toys-R-Mine",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Toys-R-Mine) - Facing: S"
+        },
+        "appliances_com_01_19": {
+          "nome": "Walkie Talkie",
+          "grupo": "Toys-R-Mine",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Toys-R-Mine) - Facing: E"
+        },
+        "appliances_com_01_20": {
+          "nome": "Dish",
+          "grupo": "Satellite",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Dish (Satellite) - Facing: S"
+        },
+        "appliances_com_01_21": {
+          "nome": "Dish",
+          "grupo": "Satellite",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Dish (Satellite) - Facing: E"
+        },
+        "appliances_com_01_24": {
+          "nome": "Walkie Talkie",
+          "grupo": "ValuTech",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (ValuTech) - Facing: N"
+        },
+        "appliances_com_01_25": {
+          "nome": "Walkie Talkie",
+          "grupo": "ValuTech",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (ValuTech) - Facing: W"
+        },
+        "appliances_com_01_26": {
+          "nome": "Walkie Talkie",
+          "grupo": "ValuTech",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (ValuTech) - Facing: S"
+        },
+        "appliances_com_01_27": {
+          "nome": "Walkie Talkie",
+          "grupo": "ValuTech",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (ValuTech) - Facing: E"
+        },
+        "appliances_com_01_28": {
+          "nome": "x",
+          "grupo": "appliances_com_01_38",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "x (appliances_com_01_38) - Facing: S"
+        },
+        "appliances_com_01_29": {
+          "nome": "x",
+          "grupo": "appliances_com_01_38",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "x (appliances_com_01_38) - Facing: S"
+        },
+        "appliances_com_01_30": {
+          "nome": "x",
+          "grupo": "appliances_com_01_38",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "x (appliances_com_01_38) - Facing: S"
+        },
+        "appliances_com_01_32": {
+          "nome": "Walkie Talkie",
+          "grupo": "Premium Tech.",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Premium Tech.) - Facing: N"
+        },
+        "appliances_com_01_33": {
+          "nome": "Walkie Talkie",
+          "grupo": "Premium Tech.",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Premium Tech.) - Facing: W"
+        },
+        "appliances_com_01_34": {
+          "nome": "Walkie Talkie",
+          "grupo": "Premium Tech.",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Premium Tech.) - Facing: S"
+        },
+        "appliances_com_01_35": {
+          "nome": "Walkie Talkie",
+          "grupo": "Premium Tech.",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Premium Tech.) - Facing: E"
+        },
+        "appliances_com_01_36": {
+          "nome": "x",
+          "grupo": "appliances_com_01_38",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "x (appliances_com_01_38) - Facing: S"
+        },
+        "appliances_com_01_37": {
+          "nome": "x",
+          "grupo": "appliances_com_01_38",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "x (appliances_com_01_38) - Facing: S"
+        },
+        "appliances_com_01_38": {
+          "nome": "x",
+          "grupo": "appliances_com_01_38",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "x (appliances_com_01_38) - Facing: S"
+        },
+        "appliances_com_01_40": {
+          "nome": "Walkie Talkie",
+          "grupo": "Tactical",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Tactical) - Facing: N"
+        },
+        "appliances_com_01_41": {
+          "nome": "Walkie Talkie",
+          "grupo": "Tactical",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Tactical) - Facing: W"
+        },
+        "appliances_com_01_42": {
+          "nome": "Walkie Talkie",
+          "grupo": "Tactical",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Tactical) - Facing: S"
+        },
+        "appliances_com_01_43": {
+          "nome": "Walkie Talkie",
+          "grupo": "Tactical",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Tactical) - Facing: E"
+        },
+        "appliances_com_01_44": {
+          "nome": "HK533p",
+          "grupo": "Imekagi",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "HK533p (Imekagi) - Facing: S"
+        },
+        "appliances_com_01_45": {
+          "nome": "HK533p",
+          "grupo": "Imekagi",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "HK533p (Imekagi) - Facing: E"
+        },
+        "appliances_com_01_46": {
+          "nome": "HK533p",
+          "grupo": "Imekagi",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "HK533p (Imekagi) - Facing: W"
+        },
+        "appliances_com_01_47": {
+          "nome": "HK533p",
+          "grupo": "Imekagi",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "HK533p (Imekagi) - Facing: N"
+        },
+        "appliances_com_01_48": {
+          "nome": "Walkie Talkie",
+          "grupo": "US Army",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (US Army) - Facing: N"
+        },
+        "appliances_com_01_49": {
+          "nome": "Walkie Talkie",
+          "grupo": "US Army",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (US Army) - Facing: W"
+        },
+        "appliances_com_01_50": {
+          "nome": "Walkie Talkie",
+          "grupo": "US Army",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (US Army) - Facing: S"
+        },
+        "appliances_com_01_51": {
+          "nome": "Walkie Talkie",
+          "grupo": "US Army",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (US Army) - Facing: E"
+        },
+        "appliances_com_01_52": {
+          "nome": "Terminal",
+          "grupo": "CeroSec",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Terminal (CeroSec) - Facing: S"
+        },
+        "appliances_com_01_53": {
+          "nome": "Terminal",
+          "grupo": "CeroSec",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Terminal (CeroSec) - Facing: E"
+        },
+        "appliances_com_01_54": {
+          "nome": "Terminal",
+          "grupo": "CeroSec",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Terminal (CeroSec) - Facing: N"
+        },
+        "appliances_com_01_55": {
+          "nome": "Terminal",
+          "grupo": "CeroSec",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Terminal (CeroSec) - Facing: W"
+        },
+        "appliances_com_01_56": {
+          "nome": "Radio",
+          "grupo": "Makeshift Ham",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift Ham) - Facing: S"
+        },
+        "appliances_com_01_57": {
+          "nome": "Radio",
+          "grupo": "Makeshift Ham",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift Ham) - Facing: E"
+        },
+        "appliances_com_01_58": {
+          "nome": "Radio",
+          "grupo": "Makeshift Ham",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift Ham) - Facing: N"
+        },
+        "appliances_com_01_59": {
+          "nome": "Radio",
+          "grupo": "Makeshift Ham",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Radio (Makeshift Ham) - Facing: W"
+        },
+        "appliances_com_01_60": {
+          "nome": "CustomName",
+          "grupo": "Makeshift Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Makeshift Ham)"
+        },
+        "appliances_com_01_61": {
+          "nome": "CustomName",
+          "grupo": "Makeshift Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Makeshift Ham)"
+        },
+        "appliances_com_01_62": {
+          "nome": "CustomName",
+          "grupo": "Makeshift Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Makeshift Ham)"
+        },
+        "appliances_com_01_63": {
+          "nome": "CustomName",
+          "grupo": "Makeshift Ham",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Makeshift Ham)"
+        },
+        "appliances_com_01_64": {
+          "nome": "Walkie Talkie",
+          "grupo": "Makeshift",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Makeshift) - Facing: N"
+        },
+        "appliances_com_01_65": {
+          "nome": "Walkie Talkie",
+          "grupo": "Makeshift",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Makeshift) - Facing: W"
+        },
+        "appliances_com_01_66": {
+          "nome": "Walkie Talkie",
+          "grupo": "Makeshift",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Makeshift) - Facing: S"
+        },
+        "appliances_com_01_67": {
+          "nome": "Walkie Talkie",
+          "grupo": "Makeshift",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Walkie Talkie (Makeshift) - Facing: E"
+        },
+        "appliances_com_01_68": {
+          "nome": "Microphone",
+          "grupo": "Standing",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Microphone (Standing) - Facing: N"
+        },
+        "appliances_com_01_69": {
+          "nome": "Microphone",
+          "grupo": "Standing",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Microphone (Standing) - Facing: S"
+        },
+        "appliances_com_01_70": {
+          "nome": "Microphone",
+          "grupo": "Standing",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Microphone (Standing) - Facing: W"
+        },
+        "appliances_com_01_71": {
+          "nome": "Microphone",
+          "grupo": "Standing",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Microphone (Standing) - Facing: E"
+        },
+        "appliances_com_01_72": {
+          "nome": "Computer",
+          "grupo": "Desktop",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Computer (Desktop) - Facing: S"
+        },
+        "appliances_com_01_73": {
+          "nome": "Computer",
+          "grupo": "Desktop",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Computer (Desktop) - Facing: E"
+        },
+        "appliances_com_01_74": {
+          "nome": "Computer",
+          "grupo": "Desktop",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Computer (Desktop) - Facing: N"
+        },
+        "appliances_com_01_75": {
+          "nome": "Computer",
+          "grupo": "Desktop",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Computer (Desktop) - Facing: W"
+        },
+        "appliances_com_01_76": {
+          "nome": "CustomName",
+          "grupo": "Desktop",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Desktop)"
+        },
+        "appliances_com_01_77": {
+          "nome": "CustomName",
+          "grupo": "Desktop",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Desktop)"
+        },
+        "appliances_com_01_78": {
+          "nome": "CustomName",
+          "grupo": "Desktop",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Desktop)"
+        },
+        "appliances_com_01_79": {
+          "nome": "CustomName",
+          "grupo": "Desktop",
+          "direcao": "",
+          "container": "",
+          "descricao_completa": "CustomName (Desktop)"
+        },
+        "appliances_com_01_80": {
+          "nome": "Antenna",
+          "grupo": "Old TV",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Antenna (Old TV) - Facing: S"
+        },
+        "appliances_com_01_81": {
+          "nome": "Antenna",
+          "grupo": "Old TV",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Antenna (Old TV) - Facing: S"
+        },
+        "appliances_com_01_82": {
+          "nome": "Antenna",
+          "grupo": "Old TV",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Antenna (Old TV) - Facing: E"
+        },
+        "appliances_com_01_83": {
+          "nome": "Antenna",
+          "grupo": "Old TV",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Antenna (Old TV) - Facing: E"
+        },
+        "appliances_com_01_84": {
+          "nome": "Projector",
+          "grupo": "Cinema",
+          "direcao": "S",
+          "container": "",
+          "descricao_completa": "Projector (Cinema) - Facing: S"
+        },
+        "appliances_com_01_85": {
+          "nome": "Projector",
+          "grupo": "Cinema",
+          "direcao": "E",
+          "container": "",
+          "descricao_completa": "Projector (Cinema) - Facing: E"
+        },
+        "appliances_com_01_86": {
+          "nome": "Projector",
+          "grupo": "Cinema",
+          "direcao": "W",
+          "container": "",
+          "descricao_completa": "Projector (Cinema) - Facing: W"
+        },
+        "appliances_com_01_87": {
+          "nome": "Projector",
+          "grupo": "Cinema",
+          "direcao": "N",
+          "container": "",
+          "descricao_completa": "Projector (Cinema) - Facing: N"
+        }
+      }
+    }
+  }
+}
