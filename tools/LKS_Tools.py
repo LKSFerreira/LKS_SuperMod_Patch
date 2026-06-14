@@ -1,3 +1,39 @@
+# -*- coding: utf-8 -*-
+"""
+================================================================================
+🎨 TOOLS ASSETS - LKS SUPERMOD PATCH
+================================================================================
+Autor: LKS FERREIRA
+Versão: 1.3 (Project Zomboid Build 42)
+Data da Última Modificação: 14/06/2026
+
+PROPÓSITO:
+Ferramenta utilitária de linha de comando (CLI) e menu interativo para o mod.
+Suas funções principais englobam:
+1. Extração automatizada de texturas/sprites de arquivos .pack do jogo.
+2. Inspeção de metadados de imagem PNG (resolução, formato, modo, canais e
+   profundidade de bits), identificando e alertando sobre texturas de 16 bits.
+3. Otimização de imagens PNG de 16 bits para 8 bits para prevenir travamentos.
+4. Auditoria estrutural de imagens órfãs na pasta 'media/ui' do mod.
+5. Busca de referências e mapeamento de assets 2D/3D no jogo e nos metadados.
+
+COMO USAR:
+- Modo Interativo (Menu):
+    python tools/LKS_Tools.py
+- Extração de Sprite (CLI):
+    python tools/LKS_Tools.py <Nome_Sprite_Original>
+    python tools/LKS_Tools.py -e <Nome_Sprite_Original>
+- Busca Unificada de Referências:
+    python tools/LKS_Tools.py -b <Termo_de_Busca>
+- Inspeção de Imagem:
+    python tools/LKS_Tools.py -i <Caminho_do_PNG>
+- Otimização para 8-bit:
+    python tools/LKS_Tools.py -c <PNG_Original> [-o <PNG_Saida>]
+- Auditoria de Imagens Órfãs:
+    python tools/LKS_Tools.py -a
+================================================================================
+"""
+
 import os
 import sys
 import struct
@@ -683,21 +719,18 @@ def run_menu_interativo():
         caminho_jogo = DIRETORIO_JOGO_PADRAO
         
         # Se o caminho padrão não for válido, força a escolha no diálogo gráfico
-        p_packs = Path(caminho_jogo) / "media" / "texturepacks"
-        if not caminho_jogo or not p_packs.exists():
+        pasta_packs = Path(caminho_jogo) / "media" / "texturepacks" if caminho_jogo else None
+        if not caminho_jogo or not pasta_packs or not pasta_packs.exists():
             print(f"{YELLOW}[!] Caminho do jogo não configurado ou inválido. Abrindo explorador de pastas...{RESET}")
             caminho_jogo = obter_diretorio_jogo_grafico()
         else:
-            print(f"Caminho do jogo atual: {caminho_jogo}")
-            print(f"Deseja alterar esse caminho usando o explorador gráfico? [s/N]: ", end="")
-            resposta = input().strip().lower()
-            if resposta in ('s', 'sim'):
-                caminho_jogo = obter_diretorio_jogo_grafico()
+            print(f"{GREEN}Diretório do jogo configurado no arquivo .env: {caminho_jogo}{RESET}\n")
         
-        sprite_alvo = input("\nDigite o nome do Sprite original do jogo a extrair (ou Enter para os padrões): ").strip()
+        sprite_alvo = input("Digite o nome do Sprite original do jogo a extrair (ou Enter para os padrões): ").strip()
         
         if sprite_alvo:
-            nome_sugerido = sugerir_nome_arquivo(sprite_alvo)
+            sprite_alvo_limpo = re.sub(r"\.(png|jpg|tga|jpeg|gif)$", "", sprite_alvo, flags=re.IGNORECASE)
+            nome_sugerido = sugerir_nome_arquivo(sprite_alvo_limpo)
             nome_arq = input(f"Nome do arquivo de saída PNG [Padrão: {nome_sugerido}]: ").strip()
             if not nome_arq:
                 nome_arq = nome_sugerido
@@ -705,7 +738,7 @@ def run_menu_interativo():
             nome_arq = os.path.basename(nome_arq)
             if not nome_arq.lower().endswith(".png"):
                 nome_arq += ".png"
-            mapeamento = {sprite_alvo: nome_arq}
+            mapeamento = {sprite_alvo_limpo: nome_arq}
         else:
             mapeamento = {
                 "container_fridge": "Container_Fridge.png",
@@ -719,11 +752,13 @@ def run_menu_interativo():
     elif opcao == "5":
         # Busca unificada
         caminho_jogo = DIRETORIO_JOGO_PADRAO
-        p_packs = Path(caminho_jogo) / "media" / "texturepacks"
-        if not caminho_jogo or not p_packs.exists():
+        pasta_packs = Path(caminho_jogo) / "media" / "texturepacks" if caminho_jogo else None
+        if not caminho_jogo or not pasta_packs or not pasta_packs.exists():
             caminho_jogo = obter_diretorio_jogo_grafico()
+        else:
+            print(f"{GREEN}Diretório do jogo configurado no arquivo .env: {caminho_jogo}{RESET}\n")
         
-        termo = input("\nDigite o termo de busca (ex: Generator, Washer, Fridge): ").strip()
+        termo = input("Digite o termo de busca (ex: Generator, Washer, Fridge): ").strip()
         buscar_referencias_assets(termo, caminho_jogo)
         
     elif opcao == "2":
@@ -788,48 +823,94 @@ class ArgumentParserPTBR(argparse.ArgumentParser):
         sys.stderr.write(f"{RED}│ ❌ ERRO DE ARGUMENTO CLI:                                                    │{RESET}\n")
         sys.stderr.write(f"{RED}└──────────────────────────────────────────────────────────────────────────────┘{RESET}\n")
         sys.stderr.write(f"  {YELLOW}{mensagem_traduzida}{RESET}\n\n")
-        sys.stderr.write(f"{CYAN}💡 DICA: Digite 'python tools/gerenciador_assets.py -h' ou '--help' para ver a documentação.{RESET}\n\n")
+        sys.stderr.write(f"{CYAN}💡 DICA: Digite 'python tools/LKS_Tools.py -h' ou '--help' para ver a documentação.{RESET}\n\n")
         sys.exit(2)
 
 def main():
-    # Interceptador Dinâmico de CLI (Dedução de Intenção do Desenvolvedor / Suporte Retroativo)
+    # Pré-processador dinâmico de argumentos (tolerante a desordem e suporte retroativo)
     if len(sys.argv) > 1:
-        primeiro_arg = sys.argv[1]
+        argumentos_originais = sys.argv[1:]
+        
+        # 1. Mapeia comandos posicionais legados para flags correspondentes
         subcomandos_legados = {
-            "extrair": "-e", 
-            "inspecionar": "-i", 
-            "converter": "-c", 
-            "auditar": "-a", 
+            "extrair": "-e",
+            "inspecionar": "-i",
+            "converter": "-c",
+            "auditar": "-a",
             "buscar": "-b"
         }
+        for indice, argumento in enumerate(argumentos_originais):
+            if argumento.lower() in subcomandos_legados:
+                argumentos_originais[indice] = subcomandos_legados[argumento.lower()]
         
-        # 1. Suporte retroativo: Converte subcomandos posicionais antigos para as novas flags
-        if primeiro_arg.lower() in subcomandos_legados:
-            print(f"{CYAN}[INFO] Convertendo comando legado '{primeiro_arg}' para a nova flag '{subcomandos_legados[primeiro_arg.lower()]}'{RESET}")
-            sys.argv[1] = subcomandos_legados[primeiro_arg.lower()]
+        # 2. Analisa a estrutura dos argumentos passados
+        valores_soltos = []
+        flags_presentes = []
+        configuracoes = []
+        
+        flags_acao_com_valor = ("-i", "--inspecionar", "-c", "--converter", "-b", "--buscar")
+        flags_acao_sem_valor = ("-e", "--extrair", "-a", "--auditar")
+        configs_gerais = ("-j", "--jogo", "-d", "--destino", "-o", "--saida", "-s", "--sprite")
+        
+        indice_atual = 0
+        while indice_atual < len(argumentos_originais):
+            argumento = argumentos_originais[indice_atual]
+            if argumento in flags_acao_sem_valor:
+                flags_presentes.append(argumento)
+                indice_atual += 1
+            elif argumento in flags_acao_com_valor or argumento in configs_gerais:
+                if indice_atual + 1 < len(argumentos_originais) and not argumentos_originais[indice_atual+1].startswith("-"):
+                    configuracoes.append((argumento, argumentos_originais[indice_atual+1]))
+                    indice_atual += 2
+                else:
+                    flags_presentes.append(argumento)
+                    indice_atual += 1
+            elif argumento.startswith("-"):
+                flags_presentes.append(argumento)
+                indice_atual += 1
+            else:
+                valores_soltos.append(argumento)
+                indice_atual += 1
+                
+        # 3. Associa valores soltos às ações ou configurações
+        # Se temos uma flag de ação que precisa de valor e temos valores soltos, faz a associação
+        flag_acao_ativa_com_valor = next((flag for flag in flags_presentes if flag in flags_acao_com_valor), None)
+        
+        if flag_acao_ativa_com_valor and valores_soltos:
+            # Associa o primeiro valor solto com essa flag de ação
+            valor_associado = valores_soltos.pop(0)
+            configuracoes.append((flag_acao_ativa_com_valor, valor_associado))
+            flags_presentes.remove(flag_acao_ativa_com_valor)
             
-        # 2. Deduz extração direta se passar um sprite sem nenhuma flag
-        elif not primeiro_arg.startswith("-"):
-            print(f"\n{CYAN}[INFO] Intenção de extração direta detectada para o sprite: '{primeiro_arg}'{RESET}")
-            # Filtra e preserva apenas parâmetros opcionais válidos (--jogo/--destino ou curtas)
-            args_extras = []
-            i = 2
-            while i < len(sys.argv):
-                arg = sys.argv[i]
-                if arg.startswith(("-j", "--jogo", "-d", "--destino")):
-                    args_extras.append(arg)
-                    if i + 1 < len(sys.argv) and not sys.argv[i+1].startswith("-"):
-                        args_extras.append(sys.argv[i+1])
-                        i += 1
-                i += 1
-            sys.argv = [sys.argv[0], "-e", "-s", primeiro_arg] + args_extras
+        # Se sobrou algum valor solto, deduzimos que a intenção é extração
+        if valores_soltos:
+            # Mapeia cada valor solto restante para ser um sprite a extrair (-s)
+            for valor_solto in valores_soltos:
+                configuracoes.append(("-s", valor_solto))
+            # Se nenhuma flag de ação principal está em flags_presentes ou configuracoes, adiciona -e
+            qualquer_acao = (
+                any(flag in flags_acao_sem_valor or flag in flags_acao_com_valor for flag in flags_presentes) or
+                any(par_config[0] in flags_acao_com_valor for par_config in configuracoes)
+            )
+            if not qualquer_acao and "-e" not in flags_presentes and "--extrair" not in flags_presentes:
+                flags_presentes.append("-e")
+                
+        # 4. Reconstrói o sys.argv
+        novos_argumentos = [sys.argv[0]]
+        for flag in flags_presentes:
+            novos_argumentos.append(flag)
+        for opcao_config, valor_config in configuracoes:
+            novos_argumentos.append(opcao_config)
+            novos_argumentos.append(valor_config)
+            
+        sys.argv = novos_argumentos
 
     parser = ArgumentParserPTBR(
-        description=f"{CYAN}{BOLD}🎨 Gerenciador Integrado de Assets do Mod - LKS SuperMod Patch{RESET}\n\n"
+        description=f"{CYAN}{BOLD}🎨 TOOLS ASSETS - LKS SUPERMOD PATCH{RESET}\n\n"
                     f"DICA: Você pode passar o nome de um sprite diretamente como primeiro argumento para extraí-lo!\n"
                     f"Exemplos:\n"
-                    f"  python tools/gerenciador_assets.py Container_Fridge         (Extrai o ícone 2D da interface)\n"
-                    f"  python tools/gerenciador_assets.py -b Generator             (Busca referências de assets)\n",
+                    f"  python tools/LKS_Tools.py Container_Fridge         (Extrai o ícone 2D da interface)\n"
+                    f"  python tools/LKS_Tools.py -b Generator             (Busca referências de assets)\n",
         formatter_class=argparse.RawTextHelpFormatter
     )
     
@@ -888,13 +969,15 @@ def main():
             
         mapeamento = {}
         if args.sprite:
-            for item in args.sprite:
-                if ":" in item:
-                    sprite_orig, arq_saida = item.split(":", 1)
-                    mapeamento[sprite_orig.strip()] = arq_saida.strip()
+            for item_sprite in args.sprite:
+                if ":" in item_sprite:
+                    sprite_original_usuario, arquivo_saida_usuario = item_sprite.split(":", 1)
+                    sprite_original_limpo = re.sub(r"\.(png|jpg|tga|jpeg|gif)$", "", sprite_original_usuario.strip(), flags=re.IGNORECASE)
+                    mapeamento[sprite_original_limpo] = arquivo_saida_usuario.strip()
                 else:
-                    sprite_nome = item.strip()
-                    mapeamento[sprite_nome] = sugerir_nome_arquivo(sprite_nome)
+                    nome_sprite_usuario = item_sprite.strip()
+                    nome_sprite_limpo = re.sub(r"\.(png|jpg|tga|jpeg|gif)$", "", nome_sprite_usuario, flags=re.IGNORECASE)
+                    mapeamento[nome_sprite_limpo] = sugerir_nome_arquivo(nome_sprite_limpo)
         else:
             # Mapeamento padrão do mod
             mapeamento = {
