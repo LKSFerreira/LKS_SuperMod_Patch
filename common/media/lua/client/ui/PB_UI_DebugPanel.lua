@@ -40,7 +40,7 @@ local BTN_H         = 25
 local BTN_SPACING   = 5
 
 -- Texturas da Interface de Debug (Corrigidas para o padrão LKS de prefixos)
-local TEX_QUAD      = "media/ui/LKS_Quad.png"
+local TEX_QUAD      = "media/ui/LKS_Square.png"
 local TEX_HOUSE     = "media/ui/LKS_House.png"
 
 -- ============================================================================

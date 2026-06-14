@@ -55,7 +55,7 @@ local OVERL_TEX_PATH   = "media/ui/LKS_Overload.png"
 local THERM_UP_PATH    = "media/ui/LKS_Therm_Up.png"
 local THERM_DOWN_PATH  = "media/ui/LKS_Therm_Down.png"
 local HEAT_ON_PATH     = "media/ui/LKS_Heat_On.png"            -- Ícone de chama (termostato ativo)
-local HEAT_OFF_PATH    = "media/ui/LKS_Heat_Off.png"           -- Ícone de floco de neve (termostato inativo)
+local HEAT_OFF_PATH    = "media/ui/LKS_Heat_Standby.png"           -- Ícone de floco de neve (termostato inativo)
 local STRAIN_SEG_PATH  = "media/ui/LKS_Progressbar_Strain.png" -- Textura de um único segmento da barra
 
 -- ============================================================================
