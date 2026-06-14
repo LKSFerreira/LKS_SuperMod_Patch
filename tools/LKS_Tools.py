@@ -444,15 +444,15 @@ def auditar_imagens_mortas():
     
     # 1. Coleta arquivos de código do mod
     arquivos_codigo = []
-    for ext in ["*.lua", "*.json", "*.txt", "*.md"]:
-        arquivos_codigo.extend(DIRETORIO_RAIZ.rglob(ext))
+    for extensao in ["*.lua", "*.json", "*.txt", "*.md"]:
+        arquivos_codigo.extend(DIRETORIO_RAIZ.rglob(extensao))
         
     # Unifica o texto do código em uma grande string de busca
     conteudo_codigo = ""
-    for arq in arquivos_codigo:
+    for arquivo_codigo in arquivos_codigo:
         try:
-            with open(arq, "r", encoding="utf-8", errors="ignore") as f:
-                conteudo_codigo += f.read().lower()
+            with open(arquivo_codigo, "r", encoding="utf-8", errors="ignore") as arquivo_leitor:
+                conteudo_codigo += arquivo_leitor.read().lower()
         except Exception:
             pass
             
@@ -461,23 +461,23 @@ def auditar_imagens_mortas():
         print(f"{YELLOW}[!] Pasta de UI do mod vazia ou inexistente.{RESET}")
         return
         
-    imagens = [p for p in DIRETORIO_UI_MOD.iterdir() if p.is_file() and p.suffix.lower() in ('.png', '.jpg', '.tga')]
+    imagens = [caminho_imagem for caminho_imagem in DIRETORIO_UI_MOD.iterdir() if caminho_imagem.is_file() and caminho_imagem.suffix.lower() in ('.png', '.jpg', '.tga')]
     
     print(f"[INFO] Indexados {len(arquivos_codigo)} arquivos de código e {len(imagens)} imagens de UI.")
     print("-" * 65)
     print(f"{'ARQUIVO DE IMAGEM':<38} | {'STATUS NO CÓDIGO':<20}")
     print("-" * 65)
     
-    mortos = []
-    for img in imagens:
-        nome_base = img.stem
-        pattern = re.escape(nome_base.lower())
+    imagens_nao_referenciadas = []
+    for caminho_imagem in imagens:
+        nome_base = caminho_imagem.stem
+        padrao_busca_regex = r"\b" + re.escape(nome_base.lower()) + r"\b"
         
-        if re.search(pattern, conteudo_codigo):
-            print(f"✅ {img.name:<36} | Usado/Referenciado")
+        if re.search(padrao_busca_regex, conteudo_codigo):
+            print(f"✅ {caminho_imagem.name:<36} | Usado/Referenciado")
         else:
-            print(f"❌ {RED}{img.name:<36}{RESET} | {RED}SUSPEITO (NÃO REFERENCIADO){RESET}")
-            mortos.append(img)
+            print(f"❌ {RED}{caminho_imagem.name:<36}{RESET} | {RED}SUSPEITO (NÃO REFERENCIADO){RESET}")
+            imagens_nao_referenciadas.append(caminho_imagem)
             
     print("-" * 65)
 
