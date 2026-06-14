@@ -29,4 +29,6 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Ocultação Dinâmica da Conexão Vanilla do Gerador (13/06/2026)**: Ocultação da opção nativa "Conectar Gerador" caso haja edifícios em um raio de 20x20 tiles do aparelho, incentivando a integração à malha realista ("Conectar à Construção") e preservando a conexão nativa apenas para uso ao ar livre/selva.
 - [x] **Suporte Elétrico para Máquinas e Registro de Mecânicas (13/06/2026)**: Menus de contexto de controle elétrico para secadoras e lavadoras, suporte à validação de água encanada no B42, troca de ícones dinâmicos nas abas de inventário e registro das documentações de mecânicas em arquivos dedicados na raiz.
 - [x] **Desacoplamento e Generalização de Abas Elétricas (13/06/2026)**: Refatoração do monkey patch da Loot Window usando tabela de configurações centralizada em Lua e validação física de propriedades de sprite para resguardar contêineres a combustão (forno a lenha, lareiras).
+- [x] **Arquitetura Micro-Kernel e Sistema de Culinária (14/06/2026)**: Refatoração completa para centralização de patches em `LKS_ApplianceManager.lua`, criação de driver de lavanderia `LKS_Device_Laundry.lua` e novo driver de culinária `LKS_Device_Cooking.lua` com detecção de metais no micro-ondas, temperatura em graus Celsius no fogão e texturas desenergizadas.
+
 
