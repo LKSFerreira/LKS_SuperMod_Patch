@@ -42,6 +42,17 @@ function LKS_ApplianceManager.onFillWorldObjectContextMenu(jogadorNumero, menuCo
             end
         end
         if objetoEletrico then break end
+
+        -- Fallback: Roteamento por tipo de contêiner se o objeto possui contêineres mapeados
+        if objeto:getContainerCount() > 0 then
+            local tipoRecipiente = objeto:getContainer():getType()
+            local driver = LKS_ApplianceManager.containerTypeMap[tipoRecipiente]
+            if driver then
+                objetoEletrico = objeto
+                driverAtivo = driver
+                break
+            end
+        end
     end
 
     if not objetoEletrico or not driverAtivo then return end

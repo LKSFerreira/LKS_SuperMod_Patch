@@ -3,6 +3,8 @@
   "IGUI_ItemCat_WaterContainer": "Recipiente de Líquido",
   "IGUI_ContainerTitle_geladeira_desligada": "Geladeira desligada",
   "IGUI_ContainerTitle_congelador_desligado": "Freezer desligado",
+  "IGUI_ContainerTitle_fridge_off": "Geladeira desligada",
+  "IGUI_ContainerTitle_freezer_off": "Freezer desligado",
   "IGUI_PB_Debug_DesyncSquare": "Não foi possível encontrar este quadrado, provável dessincronização",
   "IGUI_PB_Debug_DesyncObject": "Não foi possível encontrar nenhum objeto neste quadrado, provável dessincronização",
   "IGUI_BuildingPowerPool": "Rede Elétrica da Construção",
@@ -103,6 +105,8 @@
   "IGUI_StrainWarning2": "Consumo alto de combustível",
   "IGUI_NotConnectedToBuilding": "Não conectado a uma construção",
   "IGUI_LKS_RequerEnergiaProxima": "Requer uma fonte de energia próxima.",
-  "IGUI_LKS_AvisoMetalMicroondas": "⚠️ AVISO: Contém objetos metálicos no interior! Risco de faíscas e incêndio."
+  "IGUI_LKS_AvisoMetalMicroondas": "⚠️ AVISO: Contém objetos metálicos no interior! Risco de faíscas e incêndio.",
+  "IGUI_LKS_TemperaturaAtual": "Temperatura Atual: %.1f°C",
+  "IGUI_LKS_AlertaEquipamentoAquecido": " ⚠️ CUIDADO: Equipamento aquecido! Risco de incêndio se deixado sem supervisão."
 }
 

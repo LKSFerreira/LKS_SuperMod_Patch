@@ -12,8 +12,8 @@
 -- ============================================================================
 
 -- ============================================================================
--- ARQUIVO: fridgesoff_server.lua
-print("[LKS PATCH - fridgesoff_server.lua] Carregando Lógica Servidor do Fridges Off!...")
+-- ARQUIVO: LKS_Device_Refrigeration_Server.lua
+print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Carregando Lógica Servidor do Fridges Off!...")
 -- EXTENSÃO: LKS SuperMod Patch (Fagocitado nativamente)
 -- CRÉDITOS DO MOD ORIGINAL: Fridges Off! (ID Workshop: 2853974107) por 4422 (Erick)
 -- OBJETIVO: Gerenciamento no lado do servidor para ligar/desligar geladeiras.
@@ -29,7 +29,7 @@ if isClient() then return end
 
 ---@param text String
 local function customPrint(text)
-    print("fridgesoff_server.lua: " .. text)
+    print("LKS_Device_Refrigeration_Server.lua: " .. text)
 end
 
 -- ============================================================================
@@ -101,7 +101,7 @@ local function onClientCommand(module,command,player,args)
 
             for i=0,objects:size()-1,1 do
                 if objects:get(i):getContainerCount() > 0 then
-                    if objects:get(i):getContainerByEitherType("fridge","freezer") or objects:get(i):getContainerByEitherType("geladeira_desligada","congelador_desligado") then
+                    if objects:get(i):getContainerByEitherType("fridge","freezer") or objects:get(i):getContainerByEitherType("geladeira_desligada","congelador_desligado") or objects:get(i):getContainerByEitherType("fridge_off","freezer_off") then
                         object = objects:get(i)
                         break
                     end
@@ -114,10 +114,14 @@ local function onClientCommand(module,command,player,args)
 
                     if object:getContainerByType("geladeira_desligada") ~= nil then
                         object:getContainerByType("geladeira_desligada"):setType("fridge")
+                    elseif object:getContainerByType("fridge_off") ~= nil then
+                        object:getContainerByType("fridge_off"):setType("fridge")
                     end
 
                     if object:getContainerByType("congelador_desligado") ~= nil then
                         object:getContainerByType("congelador_desligado"):setType("freezer")
+                    elseif object:getContainerByType("freezer_off") ~= nil then
+                        object:getContainerByType("freezer_off"):setType("freezer")
                     end
 
                 end
@@ -144,7 +148,7 @@ local function onClientCommand(module,command,player,args)
                 if object:getContainerByType("fridge") ~= nil then
                     fridge = "on"
                 else
-                    if object:getContainerByType("geladeira_desligada") ~= nil then
+                    if object:getContainerByType("geladeira_desligada") ~= nil or object:getContainerByType("fridge_off") ~= nil then
                         fridge = "off"
                     else
                         fridge = "empty"
@@ -154,7 +158,7 @@ local function onClientCommand(module,command,player,args)
                 if object:getContainerByType("freezer") ~= nil then
                     freezer = "on"
                 else
-                    if object:getContainerByType("congelador_desligado") ~= nil then
+                    if object:getContainerByType("congelador_desligado") ~= nil or object:getContainerByType("freezer_off") ~= nil then
                         freezer = "off"
                     else
                         freezer = "empty"
@@ -182,4 +186,4 @@ end
 
 Events.OnClientCommand.Add(onClientCommand)
 
-print("[LKS PATCH - fridgesoff_server.lua] Carregado com sucesso!")
+print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Carregado com sucesso!")
