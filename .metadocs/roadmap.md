@@ -30,5 +30,7 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Suporte Elétrico para Máquinas e Registro de Mecânicas (13/06/2026)**: Menus de contexto de controle elétrico para secadoras e lavadoras, suporte à validação de água encanada no B42, troca de ícones dinâmicos nas abas de inventário e registro das documentações de mecânicas em arquivos dedicados na raiz.
 - [x] **Desacoplamento e Generalização de Abas Elétricas (13/06/2026)**: Refatoração do monkey patch da Loot Window usando tabela de configurações centralizada em Lua e validação física de propriedades de sprite para resguardar contêineres a combustão (forno a lenha, lareiras).
 - [x] **Arquitetura Micro-Kernel e Sistema de Culinária (14/06/2026)**: Refatoração completa para centralização de patches em `LKS_ApplianceManager.lua`, criação de driver de lavanderia `LKS_Device_Laundry.lua` e novo driver de culinária `LKS_Device_Cooking.lua` com detecção de metais no micro-ondas, temperatura em graus Celsius no fogão e texturas desenergizadas.
+- [x] **Consolidação das Ferramentas de Auditoria (14/06/2026)**: Migração e unificação de testes em `auditoria_mod.py` como a nova auditoria de assets, com delegação de chamadas a partir de `LKS_Tools.py`, alinhamento dinâmico de tabelas e logs coloridos ANSI em todos os programas Python.
+
 
 
