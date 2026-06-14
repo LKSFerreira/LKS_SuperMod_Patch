@@ -10,9 +10,8 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 ## Próximos passos
 
-1. Descrever a primeira etapa concreta.
-2. Definir critérios de aceite.
-3. Atualizar este roadmap ao concluir ou mudar o plano.
+- **Modularização de Funcionalidades via Sandbox Options**: Implementar um sistema de controle de módulos independentes onde o jogador possa ativar/desativar cada mecânica (Eletricidade Realista, Refrigeração, Lavanderia) de forma isolada na configuração da partida. A inicialização de hooks de eventos e monkey patches deve respeitar essas flags, garantindo que não haja dependências obrigatórias entre os blocos lógicos.
+- **Suíte de Desenvolvimento e Testes (Retrabalho do Mod de Cheats)**: Redesenhar o módulo de cheats para atuar como uma suíte de auxílio ao desenvolvimento de mods (*developer tools*), permitindo spawnar, forçar estados elétricos/hidráulicos e validar mecânicas locais de forma rápida, isolada e opcional.
 
 ## Dívidas Técnicas
 
@@ -29,3 +28,5 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Integração e Correção do Fridges Off! (12/06/2026)**: Incorporação nativa das mecânicas de ligar/desligar geladeiras e congeladores. Solução definitiva do bug de refrigeração infinita sem energia na Build 42 usando os novos tipos 'geladeira_desligada' e 'congelador_desligado'.
 - [x] **Ocultação Dinâmica da Conexão Vanilla do Gerador (13/06/2026)**: Ocultação da opção nativa "Conectar Gerador" caso haja edifícios em um raio de 20x20 tiles do aparelho, incentivando a integração à malha realista ("Conectar à Construção") e preservando a conexão nativa apenas para uso ao ar livre/selva.
 - [x] **Suporte Elétrico para Máquinas e Registro de Mecânicas (13/06/2026)**: Menus de contexto de controle elétrico para secadoras e lavadoras, suporte à validação de água encanada no B42, troca de ícones dinâmicos nas abas de inventário e registro das documentações de mecânicas em arquivos dedicados na raiz.
+- [x] **Desacoplamento e Generalização de Abas Elétricas (13/06/2026)**: Refatoração do monkey patch da Loot Window usando tabela de configurações centralizada em Lua e validação física de propriedades de sprite para resguardar contêineres a combustão (forno a lenha, lareiras).
+

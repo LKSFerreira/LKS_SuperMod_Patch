@@ -18,7 +18,8 @@ Este documento descreve as implementações de suporte elétrico, hidráulico e 
 
 ### 3. Customização Dinâmica de Abas de Inventário (Loot Window)
 - **Monkey Patch Seguro**: Realizamos um patch na função `ISInventoryPage:addContainerButton` para interceptar a renderização das abas de inventário laterais.
-- **Ícones Desenergizados**: Caso o quadrado da lavadora (`clothingwasher`) ou secadora (`clothingdryer`) perca energia elétrica, a aba correspondente exibe automaticamente a textura desenergizada (`LKS_Container_ClothingWasher_Eletricity_Off.png` e `LKS_Container_ClothingDryer_Eletricity_Off.png`), atualizando visualmente em tempo real.
+- **Tabela de Configuração Dinâmica**: Introduzimos a tabela `LKS_ConfiguracaoAbasEletricas` para desacoplar as strings rígidas de tipo de contêiner. Agora, geladeiras, congeladores, lavadoras, secadoras e micro-ondas buscam suas texturas ativa/inativa de forma dinâmica e limpa na tabela.
+- **Proteção a Dispositivos Manuais/Combustão**: Para evitar falsos positivos em dispositivos como o Forno a Lenha clássico ("Antique Stove") que compartilham o mesmo tipo de container (`stove`) mas funcionam sem eletricidade, adicionamos a propriedade `requerVerificacaoEletrica`. Quando ativa, a lógica inspeciona se o sprite do objeto possui a propriedade `"RequiresElectricity" == "true"` antes de aplicar qualquer alteração de ícone.
 
 ### 4. Telemetria e Padronização de Logs
 - **Logs de Inicialização**: Inserimos as mensagens padronizadas de início e fim no console para garantir o monitoramento completo do carregamento dos scripts do mod:
@@ -42,6 +43,11 @@ Este documento descreve as implementações de suporte elétrico, hidráulico e 
 2. **Com Energia**: Ligue um gerador conectado. Verifique que as abas de inventário voltam a exibir a textura original colorida.
 3. **Sem Água (Lavadora)**: Tente ligar a lavadora sem água encanada. Verifique que o botão de ligar fica desativado e o tooltip exibe a pendência hidráulica.
 4. **Com Água (Lavadora)**: Conecte um coletor de chuva no nível superior usando uma Chave de Cano. Verifique se a opção de ligar fica ativa com o ícone de tomada verde (`LKS_Pwr_On.png`).
+
+### Validação de Dispositivos Não-Elétricos (Antique Stove/Lareiras)
+1. Certifique-se de que a energia da rede geral da construção está cortada/desligada.
+2. Abra o inventário de um Forno a Lenha ("Antique Stove") ou lareira.
+3. Confirme que o ícone de inventário dele permanece colorido e inalterado (a validação de `"RequiresElectricity"` funcionou, ignorando-o).
 
 ### Validação das Documentações
 - Verifique a presença dos arquivos na pasta `mecanicas/` do mod na raiz do projeto.

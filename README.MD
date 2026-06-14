@@ -26,3 +26,58 @@ Este projeto é um **Patch/Add-on** e não existiria sem o trabalho fantástico 
 1. Inscreva-se no mod original.
 2. Inscreva-se neste patch.
 3. Certifique-se de que este patch seja o **ÚLTIMO A SER CARREGADO** na sua ordem de carregamento (load order).
+
+## 🛠️ Ferramentas de Desenvolvimento
+
+O repositório conta com dois utilitários centrais em Python para apoiar a auditoria de código, testes de integridade e processamento de assets:
+
+### 🔍 1. Auditoria Geral de Qualidade
+- **Script**: [tools/auditoria_mod.py](file:///tools/auditoria_mod.py)
+- **Funcionalidades**:
+  - **Validação de Sintaxe (Estrutura de blocos Lua)**:
+    ```bash
+    python tools/auditoria_mod.py validar-sintaxe
+    ```
+  - **Auditoria de Traduções (PT-BR)**:
+    ```bash
+    python tools/auditoria_mod.py auditar-traducoes --ignorar-nativas
+    ```
+  - **Auditoria e Correção de Caminhos Absolutos**:
+    ```bash
+    # Apenas detectar caminhos absolutos e vazamentos locais
+    python tools/auditoria_mod.py auditar-caminhos
+
+    # Corrigir automaticamente caminhos locais apontando para o mod
+    python tools/auditoria_mod.py auditar-caminhos --corrigir
+    ```
+
+### 🎨 2. Gerenciador Integrado de Assets
+Reúne todas as operações de assets (extração, inspeção, conversão e auditoria de arquivos órfãos) em uma única interface (CLI / Menu interativo):
+- **Script**: [tools/gerenciador_assets.py](file:///tools/gerenciador_assets.py)
+- **Localização Padrão do Jogo**: `C:\Users\LKSFERREIRA\Downloads\ProjectZomboid`
+- **Modo Interativo (Menu)**:
+  Executando sem argumentos adicionais, abre-se um assistente de terminal amigável passo a passo:
+  ```bash
+  python tools/gerenciador_assets.py
+  ```
+- **Modo CLI (Argumentos diretos)**:
+  - **Extrair assets originais do jogo (.pack ➔ PNG)**:
+    ```bash
+    python tools/gerenciador_assets.py extrair
+    ```
+  - **Inspecionar propriedades de imagem (bit depth, alpha, etc.)**:
+    ```bash
+    python tools/gerenciador_assets.py inspecionar <imagem_ou_pasta>
+    ```
+  - **Otimizar textura PNG para 8-bit (evita travamentos no PZ)**:
+    ```bash
+    python tools/gerenciador_assets.py converter <imagem_entrada> -o <saida>
+    ```
+  - **Auditar arquivos de imagens órfãos/não utilizados no código**:
+    ```bash
+    python tools/gerenciador_assets.py auditar
+    ```
+  - **Buscar referências de assets (UI 2D e Mundo 3D) de forma unificada**:
+    ```bash
+    python tools/gerenciador_assets.py buscar <termo_do_asset>
+    ```

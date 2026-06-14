@@ -27,8 +27,8 @@ Como o motor Java do Project Zomboid gerencia o congelamento de alimentos com ba
 ### Registro de Texturas Visuais
 Ao bootar o cliente, o mod vincula novas imagens de textura para as abas laterais do inventário (Loot Window) de contêineres desligados na tabela global `ContainerButtonIcons`:
 ```lua
-ContainerButtonIcons.geladeira_desligada = getTexture("media/ui/Container_FridgeOff.png")
-ContainerButtonIcons.congelador_desligado = getTexture("media/ui/Container_FreezerOff.png")
+ContainerButtonIcons.geladeira_desligada = getTexture("media/ui/LKS_Container_Fridge_Off.png")
+ContainerButtonIcons.congelador_desligado = getTexture("media/ui/LKS_Container_Freezer_Off.png")
 ```
 
 ---
