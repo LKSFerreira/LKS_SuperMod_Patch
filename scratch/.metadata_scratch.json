@@ -1,0 +1,44 @@
+{
+  "projeto": "LKS SuperMod Patch",
+  "data_criacao_metadados": "2026-06-14",
+  "autor_projeto": "LKS FERREIRA",
+  "descricao": "Organização e finalidade dos scripts Python de rascunho e engenharia reversa contidos na pasta scratch/",
+  "scripts_scratch": {
+    "achar_imagens.py": {
+      "proposito": "Mapeia a primeira aparição (Earliest Occurrence) de cada imagem de rascunho temporária (media__*) lendo o log 'transcript.jsonl' de sessões de histórico anteriores da IA.",
+      "quando_usar": "Quando precisar rastrear cronologicamente em qual etapa (step) do desenvolvimento ou sob qual contexto um asset temporário de UI foi gerado no histórico."
+    },
+    "buscar_laundry.py": {
+      "proposito": "Analisa as dimensões físicas (largura/altura), formato de arquivo e modo de cor de todas as imagens de rascunho que começam com 'media__' geradas na pasta temporária da IA.",
+      "quando_usar": "Para verificar rapidamente a resolução e a consistência visual de imagens geradas de forma temporária antes de integrá-las aos diretórios de assets do mod."
+    },
+    "fix_script.py": {
+      "proposito": "Restaura e reconstrói blocos lógicos de código da CLI principal (como tradutores de erro e menus interativos) que foram acidentalmente corrompidos ou truncados em sessões passadas.",
+      "quando_usar": "Apenas como utilitário de emergência para recuperação da ferramenta principal (LKS_Tools.py) em caso de corrupção ou perda de código."
+    },
+    "identificar_media.py": {
+      "proposito": "Inspeciona binariamente o cabeçalho IHDR de arquivos PNG no diretório de cache de artefatos da IA para extrair dimensões e tamanhos em KB sem necessidade de carregar as imagens inteiras na memória.",
+      "quando_usar": "Para validar a integridade estrutural e dimensões físicas das imagens brutas salvas no cache de histórico de forma leve."
+    },
+    "inspect_class.py": {
+      "proposito": "Abre o arquivo compilado 'projectzomboid.jar' e extrai strings brutas e campos legíveis do Constant Pool de classes compiladas Java (ex: 'IsoSprite.class').",
+      "quando_usar": "Quando precisar realizar engenharia reversa superficial em classes nativas do jogo para mapear propriedades e variáveis Java disponíveis."
+    },
+    "inspect_isoobject.py": {
+      "proposito": "Decodifica binariamente arquivos de classe Java (ex: 'IsoObject.class') e lista métodos que correspondam a filtros de palavras-chave específicos (ex: 'sprite').",
+      "quando_usar": "Para descobrir e documentar assinaturas de métodos Java nativos no motor do jogo para fins de chamada e hooks em scripts Lua do mod."
+    },
+    "inspect_methods.py": {
+      "proposito": "Utilitário avançado de engenharia reversa para ler e listar assinaturas e tipos de retornos de métodos Java específicos (ex: 'LoadSingleTexture', 'ReplaceCurrentAnimFrames') em arquivos '.class' no JAR do jogo.",
+      "quando_usar": "Quando for necessário entender o funcionamento e as assinaturas exatas de métodos nativos complexos chamados em menus de contexto."
+    },
+    "inspect_pack.py": {
+      "proposito": "Inspeciona de forma binária o cabeçalho de pacotes '.pack' do jogo base (como 'Tiles1x.pack') e extrai coordenadas físicas (X, Y, largura, altura, offset) de sprites do mundo 3D.",
+      "quando_usar": "Para mapear e validar a localização e as dimensões originais de sprites nos atlas gráficos oficiais do Project Zomboid."
+    },
+    "rename_textures.py": {
+      "proposito": "Script em lote que renomeia as texturas da lavadora/secadora do mod inserindo o prefixo oficial 'LKS_' para padronizar os nomes de arquivos no modding.",
+      "quando_usar": "Quando for necessário padronizar um lote de novas imagens de textura a fim de garantir consistência no carregamento de assets pelo jogo."
+    }
+  }
+}
