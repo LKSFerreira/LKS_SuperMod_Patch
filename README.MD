@@ -51,33 +51,33 @@ O repositório conta com dois utilitários centrais em Python para apoiar a audi
     python tools/auditoria_mod.py auditar-caminhos --corrigir
     ```
 
-### 🎨 2. Gerenciador Integrado de Assets
+### 🎨 2. Tools Assets - LKS SuperMod Patch
 Reúne todas as operações de assets (extração, inspeção, conversão e auditoria de arquivos órfãos) em uma única interface (CLI / Menu interativo):
-- **Script**: [tools/gerenciador_assets.py](file:///tools/gerenciador_assets.py)
-- **Localização Padrão do Jogo**: `C:\Users\LKSFERREIRA\Downloads\ProjectZomboid`
+- **Script**: [tools/LKS_Tools.py](tools/LKS_Tools.py)
+- **Localização Padrão do Jogo**: Configurável via variável `PZ_GAME_DIR` no arquivo `.env` na raiz do mod.
 - **Modo Interativo (Menu)**:
   Executando sem argumentos adicionais, abre-se um assistente de terminal amigável passo a passo:
   ```bash
-  python tools/gerenciador_assets.py
+  python tools/LKS_Tools.py
   ```
 - **Modo CLI (Argumentos diretos)**:
   - **Extrair assets originais do jogo (.pack ➔ PNG)**:
     ```bash
-    python tools/gerenciador_assets.py extrair
+    python tools/LKS_Tools.py -e <Nome_Sprite_Original>
     ```
   - **Inspecionar propriedades de imagem (bit depth, alpha, etc.)**:
     ```bash
-    python tools/gerenciador_assets.py inspecionar <imagem_ou_pasta>
+    python tools/LKS_Tools.py -i <imagem_ou_pasta>
     ```
   - **Otimizar textura PNG para 8-bit (evita travamentos no PZ)**:
     ```bash
-    python tools/gerenciador_assets.py converter <imagem_entrada> -o <saida>
+    python tools/LKS_Tools.py -c <imagem_entrada> [-o <saida>]
     ```
   - **Auditar arquivos de imagens órfãos/não utilizados no código**:
     ```bash
-    python tools/gerenciador_assets.py auditar
+    python tools/LKS_Tools.py -a
     ```
   - **Buscar referências de assets (UI 2D e Mundo 3D) de forma unificada**:
     ```bash
-    python tools/gerenciador_assets.py buscar <termo_do_asset>
+    python tools/LKS_Tools.py -b <termo_do_asset>
     ```

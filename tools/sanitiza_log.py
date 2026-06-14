@@ -1,3 +1,29 @@
+# -*- coding: utf-8 -*-
+"""
+================================================================================
+🧹 SANITIZADOR DE LOGS - LKS SUPERMOD PATCH
+================================================================================
+Autor: LKS FERREIRA
+Versão: 1.1 (Project Zomboid Build 42)
+Data da Última Modificação: 14/06/2026
+
+PROPÓSITO:
+Ferramenta para higienização e monitoramento de logs de execução do jogo.
+Filtra os arquivos de log oficiais ('console.txt') gerados pelo Project Zomboid,
+removendo ruídos associados a outros mods já validados do ecossistema para
+isolar logs de carregamento, mensagens personalizadas de depuração e erros do
+LKS SuperMod Patch.
+Gera os arquivos 'console_sanitizado.txt' (log limpo) e 'console_erros.txt'
+(relatório consolidado de exceções críticas detectadas).
+
+COMO USAR:
+- Execução Padrão (utiliza o log oficial detectado no sistema do usuário):
+    python tools/sanitiza_log.py
+- Informando um arquivo de log customizado:
+    python tools/sanitiza_log.py <caminho_console.txt> [<caminho_saida_sanitizado.txt>]
+================================================================================
+"""
+
 import sys
 import os
 from pathlib import Path

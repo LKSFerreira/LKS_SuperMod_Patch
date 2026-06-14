@@ -6,7 +6,7 @@ Este documento serve como um guia rápido de consulta técnica para testes in-ga
 
 ## 📂 Diretórios do Jogo e Mod
 
-*   **Instalação do Jogo (Project Zomboid)**: `C:\Users\LKSFERREIRA\Downloads\ProjectZomboid`
+*   **Instalação do Jogo (Project Zomboid)**: Configurável via `PZ_GAME_DIR` no arquivo `.env` na raiz do mod.
     *   *Nota*: Este caminho é automaticamente mantido de forma consistente no arquivo `.env` na raiz do mod.
 *   **Destino de Assets de UI do Mod**: `common/media/ui/`
     *   *Nota*: Onde ficam as imagens das abas de inventário e botões de tomada/gerador.

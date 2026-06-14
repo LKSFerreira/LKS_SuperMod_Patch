@@ -1,3 +1,27 @@
+# -*- coding: utf-8 -*-
+"""
+================================================================================
+🧱 ATUALIZADOR DO DICIONÁRIO DE TILESETS - LKS SUPERMOD PATCH
+================================================================================
+Autor: LKS FERREIRA
+Versão: 1.1 (Project Zomboid Build 42)
+Data da Última Modificação: 14/06/2026
+
+PROPÓSITO:
+Ferramenta de extração de metadados de blocos 3D e tilesets de eletrodomésticos
+da instalação original do jogo.
+Varre o arquivo 'newtiledefinitions.tiles.txt' oficial do Project Zomboid,
+captura dados de recipientes e texturas de lavadoras, geladeiras, fogões, TVs, etc.,
+e compila as definições no arquivo centralizador 'dicionario_tilesets.json'. Esse
+dicionário é utilizado pela ferramenta 'LKS_Tools.py' para sugestão dinâmica
+de nomes limpos de arquivos PNG e busca unificada de assets.
+
+COMO USAR:
+- Execução Padrão (configurações do .env ou caminhos comuns de downloads):
+    python tools/atualizar_dicionario_tilesets.py
+================================================================================
+"""
+
 import os
 import re
 import json

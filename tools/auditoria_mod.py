@@ -1,11 +1,33 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 """
-============================================================================
-ARQUIVO: auditoria_mod.py
-OBJETIVO: CLI unificada para validação estrutural de Lua e auditoria de traduções.
-============================================================================
+================================================================================
+🔍 AUDITORIA DO MOD - LKS SUPERMOD PATCH
+================================================================================
+Autor: LKS FERREIRA
+Versão: 1.1 (Project Zomboid Build 42)
+Data da Última Modificação: 14/06/2026
+
+PROPÓSITO:
+CLI unificada desenvolvida para auditoria estrutural do mod.
+Suas funções principais englobam:
+1. Validação de Sintaxe Lua: Analisa a abertura e fechamento de escopos e blocos
+   lógicos (if, function, for, do, repeat, end, etc.) a fim de apontar blocos
+   não finalizados ou redundâncias.
+2. Auditoria de Traduções: Compara chaves de tradução presentes no código Lua
+   com arquivos de tradução (.properties), identificando chaves faltantes,
+   sobrando ou com traduções vazias.
+3. Auditoria de Caminhos: Varre a base de código e documentações em busca de
+   caminhos absolutos e locais (ex: 'C:/Users/...') para evitar vazamento de
+   dados do ambiente local do desenvolvedor no repositório.
+
+COMO USAR:
+- Validação estrutural de arquivos Lua:
+    python tools/auditoria_mod.py validar-sintaxe [<caminho_arquivo_ou_pasta>]
+- Auditoria de chaves de tradução:
+    python tools/auditoria_mod.py auditar-traducoes [--idioma <idioma>] [--ignorar-nativas]
+- Auditoria de vazamento de caminhos absolutos:
+    python tools/auditoria_mod.py auditar-caminhos
+================================================================================
 """
 
 import os
@@ -233,6 +255,7 @@ def executar_auditoria_caminhos(diretorio_raiz, corrigir):
     regex_caminho_absoluto = re.compile(r'\b([a-zA-Z]:[/\\][\w\-\.\s]+[/\\][\w\-\.\s/\\]+)\b')
     
     pastas_excluidas = ['.git', '.venv', '.vscode', '__pycache__']
+    arquivos_excluidos = ['console_sanitizado.txt', 'console_erros.txt']
     extensoes_permitidas = ['.lua', '.json', '.txt', '.md', '.properties', '.xml']
     
     vazamentos_encontrados = 0
@@ -244,6 +267,8 @@ def executar_auditoria_caminhos(diretorio_raiz, corrigir):
         diretorios[:] = [d for d in diretorios if d not in pastas_excluidas]
         
         for arquivo in arquivos:
+            if arquivo in arquivos_excluidos:
+                continue
             extensao = os.path.splitext(arquivo)[1].lower()
             if extensao not in extensoes_permitidas:
                 continue
