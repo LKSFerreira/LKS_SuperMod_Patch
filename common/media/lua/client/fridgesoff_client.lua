@@ -115,11 +115,11 @@ local function customizedContextMenu(player, context, worldObjects, _)
             local containerType = actualObject:getContainer():getType()
             if containerType == "fridge" or containerType == "freezer" then
                 local optionOff = context:addOptionOnTop(getText("ContextMenu_TurnOff") or "Desligar", worldObjects, changeFridgeFreezerState, objectPlayer, 0, actualObject)
-                optionOff.iconTexture = getTexture("media/ui/LKS_Pwr_Off.png")
+                optionOff.iconTexture = getTexture("media/ui/LKS_Button_Power_Off.png")
             end
             if containerType == "geladeira_desligada" or containerType == "congelador_desligado" then
                 local optionOn = context:addOptionOnTop(getText("ContextMenu_TurnOn") or "Ligar", worldObjects, changeFridgeFreezerState, objectPlayer, 1, actualObject)
-                optionOn.iconTexture = getTexture("media/ui/LKS_Pwr_On.png")
+                optionOn.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
             end
         end
     end
@@ -133,10 +133,10 @@ end
 local function loadNewIcons()
 
     ---@type Texture
-    local textureFridgeOff = getTexture("media/ui/Container_FridgeOff.png")
+    local textureFridgeOff = getTexture("media/ui/LKS_Container_Fridge_Electricity_Off.png")
 
     ---@type Texture
-    local textureFreezerOff = getTexture("media/ui/Container_FreezerOff.png")
+    local textureFreezerOff = getTexture("media/ui/LKS_Container_Freezer_Electricity_Off.png")
 
     ContainerButtonIcons.geladeira_desligada = textureFridgeOff
     ContainerButtonIcons.congelador_desligado = textureFreezerOff
