@@ -102,5 +102,7 @@
   "IGUI_StrainWarning": "Consumo moderado de combustível",
   "IGUI_StrainWarning2": "Consumo alto de combustível",
   "IGUI_NotConnectedToBuilding": "Não conectado a uma construção",
-  "IGUI_LKS_RequerEnergiaProxima": "Requer uma fonte de energia próxima."
+  "IGUI_LKS_RequerEnergiaProxima": "Requer uma fonte de energia próxima.",
+  "IGUI_LKS_AvisoMetalMicroondas": "⚠️ AVISO: Contém objetos metálicos no interior! Risco de faíscas e incêndio."
 }
+
