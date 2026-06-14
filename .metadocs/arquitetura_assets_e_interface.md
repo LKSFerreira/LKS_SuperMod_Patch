@@ -130,7 +130,7 @@ python tools/gerenciador_assets.py <nome_do_sprite>
 
 ### O Que o Gerenciador Faz Por Trás das Cenas:
 1.  **Dedução de Intenção**: Identifica que você passou o nome de um sprite e ativa a rotina de extração.
-2.  **Consulta de Metadados**: Lê o dicionário de tilesets do jogo original no arquivo [dicionario_tilesets.json](file:///tools/dicionario_tilesets.json) para sugerir nomes amigáveis e estruturados de arquivos com base nos tilesets catalogados. Ele é consumido programaticamente pelas funções `sugerir_nome_arquivo` e `buscar_referencias_assets`.
+2.  **Consulta de Metadados**: Lê o dicionário de tilesets do jogo original no arquivo [dicionario_tilesets.json](tools/dicionario_tilesets.json) para sugerir nomes amigáveis e estruturados de arquivos com base nos tilesets catalogados. Ele é consumido programaticamente pelas funções `sugerir_nome_arquivo` e `buscar_referencias_assets`.
 3.  **Busca Híbrida Inteligente**: Varre simultaneamente os arquivos binários compactados (`.pack`) e o diretório físico de imagens soltas (`media/ui/`) da instalação do jogo para achar qualquer correspondência do termo.
 4.  **Cópia vs. Extração**: Se você selecionar um sprite empacotado, ele realiza o recorte de coordenadas do atlas correspondente. Se selecionar um arquivo de imagem avulso, ele executa uma cópia de arquivo padrão (`shutil.copy2`) direta para a pasta do mod, garantindo simplicidade e velocidade.
 5.  **Inteligência de Resolução**: Prioriza texturas HD (`Tiles2x.pack`) e impede que versões SD sobrescrevam arquivos HD de qualidade superior já existentes na pasta do mod.
@@ -142,7 +142,7 @@ python tools/gerenciador_assets.py <nome_do_sprite>
 
 Para evitar que o dicionário de tilesets fique defasado após atualizações oficiais do Project Zomboid (como novas versões ou patches da Build 42), disponibilizamos uma ferramenta de atualização automatizada:
 
-*   **Script Atualizador**: [atualizar_dicionario_tilesets.py](file:///tools/atualizar_dicionario_tilesets.py)
+*   **Script Atualizador**: [atualizar_dicionario_tilesets.py](tools/atualizar_dicionario_tilesets.py)
 *   **Como Executar**:
     ```bash
     python tools/atualizar_dicionario_tilesets.py
@@ -152,7 +152,7 @@ Para evitar que o dicionário de tilesets fique defasado após atualizações of
 1.  Localiza o caminho de instalação do Project Zomboid a partir do arquivo `.env` (ou do fallback do sistema).
 2.  Lê e analisa em tempo real o arquivo oficial de definições de tiles do jogo (`media/newtiledefinitions.tiles.txt`).
 3.  Filtra e extrai todas as propriedades relevantes (nomes amigáveis, categorias, orientações e contêineres) para os principais de eletrodomésticos (`appliances_laundry`, `appliances_cooking`, `appliances_refrigeration`, etc.).
-4.  Reescreve o banco [dicionario_tilesets.json](file:///tools/dicionario_tilesets.json) limpo e com suporte a UTF-8, garantindo que novas adições do jogo fiquem disponíveis na CLI de busca imediatamente.
+4.  Reescreve o banco [dicionario_tilesets.json](tools/dicionario_tilesets.json) limpo e com suporte a UTF-8, garantindo que novas adições do jogo fiquem disponíveis na CLI de busca imediatamente.
 
 ---
 

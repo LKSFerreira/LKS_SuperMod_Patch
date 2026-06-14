@@ -7,18 +7,18 @@ Este documento detalha a refatoração da arquitetura de eletrodomésticos do mo
 ## 🛠️ O que foi feito
 
 ### 1. Refatoração para Arquitetura Micro-Kernel (`LKS_ApplianceManager.lua`)
-- **Registro Central de Drivers**: Criamos o gerenciador centralizado [LKS_ApplianceManager.lua](file:///common/media/lua/client/LKS_ApplianceManager.lua) para gerenciar o ciclo de vida dos aparelhos interativos do mod.
+- **Registro Central de Drivers**: Criamos o gerenciador centralizado [LKS_ApplianceManager.lua](common/media/lua/client/LKS_ApplianceManager.lua) para gerenciar o ciclo de vida dos aparelhos interativos do mod.
 - **Ponto Único de Patches (Single Source of Truth)**: Centralizamos os monkey patches da Loot Window (`ISInventoryPage:addContainerButton`) e os hooks do menu de contexto de objetos do mundo (`ISWorldObjectContextMenu`). 
 - **Despacho Dinâmico**: O Kernel detecta a classe Java e o tipo de objeto, encaminhando a customização de abas e os submenus de contexto para os drivers de dispositivo correspondentes registrados no mapa `LKS_ApplianceManager.drivers`.
 - **Inicialização Defensiva**: Os arquivos utilizam a declaração defensiva `LKS_ApplianceManager = LKS_ApplianceManager or {}` para evitar dependências rígidas na ordem de carregamento de scripts pelo Project Zomboid (que segue ordem alfabética).
 
 ### 2. Migração do Driver de Lavanderia (`LKS_Device_Laundry.lua`)
-- **Isolamento de Domínio**: Migramos toda a lógica de lavadoras, secadoras e combos do arquivo antigo para [LKS_Device_Laundry.lua](file:///common/media/lua/client/devices/LKS_Device_Laundry.lua).
+- **Isolamento de Domínio**: Migramos toda a lógica de lavadoras, secadoras e combos do arquivo antigo para [LKS_Device_Laundry.lua](common/media/lua/client/devices/LKS_Device_Laundry.lua).
 - **Adequação às Diretrizes de Código**: Renomeamos variáveis internas para o português estrito e expressivo (ex: `jogadorObjeto`, `propriedadesObjeto`, `texturaIconeMenu`), eliminando variáveis de uma ou duas letras e abreviações para total legibilidade.
 - **Remoção de Código Morto**: O arquivo `LKS_LaundrySystem_WasherDryer.lua` foi removido do diretório raiz.
 
 ### 3. Implementação do Driver de Culinária (`LKS_Device_Cooking.lua`)
-- **Novo Driver de Dispositivos**: Criamos o driver [LKS_Device_Cooking.lua](file:///common/media/lua/client/devices/LKS_Device_Cooking.lua) focado em fogões (`IsoStove`) e micro-ondas (`IsoMicrowave`).
+- **Novo Driver de Dispositivos**: Criamos o driver [LKS_Device_Cooking.lua](common/media/lua/client/devices/LKS_Device_Cooking.lua) focado em fogões (`IsoStove`) e micro-ondas (`IsoMicrowave`).
 - **Texturas Exclusivas para Estado sem Energia**:
   - Implementamos ícones específicos para a Loot Window e o menu de contexto quando o aparelho está desenergizado:
     - Fogão sem energia: `Container_Stove_Electricity_Off.png`

@@ -1,6 +1,6 @@
 # Plano de Implementação - Desacoplamento e Generalização de Abas Elétricas
 
-Este plano detalha a refatoração do *monkey patch* da Loot Window (`ISInventoryPage:addContainerButton`) no arquivo [LKS_ContextMenu_WasherDryer.lua](file:///common/media/lua/client/LKS_ContextMenu_WasherDryer.lua). O objetivo é centralizar as lógicas de ícones elétricos em uma tabela de configuração dinâmica e implementar uma validação de propriedade física para evitar que contêineres de combustão manual (como forno a lenha, lareiras ou churrasqueiras) sejam incorretamente marcados como desenergizados.
+Este plano detalha a refatoração do *monkey patch* da Loot Window (`ISInventoryPage:addContainerButton`) no arquivo [LKS_ContextMenu_WasherDryer.lua](common/media/lua/client/LKS_ContextMenu_WasherDryer.lua). O objetivo é centralizar as lógicas de ícones elétricos em uma tabela de configuração dinâmica e implementar uma validação de propriedade física para evitar que contêineres de combustão manual (como forno a lenha, lareiras ou churrasqueiras) sejam incorretamente marcados como desenergizados.
 
 ## User Review Required
 
@@ -12,7 +12,7 @@ Este plano detalha a refatoração do *monkey patch* da Loot Window (`ISInventor
 
 ### Componente: Menus de Contexto e Interface do Cliente (Lua)
 
-#### [MODIFY] [LKS_ContextMenu_WasherDryer.lua](file:///common/media/lua/client/LKS_ContextMenu_WasherDryer.lua)
+#### [MODIFY] [LKS_ContextMenu_WasherDryer.lua](common/media/lua/client/LKS_ContextMenu_WasherDryer.lua)
 
 1. **Definição da Tabela de Configuração**:
    Criar a tabela `LKS_ConfiguracaoAbasEletricas` mapeando os tipos conhecidos de contêineres elétricos e suas respectivas texturas ligadas e desligadas (off):

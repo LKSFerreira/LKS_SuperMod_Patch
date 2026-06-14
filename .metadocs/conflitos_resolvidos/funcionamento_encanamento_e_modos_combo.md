@@ -19,7 +19,7 @@ No Project Zomboid B42, o Combo Washer Dryer possui um conjunto de timed actions
 - **Ativação (Ligar/Desligar):** Utiliza a classe `ISToggleComboWasherDryer` e a função `onToggleComboWasherDryer` em vez de `onToggleClothingWasher`.
 - **Alternância de Modo:** Utiliza a classe `ISSetComboWasherDryerMode` e a função `onSetComboWasherDryerMode`.
 
-**Solução:** Refatoramos as chamadas de callback no menu de contexto ([LKS_ContextMenu_WasherDryer.lua](file:///common/media/lua/client/LKS_ContextMenu_WasherDryer.lua)) para invocar os manipuladores corretos de ativação e modo do Combo.
+**Solução:** Refatoramos as chamadas de callback no menu de contexto ([LKS_ContextMenu_WasherDryer.lua](common/media/lua/client/LKS_ContextMenu_WasherDryer.lua)) para invocar os manipuladores corretos de ativação e modo do Combo.
 
 ---
 

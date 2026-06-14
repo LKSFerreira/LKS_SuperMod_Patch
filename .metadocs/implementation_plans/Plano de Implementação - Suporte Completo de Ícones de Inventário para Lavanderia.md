@@ -19,7 +19,7 @@ O jogo tem 3 tipos de máquinas de lavanderia:
 
 ### Menu de Contexto e Monkey Patch da Loot Window
 
-#### [MODIFY] [LKS_ContextMenu_WasherDryer.lua](file:///common/media/lua/client/LKS_ContextMenu_WasherDryer.lua)
+#### [MODIFY] [LKS_ContextMenu_WasherDryer.lua](common/media/lua/client/LKS_ContextMenu_WasherDryer.lua)
 
 **1. Tabela centralizada de configuração de ícones (topo do arquivo)**
 

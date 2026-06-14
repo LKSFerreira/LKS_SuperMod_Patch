@@ -14,5 +14,4 @@ Registre aqui entregas concluídas, decisões importantes e links para walkthrou
 - **14/06/2026**: [Suporte Completo a Combos e Ícones de Lavanderia](walkthrough/lavadora_e_secadora.md) - Implementação e correções para o Combo Washer Dryer, alternância de modos, timed actions nativas do combo e suporte a ícones de falta de água (Water Off) para lavadoras comuns e combos.
 - **14/06/2026**: [Arquitetura Micro-Kernel e Sistema de Culinária](walkthrough/gerenciador_dispositivos.md) - Refatoração para centralização de patches no Kernel `LKS_ApplianceManager.lua`, migração do driver de lavanderia e novo driver de culinária para fogões e micro-ondas com avisos de segurança e texturas exclusivas sem energia.
 - **14/06/2026**: [Consolidação das Ferramentas de Auditoria](walkthrough/auditoria_unificada.md) - Migração de auditoria de assets órfãos para `auditoria_mod.py`, delegação por subprocesso em `LKS_Tools.py`, paleta de cores ANSI para logs e alinhamento de tabela dinâmico.
-
-
+- **14/06/2026**: [Correção de Auditoria e Ajustes do Banner](walkthrough/correcao_auditoria.md) - Resolução de falsos positivos na auditoria, correção e substituição automática de links file:/// locais e alinhamento visual simétrico do menu interativo.

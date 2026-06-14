@@ -32,7 +32,7 @@ Este projeto é um **Patch/Add-on** e não existiria sem o trabalho fantástico 
 O repositório conta com dois utilitários centrais em Python para apoiar a auditoria de código, testes de integridade e processamento de assets:
 
 ### 🔍 1. Auditoria Geral de Qualidade
-- **Script**: [tools/auditoria_mod.py](file:///tools/auditoria_mod.py)
+- **Script**: [tools/auditoria_mod.py](tools/auditoria_mod.py)
 - **Funcionalidades**:
   - **Validação de Sintaxe (Estrutura de blocos Lua)**:
     ```bash
