@@ -13,7 +13,7 @@
 -- AUTOR: LKSFERREIRA
 -- DATA DE ATUALIZAÇÃO: 10/06/2026
 -- ============================================================================
--- Descrição: Janela de Informações de Energia da Construção - Painel de status
+-- Descrição: Janela de Informações Elétricas da Construção - Painel de status
 -- central acessível de qualquer interruptor de luz.
 -- Recursos: Barras de Combustível/Condição, estimativa de duração, detalhamento
 -- de consumidores, contagem de Eletrodomésticos/Luzes, aviso de carga, botão
@@ -1730,7 +1730,7 @@ function PB_GeneratorInfoWindow:render()
 
     self._genIconTex    = self._genIconTex or getTexture(GEN_ICON_PATH)
 
-    local titleText     = getText("IGUI_BuildingPowerInfo") or "Informações de Energia da Construção"
+    local titleText     = getText("IGUI_BuildingPowerInfo") or "Informações Elétricas da Construção"
     local titleWidth    = getTextManager():MeasureStringX(FONT_M, titleText)
     local titleX        = math.floor((self.width - titleWidth) / 2)
     y                   = y + 6
@@ -2211,7 +2211,7 @@ function PB_GeneratorInfoWindow:new(x, y, generator, playerNum, anchorSquare)
     o.playerNum                     = playerNum or 0
     o.anchorX, o.anchorY, o.anchorZ = nil, nil, nil
     if anchorSquare then o.anchorX, o.anchorY, o.anchorZ = anchorSquare:getX(), anchorSquare:getY(), anchorSquare:getZ() end
-    o.title     = getText("IGUI_BuildingPowerInfo") or "Informações de Energia da Construção"
+    o.title     = getText("IGUI_BuildingPowerInfo") or "Informações Elétricas da Construção"
     o.resizable = false
     return o
 end

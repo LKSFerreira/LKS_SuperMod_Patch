@@ -34,15 +34,16 @@ local ContextMenu                      = PoweredBuildings.ContextMenu.Generator
 -- ⚙️ CONFIGURAÇÕES DE ASSETS E TEXTURAS (PADRÃO DE NOMENCLATURA PB)
 -- ============================================================================
 local TEX_ITEM_GEN                     = "media/textures/Item_Generator.png"
-local TEX_PWR_ON                       = "media/ui/LKS_Pwr_On.png"
-local TEX_PWR_OFF                      = "media/ui/LKS_Pwr_Off.png"
-local TEX_TAKE_GEN                     = "media/ui/LKS_Take_Gen.png"
+local TEX_PWR_ON                       = "media/ui/LKS_Button_Power_On.png"
+local TEX_PWR_OFF                      = "media/ui/LKS_Button_Power_Off.png"
+local TEX_TAKE_GEN                     = "media/ui/LKS_Take_Generator.png"
 local TEX_CONNECT                      = "media/ui/LKS_Connect.png"
 local TEX_DISCONNECT                   = "media/ui/LKS_Disconnect.png"
-local TEX_GEN_INFO                     = "media/ui/LKS_Gen_Info.png"
-local TEX_HOUSE_ELE                    = "media/ui/LKS_House_Eletricity.png"
-local TEX_HOUSE_ELE_OFF                = "media/ui/LKS_House_Eletricity_Off.png"
-local TEX_REP_GEN                      = "media/ui/LKS_Rep_Gen.png"
+local TEX_GEN_INFO                     = "media/ui/LKS_Generator_Info.png"
+local TEX_HOUSE_ELE                    = "media/ui/LKS_House_Electricity_On.png"
+local TEX_HOUSE_ELE_OFF                = "media/ui/LKS_House_Electricity_Off.png"
+local TEX_HOUSE_INFO                   = "media/ui/LKS_House_Info.png"
+local TEX_REP_GEN                      = "media/ui/LKS_Fix_Generator.png"
 local TEX_GAS_REFUEL                   = "media/ui/LKS_Gas_Refuel.png"
 local TEX_GAS_REFUEL_AL                = "media/ui/LKS_Gas_Refuel_All.png"
 
@@ -468,9 +469,9 @@ function ContextMenu.Build(player, context, worldobjects, test)
         [getText("ContextMenu_Examine")] = TEX_GEN_INFO,
         ["Examinar"] = TEX_GEN_INFO,
 
-        [getText("IGUI_BuildingPowerInfoMenu")] = TEX_HOUSE_ELE,
-        ["Informações de Energia"] = TEX_HOUSE_ELE,
-        ["Informações Elétricas da Construção"] = TEX_HOUSE_ELE,
+        [getText("IGUI_BuildingPowerInfoMenu")] = TEX_HOUSE_INFO,
+        ["Informações de Energia"] = TEX_HOUSE_INFO,
+        ["Informações Elétricas da Construção"] = TEX_HOUSE_INFO,
 
         [getText("ContextMenu_Turn_On")] = TEX_PWR_ON,
         [getText("IGUI_Turn_On")] = TEX_PWR_ON,
