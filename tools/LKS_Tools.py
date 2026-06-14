@@ -487,13 +487,31 @@ def redirecionar_auditoria_completa():
 def print_banner():
     """Exibe um banner ASCII moderno e bordas unicode elegantes na inicialização."""
     os.system('cls' if os.name == 'nt' else 'clear')
-    banner = f"""
-{CYAN}    ╔══════════════════════════════════════════════════════════════════════════╗
-    ║  {BOLD}🎨 GERENCIADOR DE ASSETS - LKS SUPERMOD PATCH (Build 42){RESET}{CYAN}             ║
-    ║  {GRAY}Centralizador de Extração, Inspeção e Auditoria de Sprites{RESET}{CYAN}          ║
-    ╚══════════════════════════════════════════════════════════════════════════╝{RESET}
-"""
-    print(banner)
+    emoji_ferramenta = "🔧"
+    largura_interna = 74
+    
+    def formatar_linha_banner(conteudo, cor_borda=CYAN):
+        # Remove códigos de cor ANSI para cálculo de largura visual
+        conteudo_limpo = re.sub(r'\033\[[0-9;]*m', '', conteudo)
+        
+        # Calcula largura visual considerando que emojis ocupam 2 colunas
+        tamanho_visual = sum(2 if ord(char) > 0xffff else 1 for char in conteudo_limpo)
+        
+        espacos_necessarios = max(0, largura_interna - tamanho_visual)
+        espacos_esquerda = espacos_necessarios // 2
+        espacos_direita = espacos_necessarios - espacos_esquerda
+        
+        return f"    {cor_borda}║{RESET}{' ' * espacos_esquerda}{conteudo}{' ' * espacos_direita}{cor_borda}║{RESET}"
+
+    linha_superior = f"    {CYAN}╔" + "═" * largura_interna + f"╗{RESET}"
+    linha_1 = formatar_linha_banner(f"{BOLD}{emoji_ferramenta} LKS TOOLS - SUPERMOD PATCH {emoji_ferramenta}{RESET}")
+    linha_2 = formatar_linha_banner(f"{GRAY}Centralizador de Extração, Inspeção e Auditoria de Sprites{RESET}")
+    linha_inferior = f"    {CYAN}╚" + "═" * largura_interna + f"╝{RESET}"
+    
+    print("\n" + linha_superior)
+    print(linha_1)
+    print(linha_2)
+    print(linha_inferior + "\n")
 
 def buscar_referencias_assets(termo_busca, pasta_jogo):
     """Busca referências de assets 2D (UI/Itens) nos packs e 3D (Tilesets) no JSON de metadados."""

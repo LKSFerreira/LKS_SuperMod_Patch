@@ -35,6 +35,7 @@ import re
 import sys
 import json
 import argparse
+import fnmatch
 
 # Garante que o console do Windows aceite codificação UTF-8
 if sys.version_info >= (3, 7):
@@ -53,6 +54,111 @@ YELLOW = "\033[33m"
 CYAN = "\033[36m"
 RED = "\033[31m"
 GRAY = "\033[90m"
+
+# ============================================================================
+# CONFIGURAÇÃO DE EXCLUSÃO MANUAL PARA AUDITORIA DE CAMINHOS ABSOLUTOS
+# Adicione aqui arquivos e diretórios que NÃO devem ser validados quanto a caminhos absolutos.
+# ============================================================================
+ITENS_IGNORADOS_MANUAL = [
+    # Diretórios
+    ".git",
+    ".venv",
+    ".vscode",
+    "__pycache__",
+    "node_modules",
+    
+    # Diretrizes e regras de agentes (contêm arquivos markdown com links file:///)
+    ".agents",
+    
+    # Scripts e ferramentas auxiliares
+    "tools",
+    
+    # Arquivos específicos
+    "console_sanitizado.txt",
+    "console_erros.txt",
+    # Adicione novos itens abaixo:
+]
+
+def carregar_regras_gitignore(diretorio_raiz):
+    """
+    Carrega as regras do arquivo .gitignore presente na raiz do mod.
+    Retorna uma lista de padrões de ignorados.
+    """
+    caminho_gitignore = os.path.join(diretorio_raiz, ".gitignore")
+    padroes = []
+    if not os.path.exists(caminho_gitignore):
+        return padroes
+        
+    try:
+        with open(caminho_gitignore, 'r', encoding='utf-8') as arquivo:
+            for linha in arquivo:
+                linha = linha.strip()
+                # Ignora linhas vazias ou comentários
+                if not linha or linha.startswith('#'):
+                    continue
+                padroes.append(linha)
+    except Exception as erro:
+        print(f"{YELLOW}[!] Aviso ao carregar .gitignore: {erro}{RESET}")
+    return padroes
+
+def deve_ignorar_caminho(caminho_relativo, padroes_gitignore, itens_ignorados_manual, eh_diretorio=False):
+    """
+    Verifica se um determinado caminho relativo deve ser ignorado pela auditoria
+    com base na lista de exclusão manual e nas regras do .gitignore.
+    """
+    # Padroniza barras para separador universal Unix
+    caminho_relativo = caminho_relativo.replace('\\', '/')
+    partes = caminho_relativo.strip('/').split('/')
+    nome_alvo = partes[-1] if partes else ""
+
+    # 1. Verificação na lista manual de itens ignorados
+    for item in itens_ignorados_manual:
+        item_normalizado = item.replace('\\', '/').strip('/')
+        # Verifica correspondência exata do caminho completo
+        if caminho_relativo == item_normalizado:
+            return True
+        # Verifica se o caminho está dentro de um diretório ignorado manualmente
+        if caminho_relativo.startswith(item_normalizado + '/'):
+            return True
+        # Verifica correspondência exata do nome do arquivo/pasta
+        if nome_alvo == item_normalizado:
+            return True
+
+    # 2. Verificação de padrões originados do .gitignore
+    for padrao in padroes_gitignore:
+        # Padrões de negação do gitignore (começados com !) não são processados nesta lógica simples
+        if padrao.startswith('!'):
+            continue
+            
+        padrao_limpo = padrao
+        apenas_diretorio = False
+        
+        # Padrões que terminam com barra especificam apenas diretórios
+        if padrao_limpo.endswith('/'):
+            apenas_diretorio = True
+            padrao_limpo = padrao_limpo[:-1]
+            
+        if apenas_diretorio and not eh_diretorio:
+            continue
+            
+        # Padrões ancorados na raiz do repositório
+        ancorado = padrao_limpo.startswith('/')
+        if ancorado:
+            padrao_limpo = padrao_limpo[1:]
+            
+        contem_barra = '/' in padrao_limpo
+        
+        # Se contiver barra no meio do padrão ou for ancorado, comparamos com o caminho completo
+        if ancorado or contem_barra:
+            if fnmatch.fnmatch(caminho_relativo, padrao_limpo) or fnmatch.fnmatch(caminho_relativo + '/', padrao_limpo + '/'):
+                return True
+        else:
+            # Caso contrário, comparamos com cada componente do caminho
+            for parte in partes:
+                if fnmatch.fnmatch(parte, padrao_limpo):
+                    return True
+                    
+    return False
 
 # ============================================================================
 # MÓDULO 1: VALIDADOR ESTRUTURAL DE LUA
@@ -271,32 +377,41 @@ def executar_auditoria_caminhos(diretorio_raiz, corrigir):
     """
     caminho_raiz_normalizado = os.path.abspath(diretorio_raiz)
     
-    # Regex para identificar letras de drive do Windows seguidas por caminhos com pelo menos 2 níveis
-    # Ex: C:\Users\LKSFERREIRA ou d:/Zomboid/mods
-    regex_caminho_absoluto = re.compile(r'\b([a-zA-Z]:[/\\][\w\-\.\s]+[/\\][\w\-\.\s/\\]+)\b')
+    # Regex para identificar links file:/// (com ou sem drive) ou caminhos absolutos do Windows com letras de drive
+    regex_caminho_absoluto = re.compile(
+        r'(file:///[^\s"\'>)]+)|(\b[a-zA-Z]:[/\\][\w\-\.\s]+[/\\][\w\-\.\s/\\]+\b)'
+    )
     
-    pastas_excluidas = ['.git', '.venv', '.vscode', '__pycache__']
-    arquivos_excluidos = ['console_sanitizado.txt', 'console_erros.txt']
     extensoes_permitidas = ['.lua', '.json', '.txt', '.md', '.properties', '.xml']
     
     vazamentos_encontrados = 0
     correcoes_efetuadas = 0
     arquivos_afetados = {}
 
+    padroes_gitignore = carregar_regras_gitignore(caminho_raiz_normalizado)
+
     for raiz, diretorios, arquivos in os.walk(caminho_raiz_normalizado):
-        # Ignora pastas de controle ou ambientes virtuais
-        diretorios[:] = [d for d in diretorios if d not in pastas_excluidas]
+        # Filtra os diretórios no os.walk para evitar entrar em caminhos ignorados
+        novos_diretorios = []
+        for d in diretorios:
+            caminho_dir_completo = os.path.join(raiz, d)
+            caminho_dir_relativo = os.path.relpath(caminho_dir_completo, caminho_raiz_normalizado)
+            if not deve_ignorar_caminho(caminho_dir_relativo, padroes_gitignore, ITENS_IGNORADOS_MANUAL, eh_diretorio=True):
+                novos_diretorios.append(d)
+        diretorios[:] = novos_diretorios
         
         for arquivo in arquivos:
-            if arquivo in arquivos_excluidos:
+            caminho_completo = os.path.join(raiz, arquivo)
+            caminho_relativo_arquivo = os.path.relpath(caminho_completo, caminho_raiz_normalizado)
+            
+            # Filtra arquivos ignorados
+            if deve_ignorar_caminho(caminho_relativo_arquivo, padroes_gitignore, ITENS_IGNORADOS_MANUAL, eh_diretorio=False):
                 continue
+                
             extensao = os.path.splitext(arquivo)[1].lower()
             if extensao not in extensoes_permitidas:
                 continue
                 
-            caminho_completo = os.path.join(raiz, arquivo)
-            caminho_relativo_arquivo = os.path.relpath(caminho_completo, caminho_raiz_normalizado)
-            
             try:
                 with open(caminho_completo, 'r', encoding='utf-8') as f:
                     conteudo = f.read()
@@ -308,7 +423,7 @@ def executar_auditoria_caminhos(diretorio_raiz, corrigir):
                 except Exception:
                     continue
             
-            ocorrencias = regex_caminho_absoluto.findall(conteudo)
+            ocorrencias = [match.group(0) for match in regex_caminho_absoluto.finditer(conteudo)]
             if not ocorrencias:
                 continue
                 
@@ -318,11 +433,37 @@ def executar_auditoria_caminhos(diretorio_raiz, corrigir):
             # Remove duplicados mantendo a ordem
             ocorrencias_unicas = list(dict.fromkeys(ocorrencias))
             
-            for caminho_absoluto in ocorrencias_unicas:
-                caminho_absoluto_limpo = caminho_absoluto.strip()
-                abs_normalizado = os.path.abspath(caminho_absoluto_limpo)
+            for caminho_capturado in ocorrencias_unicas:
+                caminho_limpo = caminho_capturado.strip()
                 
-                # Se aponta para dentro do mod
+                # Se começar com file:///, extraímos o caminho real por trás dele
+                tem_prefixo_file = caminho_limpo.lower().startswith("file:///")
+                caminho_analise = caminho_limpo[8:] if tem_prefixo_file else caminho_limpo
+                
+                # Se for um caminho absoluto do Windows com letra de drive, normaliza
+                # Caso contrário, se for apenas um caminho relativo que tinha file:///, verifica se aponta para dentro
+                is_absoluto = False
+                if re.match(r'^[a-zA-Z]:', caminho_analise):
+                    abs_normalizado = os.path.abspath(caminho_analise)
+                    is_absoluto = True
+                else:
+                    # Se não tem drive, pode ser absoluto Unix ou relativo
+                    if caminho_analise.startswith('/') or caminho_analise.startswith('\\'):
+                        # Se começar com barra, pode ser absoluto Unix ou relativo à raiz do mod
+                        # Remove a barra inicial e vê se existe na raiz do mod
+                        caminho_analise_sem_barra = caminho_analise.lstrip('/\\')
+                        caminho_teste = os.path.join(caminho_raiz_normalizado, caminho_analise_sem_barra)
+                        if os.path.exists(caminho_teste):
+                            abs_normalizado = os.path.abspath(caminho_teste)
+                        else:
+                            abs_normalizado = os.path.abspath(caminho_analise)
+                            is_absoluto = True
+                    else:
+                        # Caminho relativo
+                        caminho_teste = os.path.join(caminho_raiz_normalizado, caminho_analise)
+                        abs_normalizado = os.path.abspath(caminho_teste)
+                
+                # Verifica se aponta para dentro do mod
                 if abs_normalizado.lower().startswith(caminho_raiz_normalizado.lower()):
                     caminho_relativo = os.path.relpath(abs_normalizado, caminho_raiz_normalizado)
                     caminho_relativo = caminho_relativo.replace("\\", "/")
@@ -334,19 +475,21 @@ def executar_auditoria_caminhos(diretorio_raiz, corrigir):
                         caminho_relativo = caminho_relativo.replace("common/", "", 1)
                         
                     lista_detalhes.append({
-                        "original": caminho_absoluto_limpo,
+                        "original": caminho_limpo,
                         "substituto": caminho_relativo,
                         "tipo": "Local (Substituível)"
                     })
                     
                     if corrigir:
-                        novo_conteudo = novo_conteudo.replace(caminho_absoluto_limpo, caminho_relativo)
+                        novo_conteudo = novo_conteudo.replace(caminho_limpo, caminho_relativo)
                 else:
-                    lista_detalhes.append({
-                        "original": caminho_absoluto_limpo,
-                        "substituto": None,
-                        "tipo": "Externo (Exige Correção Manual)"
-                    })
+                    # Se aponta para fora e é absoluto, exige correção manual
+                    if is_absoluto or tem_prefixo_file:
+                        lista_detalhes.append({
+                            "original": caminho_limpo,
+                            "substituto": None,
+                            "tipo": "Externo (Exige Correção Manual)"
+                        })
             
             if lista_detalhes:
                 arquivos_afetados[caminho_relativo_arquivo] = lista_detalhes
@@ -507,7 +650,7 @@ def executar_auditoria_completa(diretorio_raiz):
     
     # 3. Auditoria de Caminhos Absolutos
     print("\n[MÓDULO 3] Validando Caminhos Absolutos...")
-    caminhos_ok = executar_auditoria_caminhos(diretorio_raiz, corrigir=False)
+    caminhos_ok = executar_auditoria_caminhos(diretorio_raiz, corrigir=True)
 
     # 4. Auditoria de Assets (Imagens órfãs)
     print("\n[MÓDULO 4] Validando Imagens Órfãs/Sem Uso...")
@@ -595,7 +738,7 @@ def main():
     # Comando: auditar-caminhos
     parser_caminhos = subparsers.add_parser(
         "auditar-caminhos",
-        help="Detecta e corrige caminhos absolutos locais para evitar vazamento de dados."
+        help="Detecta e corrige automaticamente caminhos absolutos locais para evitar vazamento de dados."
     )
     parser_caminhos.add_argument(
         "--raiz",
@@ -603,9 +746,9 @@ def main():
         help="Diretório raiz do mod."
     )
     parser_caminhos.add_argument(
-        "--corrigir",
+        "--sem-correcao",
         action="store_true",
-        help="Substitui automaticamente os caminhos absolutos locais pelas suas versões relativas."
+        help="Realiza auditoria de caminhos sem aplicar as correções automáticas nos arquivos."
     )
 
     # Comando: auditar-assets
@@ -628,7 +771,7 @@ def main():
         sucesso = executar_auditoria_traducoes(args.raiz, args.idioma, args.ignorar_nativas)
         sys.exit(0 if sucesso else 1)
     elif args.comando == "auditar-caminhos":
-        sucesso = executar_auditoria_caminhos(args.raiz, args.corrigir)
+        sucesso = executar_auditoria_caminhos(args.raiz, corrigir=not args.sem_correcao)
         sys.exit(0 if sucesso else 1)
     elif args.comando == "auditar-assets":
         sucesso = executar_auditoria_assets(args.raiz)
