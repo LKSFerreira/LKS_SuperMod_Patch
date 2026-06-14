@@ -1,15 +1,19 @@
 -- ============================================================================
--- ARQUIVO: LKS_ContextMenu_WasherDryer.lua
--- EXTENSÃO: LKS SuperMod Patch (Aprimoramentos Elétricos e Visuais)
--- OBJETIVO: Gerenciamento cliente para ligar/desligar secadoras, lavadoras
---           e combo washer dryer. Inclui monkey patch de ícones da Loot Window.
+-- ARQUIVO: LKS_LaundrySystem_WasherDryer.lua
+-- EXTENSÃO: LKS SuperMod Patch (Mecânicas, Comportamentos e Visuais de Lavanderia)
+-- OBJETIVO: Gerenciamento cliente unificado para funcionamento, lógica e interface
+--           de secadoras, lavadoras e combo washer dryer. Inclui suporte a
+--           imagens direcionais individuais (Facing) e abas de inventário.
+-- AUTOR: LKS FERREIRA & Antigravity AI
+-- VERSÃO: 1.0 (Project Zomboid Build 42)
+-- DATA DA ÚLTIMA MODIFICAÇÃO: 14/06/2026
 -- ============================================================================
 
-print("[LKS PATCH - LKS_ContextMenu_WasherDryer.lua] Carregando Menu de Contexto e Interfaces de Secadoras e Lavadoras...")
+print("[LKS PATCH - LKS_LaundrySystem_WasherDryer.lua] Inicializando Sistema de Lavanderia e Gerenciador de Comportamento...")
 
 -- ============================================================================
 -- ⚙️ TABELA CENTRALIZADA DE CONFIGURAÇÃO DE ÍCONES DE LAVANDERIA
--- Mapeia cada tipo de máquina aos seus ícones de estados de energia e água.
+-- Mapeia cada tipo de máquina aos seus ícones de estados de energia, água e direção.
 -- ============================================================================
 local LKS_ConfiguracaoIconesLavanderia = {
     clothingdryer = {
@@ -22,28 +26,69 @@ local LKS_ConfiguracaoIconesLavanderia = {
         sem_agua      = "media/ui/LKS_Container_ClothingWasher_Water_Off.png",
     },
     combo_washer_dryer = {
-        energizado    = "media/ui/Combo_Washer_Dryer_Gray.png",
+        energizado    = {
+            S = "media/ui/Combo_Washer_Dryer_Gray_S.png",
+            E = "media/ui/Combo_Washer_Dryer_Gray_E.png",
+            N = "media/ui/Combo_Washer_Dryer_Gray_N.png",
+            W = "media/ui/Combo_Washer_Dryer_Gray_W.png",
+            padrao = "media/ui/Combo_Washer_Dryer_Gray.png"
+        },
         desenergizado = "media/ui/Combo_Washer_Dryer_Gray_Electricity_Off.png",
         sem_agua      = "media/ui/Combo_Washer_Dryer_Gray_Water_Off.png",
     },
 }
 
----@class LKS_ContextMenu_WasherDryer
-LKS_ContextMenu_WasherDryer = {}
+---@class LKS_LaundrySystem_WasherDryer
+LKS_LaundrySystem_WasherDryer = {}
 
---- Constrói o menu de contexto sob clique direito para secadoras, lavadoras
---- e combo washer dryer.
+--- Retorna a textura correspondente baseada nos estados de energia, água e direção (Facing).
 ---
 --- **Exemplo:**
 --- ```lua
---- Events.OnFillWorldObjectContextMenu.Add(LKS_ContextMenu_WasherDryer.Build)
+--- local textura = obterTexturaEstado("combo_washer_dryer", true, true, "N")
+--- ```
+---
+--- @param chaveConfiguracao string O tipo de aparelho ("clothingdryer", "clothingwasher", "combo_washer_dryer").
+--- @param temEnergia boolean Se o aparelho possui fornecimento elétrico ativo.
+--- @param temAgua boolean Se o aparelho possui água disponível.
+--- @param direcao string | nil A direção/facing do móvel ("N", "S", "E", "W").
+--- @return Texture O objeto de textura carregado do jogo.
+local function obterTexturaEstado(chaveConfiguracao, temEnergia, temAgua, direcao)
+    local configuracaoIcone = LKS_ConfiguracaoIconesLavanderia[chaveConfiguracao]
+    if not configuracaoIcone then return nil end
+
+    if not temEnergia then
+        return getTexture(configuracaoIcone.desenergizado)
+    elseif not temAgua and configuracaoIcone.sem_agua then
+        return getTexture(configuracaoIcone.sem_agua)
+    else
+        -- Energizado e com água suficiente
+        if configuracaoIcone.energizado then
+            if type(configuracaoIcone.energizado) == "table" then
+                local caminhoTextura = configuracaoIcone.energizado[direcao] or configuracaoIcone.energizado.padrao
+                return getTexture(caminhoTextura)
+            else
+                return getTexture(configuracaoIcone.energizado)
+            end
+        else
+            return ContainerButtonIcons[chaveConfiguracao]
+        end
+    end
+end
+
+--- Constrói o menu de contexto sob clique direito para secadoras, lavadoras
+--- e combo washer dryer no mundo.
+---
+--- **Exemplo:**
+--- ```lua
+--- Events.OnFillWorldObjectContextMenu.Add(LKS_LaundrySystem_WasherDryer.construirMenu)
 --- ```
 ---
 --- @param jogadorNumero number O índice do jogador local (0 a 3).
 --- @param menuContexto ISContextMenu O menu de contexto sendo preenchido.
 --- @param objetosMundo table A lista de objetos físicos clicados no mundo.
---- @param apenasTeste boolean Se true, indica que é apenas uma verificação de colisão/ação rápida.
-function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosMundo, apenasTeste)
+--- @param apenasTeste boolean Se true, indica que é apenas uma verificação rápida de colisão.
+function LKS_LaundrySystem_WasherDryer.construirMenu(jogadorNumero, menuContexto, objetosMundo, apenasTeste)
     if apenasTeste then return end
 
     local jogadorObjeto = getSpecificPlayer(jogadorNumero)
@@ -51,23 +96,23 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
 
     ---@type IsoObject
     local objetoEletrico = nil
-    local isSecadora = false
-    local isLavadora = false
-    local isComboLavadoraSecadora = false
+    local ehSecadora = false
+    local ehLavadora = false
+    local ehComboLavadoraSecadora = false
 
-    -- A Combo herda de IsoClothingWasher no Java, então deve ser verificada ANTES
+    -- A Combo herda de IsoClothingWasher no Java do jogo, portanto deve ser validada ANTES
     for _, objeto in ipairs(objetosMundo) do
         if instanceof(objeto, "IsoClothingDryer") then
             objetoEletrico = objeto
-            isSecadora = true
+            ehSecadora = true
             break
         elseif instanceof(objeto, "IsoCombinationWasherDryer") then
             objetoEletrico = objeto
-            isComboLavadoraSecadora = true
+            ehComboLavadoraSecadora = true
             break
         elseif instanceof(objeto, "IsoClothingWasher") then
             objetoEletrico = objeto
-            isLavadora = true
+            ehLavadora = true
             break
         end
     end
@@ -75,26 +120,24 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
     if not objetoEletrico then return end
 
     -- Determina a chave de configuração baseada no tipo de objeto
-    local chaveConfig = nil
-    if isSecadora then
-        chaveConfig = "clothingdryer"
-    elseif isComboLavadoraSecadora then
-        chaveConfig = "combo_washer_dryer"
-    elseif isLavadora then
-        chaveConfig = "clothingwasher"
+    local chaveConfiguracao = nil
+    if ehSecadora then
+        chaveConfiguracao = "clothingdryer"
+    elseif ehComboLavadoraSecadora then
+        chaveConfiguracao = "combo_washer_dryer"
+    elseif ehLavadora then
+        chaveConfiguracao = "clothingwasher"
     end
-
-    local configIcone = LKS_ConfiguracaoIconesLavanderia[chaveConfig]
 
     ---@type Texture
     local texturaIconeMenu = nil
     local nomeObjetoTraduzido = ""
 
-    if isSecadora then
+    if ehSecadora then
         nomeObjetoTraduzido = objetoEletrico:getName() or "Secadora de Roupas"
-    elseif isComboLavadoraSecadora then
+    elseif ehComboLavadoraSecadora then
         nomeObjetoTraduzido = objetoEletrico:getName() or "Lavadora e Secadora"
-    elseif isLavadora then
+    elseif ehLavadora then
         nomeObjetoTraduzido = objetoEletrico:getName() or "Lavadora de Roupas"
     end
 
@@ -119,31 +162,27 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
 
     -- Validar a disponibilidade de água baseada no tipo de máquina e no modo atual
     local temAgua = true
-    if isLavadora then
+    if ehLavadora then
         temAgua = objetoEletrico:getFluidAmount() > 0
-    elseif isComboLavadoraSecadora then
+    elseif ehComboLavadoraSecadora then
         -- O combo só exige água se estiver no modo Lavadora (Washer)
         if objetoEletrico:isModeWasher() then
             temAgua = objetoEletrico:getFluidAmount() > 0
         end
     end
 
-    -- Seleciona a textura do ícone principal do menu com base nos estados de energia e água
-    if not temEnergia then
-        texturaIconeMenu = getTexture(configIcone.desenergizado)
-    elseif not temAgua and configIcone.sem_agua then
-        texturaIconeMenu = getTexture(configIcone.sem_agua)
-    else
-        if configIcone.energizado then
-            texturaIconeMenu = getTexture(configIcone.energizado)
-        else
-            texturaIconeMenu = ContainerButtonIcons[chaveConfig]
-        end
+    -- Obter direção (Facing) para carregar a textura direcional correspondente no menu
+    local direcao = nil
+    if propriedadesObjeto and propriedadesObjeto:has("Facing") then
+        direcao = propriedadesObjeto:get("Facing")
     end
+
+    -- Seleciona a textura do ícone principal do menu com base nos estados
+    texturaIconeMenu = obterTexturaEstado(chaveConfiguracao, temEnergia, temAgua, direcao)
 
     local estaAtivo = objetoEletrico:isActivated()
 
-    -- Localizar e remover qualquer opção nativa que corresponda ao nome do objeto
+    -- Localizar e remover qualquer opção nativa obsoleta que corresponda ao nome do objeto
     local nomeObjetoMinusculo = string.lower(nomeObjetoTraduzido)
     for indice = #menuContexto.options, 1, -1 do
         local opcao = menuContexto.options[indice]
@@ -161,10 +200,10 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
 
     -- Criar nova opção no menu principal no topo (UX prioritária) e associar um submenu limpo e exclusivo
     local opcaoMenuPai = menuContexto:addOptionOnTop(nomeObjetoTraduzido)
-    local subMenu = ISContextMenu:getNew(menuContexto)
-    menuContexto:addSubMenu(opcaoMenuPai, subMenu)
+    local submenu = ISContextMenu:getNew(menuContexto)
+    menuContexto:addSubMenu(opcaoMenuPai, submenu)
 
-    -- Atribuir o ícone 32x32 correspondente no menu principal
+    -- Atribuir o ícone correspondente no menu principal
     if texturaIconeMenu then
         opcaoMenuPai.iconTexture = texturaIconeMenu
     end
@@ -174,12 +213,12 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
 
     if estaAtivo then
         -- Se o equipamento estiver funcionando, exibe a opção de Desligar com ícone Pwr_Off
-        local opcaoDesligar = subMenu:addOption(chaveTextoDesligar, objetosMundo, function()
-            if isSecadora then
+        local opcaoDesligar = submenu:addOption(chaveTextoDesligar, objetosMundo, function()
+            if ehSecadora then
                 ISWorldObjectContextMenu.onToggleClothingDryer(objetosMundo, objetoEletrico, jogadorNumero)
-            elseif isComboLavadoraSecadora then
+            elseif ehComboLavadoraSecadora then
                 ISWorldObjectContextMenu.onToggleComboWasherDryer(jogadorObjeto, objetoEletrico)
-            elseif isLavadora then
+            elseif ehLavadora then
                 ISWorldObjectContextMenu.onToggleClothingWasher(objetosMundo, objetoEletrico, jogadorNumero)
             end
         end)
@@ -188,25 +227,26 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
         -- Se o equipamento estiver desligado, exibe a opção de Ligar
         if temEnergia and temAgua then
             -- Cenário energizado e abastecido: Ligar com ícone Pwr_On e callback direto
-            local opcaoLigar = subMenu:addOption(chaveTextoLigar, objetosMundo, function()
-                if isSecadora then
+            local opcaoLigar = submenu:addOption(chaveTextoLigar, objetosMundo, function()
+                if ehSecadora then
                     ISWorldObjectContextMenu.onToggleClothingDryer(objetosMundo, objetoEletrico, jogadorNumero)
-                elseif isComboLavadoraSecadora then
+                elseif ehComboLavadoraSecadora then
                     ISWorldObjectContextMenu.onToggleComboWasherDryer(jogadorObjeto, objetoEletrico)
-                elseif isLavadora then
+                elseif ehLavadora then
                     ISWorldObjectContextMenu.onToggleClothingWasher(objetosMundo, objetoEletrico, jogadorNumero)
                 end
             end)
             opcaoLigar.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
         else
             -- Cenário desenergizado ou sem água: Ligar em vermelho (notAvailable)
-            local opcaoLigarSemRequisitos = subMenu:addOption(chaveTextoLigar, objetosMundo, nil)
+            local opcaoLigarSemRequisitos = submenu:addOption(chaveTextoLigar, objetosMundo, nil)
             opcaoLigarSemRequisitos.notAvailable = true
 
+            local configuracaoIcone = LKS_ConfiguracaoIconesLavanderia[chaveConfiguracao]
             if not temEnergia then
-                opcaoLigarSemRequisitos.iconTexture = getTexture(configIcone.desenergizado)
-            elseif not temAgua and configIcone.sem_agua then
-                opcaoLigarSemRequisitos.iconTexture = getTexture(configIcone.sem_agua)
+                opcaoLigarSemRequisitos.iconTexture = getTexture(configuracaoIcone.desenergizado)
+            elseif not temAgua and configuracaoIcone.sem_agua then
+                opcaoLigarSemRequisitos.iconTexture = getTexture(configuracaoIcone.sem_agua)
             else
                 opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
             end
@@ -229,9 +269,9 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
     end
 
     -- Se for Combo Washer Dryer, adiciona a opção de alternar entre os modos
-    if isComboLavadoraSecadora then
-        local labelModo = objetoEletrico:isModeWasher() and (getText("ContextMenu_ComboWasherDryer_SetModeDryer") or "Modo: Secadora") or (getText("ContextMenu_ComboWasherDryer_SetModeWasher") or "Modo: Lavadora")
-        local opcaoModo = subMenu:addOption(labelModo, objetosMundo, function()
+    if ehComboLavadoraSecadora then
+        local rotuloModo = objetoEletrico:isModeWasher() and (getText("ContextMenu_ComboWasherDryer_SetModeDryer") or "Modo: Secagem") or (getText("ContextMenu_ComboWasherDryer_SetModeWasher") or "Modo: Lavadora")
+        local opcaoModo = submenu:addOption(rotuloModo, objetosMundo, function()
             ISWorldObjectContextMenu.onSetComboWasherDryerMode(jogadorObjeto, objetoEletrico, objetoEletrico:isModeWasher() and "dryer" or "washer")
         end)
         -- Aplica os ícones originais correspondentes nas abas laterais para diferenciar o modo no menu
@@ -239,83 +279,75 @@ function LKS_ContextMenu_WasherDryer.Build(jogadorNumero, menuContexto, objetosM
     end
 end
 
-Events.OnFillWorldObjectContextMenu.Add(LKS_ContextMenu_WasherDryer.Build)
+Events.OnFillWorldObjectContextMenu.Add(LKS_LaundrySystem_WasherDryer.construirMenu)
 
 -- ============================================================================
 -- 🎒 EXTENSÃO VISUAL DA LOOT WINDOW (MONKEY PATCH DE INVENTÁRIO)
 -- Intercepta a atribuição do ícone de abas laterais na janela de inventário
--- para substituir dinamicamente o ícone do container baseado no estado elétrico.
+-- para substituir dinamicamente o ícone do container baseado no estado e direção.
 -- Suporta: Secadora, Lavadora, Combo Washer Dryer.
 -- ============================================================================
 
-local originalAdicionarBotaoContainer = ISInventoryPage.addContainerButton
+local funcaoOriginalAdicionarBotaoContainer = ISInventoryPage.addContainerButton
 
 --- Adiciona e customiza o botão de aba lateral para contêineres na Loot Window.
 ---
 --- Intercepta o processo padrão para injetar texturas personalizadas baseadas no
---- estado de energia do aparelho. Diferencia Combo Washer Dryer da lavadora comum
---- verificando a classe Java do objeto pai do container.
+--- estado de energia e água do aparelho, bem como na direção física (Facing) dele.
 ---
 --- @param recipiente ItemContainer O contêiner associado à aba do inventário.
 --- @param textura Texture A textura de fallback original do botão.
 --- @param nome string O nome amigável do contêiner.
 --- @param dicaContexto string O texto de dica explicativa (tooltip).
---- @return table O botão instanciado com a imagem atualizada.
+--- @return table O botão instanciado com a imagem updated.
 function ISInventoryPage:addContainerButton(recipiente, textura, nome, dicaContexto)
-    local botao = originalAdicionarBotaoContainer(self, recipiente, textura, nome, dicaContexto)
+    local botao = funcaoOriginalAdicionarBotaoContainer(self, recipiente, textura, nome, dicaContexto)
     if not botao or not recipiente then return botao end
 
     local recipienteTipo = recipiente:getType()
-
-    -- Determina a chave de configuração baseada no tipo de contêiner e classe do objeto pai
-    local chaveConfig = nil
     local objetoPai = recipiente:getParent()
-    local isCombo = false
+    local ehCombo = false
+    local chaveConfiguracao = nil
 
     if recipienteTipo == "clothingdryer" then
-        chaveConfig = "clothingdryer"
+        chaveConfiguracao = "clothingdryer"
     elseif recipienteTipo == "clothingwasher" then
         if objetoPai and instanceof(objetoPai, "IsoCombinationWasherDryer") then
-            chaveConfig = "combo_washer_dryer"
-            isCombo = true
+            chaveConfiguracao = "combo_washer_dryer"
+            ehCombo = true
         else
-            chaveConfig = "clothingwasher"
+            chaveConfiguracao = "clothingwasher"
         end
     end
 
-    if not chaveConfig then return botao end
+    if not chaveConfiguracao then return botao end
 
-    local configIcone = LKS_ConfiguracaoIconesLavanderia[chaveConfig]
+    local temEnergia = recipiente:isPowered()
+    local temAgua = true
+    if ehCombo then
+        if objetoPai and objetoPai:isModeWasher() then
+            temAgua = objetoPai:getFluidAmount() > 0
+        end
+    elseif recipienteTipo == "clothingwasher" then
+        if objetoPai then
+            temAgua = objetoPai:getFluidAmount() > 0
+        end
+    end
 
-    if recipiente:isPowered() then
-        -- Energizado: verifica se requer água e se tem água
-        local temAgua = true
-        if isCombo then
-            if objetoPai and objetoPai:isModeWasher() then
-                temAgua = objetoPai:getFluidAmount() > 0
-            end
-        elseif recipienteTipo == "clothingwasher" then
-            if objetoPai then
-                temAgua = objetoPai:getFluidAmount() > 0
-            end
+    local direcao = nil
+    if objetoPai then
+        local propriedadesObjeto = objetoPai:getProperties()
+        if propriedadesObjeto and propriedadesObjeto:has("Facing") then
+            direcao = propriedadesObjeto:get("Facing")
         end
+    end
 
-        if not temAgua and configIcone.sem_agua then
-            local imagemSemAgua = getTexture(configIcone.sem_agua)
-            if imagemSemAgua then botao:setImage(imagemSemAgua) end
-        elseif configIcone.energizado then
-            local imagemEnergizada = getTexture(configIcone.energizado)
-            if imagemEnergizada then botao:setImage(imagemEnergizada) end
-        end
-    else
-        -- Desenergizado: aplica ícone off correspondente
-        if configIcone.desenergizado then
-            local imagemDesativada = getTexture(configIcone.desenergizado)
-            if imagemDesativada then botao:setImage(imagemDesativada) end
-        end
+    local imagemEstado = obterTexturaEstado(chaveConfiguracao, temEnergia, temAgua, direcao)
+    if imagemEstado then
+        botao:setImage(imagemEstado)
     end
 
     return botao
 end
 
-print("[LKS PATCH - LKS_ContextMenu_WasherDryer.lua] Carregado com sucesso!")
+print("[LKS PATCH - LKS_LaundrySystem_WasherDryer.lua] Carregado com sucesso!")
