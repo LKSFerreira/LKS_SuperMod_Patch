@@ -133,7 +133,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     end
 
     local texturaIconeMenu = obterTexturaEstado(chaveConfiguracao, temEnergia)
-    local estaAtivo = objetoEletrico:isActivated()
+    local estaAtivo = objetoEletrico:Activated()
 
     -- Remove as opções nativas obsoletas para fogão ou micro-ondas
     for indice = #menuContexto.options, 1, -1 do
@@ -175,8 +175,8 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
             local tooltipInfo = ISWorldObjectContextMenu.addToolTip()
             tooltipInfo:setName(nomeObjetoTraduzido)
             local temperaturaAtual = objetoEletrico:getCurrentTemperature()
-            local textoTemperatura = string.format("Temperatura Atual: %.1f°C", temperaturaAtual)
-            local textoAlerta = " <RGB:1,0,0> ⚠️ CUIDADO: Equipamento aquecido! Risco de incêndio se deixado sem supervisão."
+            local textoTemperatura = string.format(getText("IGUI_LKS_TemperaturaAtual") or "Temperatura Atual: %.1f°C", temperaturaAtual)
+            local textoAlerta = " <RGB:1,0,0> " .. (getText("IGUI_LKS_AlertaEquipamentoAquecido") or "⚠️ CUIDADO: Equipamento aquecido! Risco de incêndio se deixado sem supervisão.")
             tooltipInfo.description = textoTemperatura .. "\n" .. textoAlerta
             opcaoDesligar.toolTip = tooltipInfo
         end
@@ -231,7 +231,7 @@ table.insert(LKS_ApplianceManager.devices, LKS_Device_Cooking)
 for _, tipo in ipairs(LKS_Device_Cooking.recipientesAceitos) do
     LKS_ApplianceManager.containerTypeMap[tipo] = LKS_Device_Cooking
 end
-for _, classe in ipairs(LKS_Device_Cooking.javaClassMap) do
+for _, classe in ipairs(LKS_Device_Cooking.classesJava) do
     LKS_ApplianceManager.javaClassMap[classe] = LKS_Device_Cooking
 end
 
