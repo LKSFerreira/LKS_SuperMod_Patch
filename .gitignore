@@ -1,4 +1,6 @@
 executa_commits.ps1
+console_sanitizado.txt
+console_erros.txt
 
 # Logs
 logs

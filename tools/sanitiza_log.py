@@ -111,11 +111,17 @@ def sanitizar_log(arquivo_entrada=None, arquivo_saida=None):
     linhas_totais = 0
     linhas_gravadas = 0
     contagem_erros = 0
+    linhas_erros = []
+    bloco_stack_trace = False
 
     try:
         # Ativa suporte a cores ANSI no Windows
         if os.name == 'nt':
             os.system('')
+
+        # O arquivo de erros será gravado no mesmo diretório do arquivo_saida
+        diretorio_saida = Path(arquivo_saida).parent
+        arquivo_erros = diretorio_saida / "console_erros.txt"
 
         with open(arquivo_entrada, "r", encoding="utf-8", errors="ignore") as f_in, \
              open(arquivo_saida, "w", encoding="utf-8") as f_out:
@@ -126,9 +132,22 @@ def sanitizar_log(arquivo_entrada=None, arquivo_saida=None):
                     f_out.write(linha)
                     linhas_gravadas += 1
                     
-                    # Contabiliza erros de Lua ou exceções gerais do Java nos logs filtrados
-                    if "ERROR:" in linha or "Exception" in linha or "STACK TRACE" in linha:
+                    # Detecção inteligente de erros e blocos de stack trace do Lua/Java
+                    e_erro = "ERROR:" in linha or "Exception" in linha or "Lua fail" in linha or "STACK TRACE" in linha
+                    
+                    if "STACK TRACE" in linha or "dumping Lua stack trace" in linha:
+                        bloco_stack_trace = True
+                    elif bloco_stack_trace and not linha.strip():
+                        bloco_stack_trace = False
+                        
+                    if e_erro or bloco_stack_trace or "Stack trace:" in linha or "\tLua(" in linha or "\tse.krka.kahlua." in linha:
+                        linhas_erros.append(linha)
                         contagem_erros += 1
+
+        # Salva o arquivo contendo apenas os erros extraídos
+        if contagem_erros > 0:
+            with open(arquivo_erros, "w", encoding="utf-8") as f_err:
+                f_err.writelines(linhas_erros)
 
         print(f"\n{GREEN}┌── {BOLD}SANILOG - LOG SANITIZADO COM SUCESSO!{RESET}")
         print(f"{GREEN}│{RESET}  📄 {BOLD}Entrada:{RESET} {arquivo_entrada}")
@@ -137,7 +156,15 @@ def sanitizar_log(arquivo_entrada=None, arquivo_saida=None):
         print(f"{GREEN}│{RESET}  🧹 {BOLD}Linhas gravadas (filtradas):{RESET} {linhas_gravadas} ({linhas_totais - linhas_gravadas} removidas)")
         
         if contagem_erros > 0:
-            print(f"{GREEN}│{RESET}  ⚠️  {RED}{BOLD}Erros/Exceções encontrados:{RESET} {RED}{contagem_erros} erros detectados no log!{RESET}")
+            print(f"{GREEN}│{RESET}  ⚠️  {RED}{BOLD}Erros/Exceções encontrados:{RESET} {RED}{contagem_erros} linhas de erro extraídas!{RESET}")
+            print(f"{GREEN}│{RESET}  📁 {BOLD}Relatório de erros gravado em:{RESET} {arquivo_erros}")
+            
+            # Se a quantidade de erros for pequena, exibe-os diretamente no terminal para depuração rápida
+            num_exibir = min(len(linhas_erros), 15)
+            print(f"{GREEN}│{RESET}")
+            print(f"{GREEN}│{RESET}  🔍 {BOLD}Exibindo últimas/principais {num_exibir} linhas de erro no console:{RESET}")
+            for l_err in linhas_erros[-num_exibir:]:
+                print(f"{GREEN}│{RESET}    {RED}{l_err.strip()}{RESET}")
         else:
             print(f"{GREEN}│{RESET}  ✅ {GREEN}{BOLD}Erros/Exceções encontrados:{RESET} Nenhum erro crítico detectado nas linhas gravadas.")
         print(f"{GREEN}└───{RESET}\n")
