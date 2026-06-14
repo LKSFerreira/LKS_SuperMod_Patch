@@ -471,51 +471,18 @@ def converter_profundidade_bits(entrada, saida, target_depth=8):
         return False
 
 # ============================================================================
-# 🔍 MÓDULO 4: AUDITORIA DE IMAGENS MORTAS (FIND FILES)
+# 🔍 MÓDULO 4: REDIRECIONAMENTO DE AUDITORIA (DELEGADO A AUDITORIA_MOD.PY)
 # ============================================================================
 
-def auditar_imagens_mortas():
-    """Analisa o mod para descobrir se há imagens na pasta media/ui que não estão sendo usadas nos arquivos Lua."""
-    print(f"{CYAN}[*] Iniciando auditoria de assets órfãos...{RESET}")
-    
-    # 1. Coleta arquivos de código do mod
-    arquivos_codigo = []
-    for extensao in ["*.lua", "*.json", "*.txt", "*.md"]:
-        arquivos_codigo.extend(DIRETORIO_RAIZ.rglob(extensao))
-        
-    # Unifica o texto do código em uma grande string de busca
-    conteudo_codigo = ""
-    for arquivo_codigo in arquivos_codigo:
-        try:
-            with open(arquivo_codigo, "r", encoding="utf-8", errors="ignore") as arquivo_leitor:
-                conteudo_codigo += arquivo_leitor.read().lower()
-        except Exception:
-            pass
-            
-    # 2. Coleta imagens da pasta de UI
-    if not DIRETORIO_UI_MOD.exists():
-        print(f"{YELLOW}[!] Pasta de UI do mod vazia ou inexistente.{RESET}")
-        return
-        
-    imagens = [caminho_imagem for caminho_imagem in DIRETORIO_UI_MOD.iterdir() if caminho_imagem.is_file() and caminho_imagem.suffix.lower() in ('.png', '.jpg', '.tga')]
-    
-    print(f"[INFO] Indexados {len(arquivos_codigo)} arquivos de código e {len(imagens)} imagens de UI.")
-    print("-" * 65)
-    print(f"{'ARQUIVO DE IMAGEM':<38} | {'STATUS NO CÓDIGO':<20}")
-    print("-" * 65)
-    
-    imagens_nao_referenciadas = []
-    for caminho_imagem in imagens:
-        nome_base = caminho_imagem.stem
-        padrao_busca_regex = r"\b" + re.escape(nome_base.lower()) + r"\b"
-        
-        if re.search(padrao_busca_regex, conteudo_codigo):
-            print(f"✅ {caminho_imagem.name:<36} | Usado/Referenciado")
-        else:
-            print(f"❌ {RED}{caminho_imagem.name:<36}{RESET} | {RED}SUSPEITO (NÃO REFERENCIADO){RESET}")
-            imagens_nao_referenciadas.append(caminho_imagem)
-            
-    print("-" * 65)
+def redirecionar_auditoria_completa():
+    """Chama de forma unificada a auditoria completa do script auditoria_mod.py."""
+    import subprocess
+    caminho_auditoria = DIRETORIO_FERRAMENTAS / "auditoria_mod.py"
+    if caminho_auditoria.exists():
+        subprocess.run([sys.executable, str(caminho_auditoria)])
+    else:
+        print(f"{RED}[-] Erro: Script de auditoria 'auditoria_mod.py' não encontrado.{RESET}")
+
 
 def print_banner():
     """Exibe um banner ASCII moderno e bordas unicode elegantes na inicialização."""
@@ -704,7 +671,7 @@ def run_menu_interativo():
     print(f"    {CYAN}[1]{RESET} Extrair Assets do Jogo (.pack ➔ PNG)")
     print(f"    {CYAN}[2]{RESET} Inspecionar Imagem (Resolução, modo, bit depth)")
     print(f"    {CYAN}[3]{RESET} Otimizar PNG para 8-bit (Corrige crashes de texturas 16-bit)")
-    print(f"    {CYAN}[4]{RESET} Auditar Código do Mod (Buscar imagens órfãs/sem uso)")
+    print(f"    {CYAN}[4]{RESET} Executar Auditoria Completa do Mod (auditoria_mod.py)")
     print(f"    {CYAN}[5]{RESET} Buscar Referências de Assets (Unificado 2D/3D)")
     print(f"    {CYAN}[0]{RESET} Sair")
     
@@ -787,8 +754,8 @@ def run_menu_interativo():
         converter_profundidade_bits(img_in, img_out)
         
     elif opcao == "4":
-        # Auditoria de imagens órfãs
-        auditar_imagens_mortas()
+        # Executa a auditoria completa do mod (redirecionada a auditoria_mod.py)
+        redirecionar_auditoria_completa()
         
     elif opcao == "0":
         print("Saindo...")
@@ -935,7 +902,7 @@ def main():
     grupo_acao.add_argument(
         "--auditar", "-a",
         action="store_true",
-        help="Audita a pasta de UI do mod buscando imagens órfãs/sem uso"
+        help="Executa a auditoria unificada completa do mod (sintaxe, traduções, caminhos e assets)"
     )
     grupo_acao.add_argument(
         "--buscar", "-b",
@@ -1010,7 +977,7 @@ def main():
         converter_profundidade_bits(args.converter, saida)
         
     elif args.auditar:
-        auditar_imagens_mortas()
+        redirecionar_auditoria_completa()
         
     elif args.buscar:
         caminho_jogo = args.jogo

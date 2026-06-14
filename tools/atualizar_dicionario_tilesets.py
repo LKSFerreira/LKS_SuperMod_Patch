@@ -25,11 +25,30 @@ COMO USAR:
 import os
 import re
 import json
+import sys
+
+# Garante que o console do Windows aceite codificação UTF-8
+if sys.version_info >= (3, 7):
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
+# Ativa suporte a cores ANSI no Windows
+if os.name == 'nt':
+    os.system('')
+
+# Cores do terminal
+RESET = "\033[0m"
+BOLD = "\033[1m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+CYAN = "\033[36m"
+RED = "\033[31m"
+GRAY = "\033[90m"
 
 def extrair_tiles_do_jogo(caminho_jogo):
     caminho_def = os.path.join(caminho_jogo, "media", "newtiledefinitions.tiles.txt")
     if not os.path.exists(caminho_def):
-        print(f"Erro: Arquivo não encontrado em {caminho_def}")
+        print(f"{RED}[-] Erro: Arquivo não encontrado em {caminho_def}{RESET}")
         return None
 
     # Queremos buscar tilesets de interesse
@@ -149,11 +168,11 @@ if __name__ == "__main__":
             pz_dir = "C:\\Users\\LKSFERREIRA\\Downloads\\ProjectZomboid"
             
     if not os.path.exists(pz_dir):
-        print(f"Erro: O diretório de instalação do Project Zomboid não existe em: {pz_dir}")
-        print("Por favor, configure a chave PZ_GAME_DIR no arquivo .env na raiz do mod.")
+        print(f"{RED}[-] Erro: O diretório de instalação do Project Zomboid não existe em: {pz_dir}{RESET}")
+        print(f"{YELLOW}💡 Por favor, configure a chave PZ_GAME_DIR no arquivo .env na raiz do mod.{RESET}")
         sys.exit(1)
  
-    print(f"Buscando definições de tilesets no jogo: {pz_dir}")
+    print(f"{CYAN}[*] Buscando definições de tilesets no jogo: {pz_dir}{RESET}")
     dados = extrair_tiles_do_jogo(pz_dir)
     
     caminhos_assets = {
@@ -189,6 +208,6 @@ if __name__ == "__main__":
                 "caminhos_assets": caminhos_assets,
                 "tilesets": dados
             }, out, indent=2, ensure_ascii=False)
-        print(f"Dicionário de tilesets atualizado com sucesso em: {caminho_saida}")
+        print(f"{GREEN}[+] Dicionário de tilesets atualizado com sucesso em: {caminho_saida}{RESET}")
     else:
-        print("Falha ao extrair dados dos tilesets.")
+        print(f"{RED}[-] Falha ao extrair dados dos tilesets.{RESET}")
