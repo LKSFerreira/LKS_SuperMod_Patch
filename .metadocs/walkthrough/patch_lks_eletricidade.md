@@ -11,7 +11,7 @@ Este documento descreve a consolidação técnica de todas as alterações, melh
 - **Correção da Refrigeração Infinita (Build 42)**: A engine do jogo em Java ativa o resfriamento nativo se o nome do contêiner contiver o radical `"fridge"` ou `"freezer"`. Para resolver o bug de energia grátis do gerador, redefinimos os contêineres inativos para:
   - Geladeira desligada: **`"geladeira_desligada"`**
   - Freezer desligado: **`"congelador_desligado"`**
-- **Melhoria Visual**: Adicionamos os ícones de tomada `LKS_Pwr_On.png` (verde) e `LKS_Pwr_Off.png` (vermelho) às opções de menu de contexto das geladeiras no cliente.
+- **Melhoria Visual**: Adicionamos os ícones de tomada `LKS_Button_Power_On.png` (verde) e `LKS_Button_Power_Off.png` (vermelho) às opções de menu de contexto das geladeiras no cliente.
 
 ### 2. Renomeação e Autoria de Assets (`LKS_`)
 - **Renomeação Física**: Modificamos todos os arquivos de imagem de interface originais de `PB_*.png` para `LKS_*.png` em `common/media/ui/` para marcar a autoria própria das artes feitas ou editadas pelo criador do patch.

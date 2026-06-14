@@ -30,7 +30,7 @@ Este documento descreve a fagocitação nativa das mecânicas de ligar/desligar 
   "IGUI_ContainerTitle_geladeira_desligada": "Geladeira desligada",
   "IGUI_ContainerTitle_congelador_desligado": "Freezer desligado",
   ```
-- Integramos os ícones `LKS_Pwr_On.png` (Ligar) e `LKS_Pwr_Off.png` (Desligar) ao menu de contexto do mundo das geladeiras no script cliente.
+- Integramos os ícones `LKS_Button_Power_On.png` (Ligar) e `LKS_Button_Power_Off.png` (Desligar) ao menu de contexto do mundo das geladeiras no script cliente.
 
 ### 4. Padronização e Autoria dos Assets (`LKS_`)
 - Renomeamos todos os assets do painel elétrico de `PB_*.png` para `LKS_*.png` em `common/media/ui/` para refletir a autoria própria das artes pelo desenvolvedor.
@@ -40,8 +40,8 @@ Este documento descreve a fagocitação nativa das mecânicas de ligar/desligar 
 
 ## Como Validar Manualmente
 1. Entre no jogo com o mod ativo (sem o mod *Fridges Off!* original).
-2. Clique com o botão direito em uma geladeira e selecione **"Desligar"** (confirmando a exibição do ícone de tomada desligada vermelha `LKS_Pwr_Off` ao lado da opção).
+2. Clique com o botão direito em uma geladeira e selecione **"Desligar"** (confirmando a exibição do ícone de tomada desligada vermelha `LKS_Button_Power_Off` ao lado da opção).
 3. Confirme que o título do contêiner no inventário mudou para *"Geladeira desligada"* e o ícone de tomada desligada do inventário é exibido.
-4. Clique com o botão direito na geladeira desligada e confirme a opção **"Ligar"** com o ícone de tomada verde `LKS_Pwr_On`.
+4. Clique com o botão direito na geladeira desligada e confirme a opção **"Ligar"** com o ícone de tomada verde `LKS_Button_Power_On`.
 5. Verifique na janela **Informações Elétricas da Construção** do gerador que o consumo elétrico caiu/subiu instantaneamente.
 6. Coloque um alimento perecível (ex: peixe fresco) e acelere o tempo para confirmar que ele estraga no ritmo normal (sem refrigeração fantasma) quando a geladeira estiver desligada.

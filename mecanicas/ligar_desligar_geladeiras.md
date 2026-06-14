@@ -6,7 +6,7 @@ Esta documentação detalha a arquitetura cliente/servidor e a lógica de substi
 
 Na versão padrão do Project Zomboid, geladeiras e congeladores consomem energia elétrica continuamente caso o quadrado físico em que estejam possua energia, sendo impossível desligá-los individualmente. O mod Fridges Off resolve essa limitação:
 
-1. **Interação de Tomada**: O jogador pode clicar com o botão direito em uma geladeira ou freezer e selecionar *"Ligar"* ou *"Desligar"*. A opção exibe ícones de plugue de tomada verde (`LKS_Pwr_On.png`) e vermelho (`LKS_Pwr_Off.png`).
+1. **Interação de Tomada**: O jogador pode clicar com o botão direito em uma geladeira ou freezer e selecionar *"Ligar"* ou *"Desligar"*. A opção exibe ícones de plugue de tomada verde (`LKS_Button_Power_On.png`) e vermelho (`LKS_Button_Power_Off.png`).
 2. **Impacto no Gerador**: Ao desligar uma geladeira, o consumo elétrico do gerador correspondente cai imediatamente. Isso permite poupar combustível e reduzir o desgaste de geradores, especialmente útil no multiplayer ou para congeladores vazios.
 3. **Preservação de Alimentos**: Ao ser desligada, a taxa de resfriamento do contêiner é zerada, fazendo com que os alimentos armazenados nele estraguem no ritmo normal de temperatura ambiente.
 

@@ -20,11 +20,11 @@ Este plano detalha a refatoração do *monkey patch* da Loot Window (`ISInventor
    local LKS_ConfiguracaoAbasEletricas = {
        clothingwasher = {
            imagemOn = "media/ui/Container_ClothingWasher.png",
-           imagemOff = "media/ui/LKS_Container_ClothingWasher_Eletricity_Off.png"
+           imagemOff = "media/ui/LKS_Container_ClothingWasher_Electricity_Off.png"
        },
        clothingdryer = {
            imagemOn = "media/ui/Container_ClothingDryer.png",
-           imagemOff = "media/ui/LKS_Container_ClothingDryer_Eletricity_Off.png"
+           imagemOff = "media/ui/LKS_Container_ClothingDryer_Electricity_Off.png"
        },
        fridge = {
            imagemOn = "media/ui/Container_Fridge.png",
