@@ -545,14 +545,19 @@ def executar_auditoria_assets(diretorio_raiz):
         return True
 
     # 1. Coleta arquivos de código do mod de forma recursiva
+    padroes_gitignore = carregar_regras_gitignore(diretorio_raiz)
     arquivos_codigo = []
-    for raiz, _, arquivos in os.walk(diretorio_raiz):
+    for raiz, _, arquivos in os.walk(os.path.join(diretorio_raiz, "common")):
         # Ignora pastas de controle, ambientes virtuais e ferramentas
         if any(p in raiz for p in ['.git', '.venv', '.vscode', 'tools', '__pycache__']):
             continue
         for arq in arquivos:
+            caminho_completo = os.path.join(raiz, arq)
+            caminho_relativo = os.path.relpath(caminho_completo, diretorio_raiz)
+            if deve_ignorar_caminho(caminho_relativo, padroes_gitignore, ITENS_IGNORADOS_MANUAL, eh_diretorio=False):
+                continue
             if arq.endswith(('.lua', '.json', '.txt', '.md')):
-                arquivos_codigo.append(os.path.join(raiz, arq))
+                arquivos_codigo.append(caminho_completo)
 
     # Unifica o conteúdo do código em uma grande string de busca
     conteudo_codigo = ""
@@ -619,12 +624,39 @@ def executar_auditoria_assets(diretorio_raiz):
             print(f"{col_1_colorida} | {RED}{col_2}{RESET}")
             
     print(divisoria_linha)
+
+    # 3. Detecta referências no código a imagens que não existem fisicamente (imagens ausentes)
+    referencias_code = set(re.findall(r'media/ui/([a-zA-Z0-9_-]+\.(?:png|jpg|tga))', conteudo_codigo, re.IGNORECASE))
+    imagens_existentes_lower = {img.lower() for img in imagens}
+    imagens_ausentes = []
+
+    for ref in referencias_code:
+        ref_lower = ref.lower()
+        # Apenas auditamos imagens que pertencem ao nosso mod (com prefixo 'lks_' ou 'pb_')
+        # para evitar falsos positivos com texturas nativas (vanilla) do Project Zomboid
+        if not (ref_lower.startswith("lks_")): #or ref_lower.startswith("pb_")):
+            continue
+            
+        if ref_lower not in imagens_existentes_lower:
+            imagens_ausentes.append(ref)
+
+    sucesso_auditoria = True
+
+    if imagens_ausentes:
+        print(f"\n{RED}[ERR] IMAGENS REFERENCIADAS NO CÓDIGO MAS AUSENTES NO PROJETO:{RESET}")
+        for img_ausente in sorted(imagens_ausentes):
+            print(f"  {RED}- media/ui/{img_ausente}{RESET}")
+        sucesso_auditoria = False
+
     if imagens_nao_referenciadas:
         print(f"{RED}[-] Auditoria de assets concluída: Encontrada(s) {len(imagens_nao_referenciadas)} imagem(ns) não utilizada(s).{RESET}")
-        return False
-    else:
-        print(f"{GREEN}[+] Sucesso: Todas as imagens na pasta de UI estão sendo referenciadas no código!{RESET}")
+        sucesso_auditoria = False
+
+    if sucesso_auditoria:
+        print(f"{GREEN}[+] Sucesso: Integridade dos assets validada! Nenhuma imagem órfã ou referenciada ausente.{RESET}")
         return True
+    else:
+        return False
 
 def executar_auditoria_completa(diretorio_raiz):
     """
