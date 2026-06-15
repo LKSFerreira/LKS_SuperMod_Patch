@@ -1,126 +1,154 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Heating_Client.lua
--- LKS_EletricidadeConstrucao V2 - Heating Client (Client-side only)
--- Reads HeatingPositions from generator ModData and manages IsoHeatSource objects.
+-- ARQUIVO: LKS_EletricidadeConstrucao_Heating_Client.lua
+-- OBJETIVO: Lê as posições de aquecimento do ModData dos geradores e gerencia os objetos físicos IsoHeatSource no cliente.
+-- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Heating_Client] LKS_EletricidadeConstrucao namespace not found - skipping")
+    print("[LKS_EletricidadeConstrucao_Heating_Client] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
--- Global accessor used by InfoWindow toggle buttons
+-- Acesso global utilizado pelos botões de alternação da interface (InfoWindow)
 LKS_EletricidadeConstrucao_HeatingClient = LKS_EletricidadeConstrucao_HeatingClient or {}
 
--- ============================================================
--- CONSTANTS AND STATE
--- ============================================================
+-- ============================================================================
+-- CONSTANTES E ESTADO INTERNO
+-- ============================================================================
 
-local TEMP_OFFSET    = 7.1  -- PZ display offset: IsoHeatSource temp = target + offset
-local DEFAULT_TEMP   = 22   -- default target (Celsius)
-local DEFAULT_RADIUS = 20   -- default heat radius (tiles)
+local DESLOCAMENTO_TEMPERATURA = 7.1  -- Correção visual do PZ: IsoHeatSource temperatura = alvo + deslocamento
+local TEMPERATURA_PADRAO       = 22   -- Temperatura padrão em graus Celsius
+local RAIO_PADRAO              = 20   -- Raio padrão de aquecimento em blocos (tiles)
 
-local _activeSources = {}   -- genKey ("x_y_z") -> list of {source=IsoHeatSource}
+local _fontesAtivas = {}   -- chaveGerador ("x_y_z") -> lista de {source = IsoHeatSource}
 
--- ============================================================
--- SANDBOX HELPERS
--- ============================================================
+-- ============================================================================
+-- AUXILIARES DE SANDBOX
+-- ============================================================================
 
-local function IsEnabled()
-    local sb = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao
-    if sb and sb.HeatingSystemEnabled ~= nil then
-        return sb.HeatingSystemEnabled
+--- Verifica se o sistema de aquecimento está ativo nas SandboxVars.
+--- @return boolean Retorna true se estiver ativo.
+local function IsSistemaAtivo()
+    local preferenciasSandbox = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao
+    if preferenciasSandbox and preferenciasSandbox.HeatingSystemEnabled ~= nil then
+        return preferenciasSandbox.HeatingSystemEnabled
     end
     return true
 end
 
-local function GetRadius()
-    local sb = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao
-    if sb and sb.HeatRadius then return sb.HeatRadius end
-    return DEFAULT_RADIUS
+--- Retorna o raio de aquecimento configurado no sandbox.
+--- @return number O raio de calor.
+local function ObterRaio()
+    local preferenciasSandbox = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao
+    if preferenciasSandbox and preferenciasSandbox.HeatRadius then return preferenciasSandbox.HeatRadius end
+    return RAIO_PADRAO
 end
 
-local function AddLoadedGenerator(result, seen, generator)
-    if not generator then return end
-    local sq = generator:getSquare()
-    if not sq then return end
+--- Insere um gerador físico carregado nas tabelas de resultado, evitando duplicações.
+--- @param resultado table A lista de destino.
+--- @param vistos table Conjunto de controle de duplicados.
+--- @param gerador any O gerador físico.
+local function AdicionarGeradorCarregado(resultado, vistos, gerador)
+    if not gerador then return end
+    local quadrado = gerador:getSquare()
+    if not quadrado then return end
 
-    local key = sq:getX() .. "_" .. sq:getY() .. "_" .. sq:getZ()
-    if seen[key] then return end
+    local chave = quadrado:getX() .. "_" .. quadrado:getY() .. "_" .. quadrado:getZ()
+    if vistos[chave] then return end
 
-    seen[key] = true
-    table.insert(result, generator)
+    vistos[chave] = true
+    table.insert(resultado, gerador)
 end
 
-local function FindLoadedGeneratorAt(x, y, z)
-    local cell = getCell()
-    if not cell then return nil end
+--- Busca um gerador físico no GridSquare carregado.
+--- @param coordenadaX number Coordenada X.
+--- @param coordenadaY number Coordenada Y.
+--- @param coordenadaZ number Coordenada Z.
+--- @return any|nil O gerador IsoGenerator ou nil.
+local function LocalizarGeradorCarregadoEm(coordenadaX, coordenadaY, coordenadaZ)
+    local celula = getCell()
+    if not celula then return nil end
 
-    local sq = cell:getGridSquare(x, y, z)
-    if not sq then return nil end
+    local quadrado = celula:getGridSquare(coordenadaX, coordenadaY, coordenadaZ)
+    if not quadrado then return nil end
 
-    local objs = sq:getObjects()
-    if not objs then return nil end
+    local objetos = quadrado:getObjects()
+    if not objetos then return nil end
 
-    for i = 0, objs:size() - 1 do
-        local obj = objs:get(i)
-        if obj and instanceof(obj, "IsoGenerator") then
-            return obj
+    for indiceObjeto = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indiceObjeto)
+        if objeto and instanceof(objeto, "IsoGenerator") then
+            return objeto
         end
     end
 
     return nil
 end
 
-local function CollectActiveSourceGenerators(result, seen)
-    for genKey in pairs(_activeSources) do
-        local px, py, pz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if px then
-            AddLoadedGenerator(result, seen, FindLoadedGeneratorAt(tonumber(px), tonumber(py), tonumber(pz)))
+--- Coleta os geradores associados a fontes de aquecimento que estão atualmente ativas.
+--- @param resultado table A lista de destino.
+--- @param vistos table Conjunto de controle de duplicados.
+local function ColetarGeradoresFontesAtivas(resultado, vistos)
+    for chaveGerador in pairs(_fontesAtivas) do
+        local coordenadaX, coordenadaY, coordenadaZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if coordenadaX then
+            AdicionarGeradorCarregado(resultado, vistos, LocalizarGeradorCarregadoEm(tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ)))
         end
     end
 end
 
-local function CollectWindowGenerators(result, seen)
-    local UI = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.UI and LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow
-    local instances = UI and UI.instances
-    if not instances then return end
+--- Coleta os geradores associados a janelas gráficas abertas no cliente.
+--- @param resultado table A lista de destino.
+--- @param vistos table Conjunto de controle de duplicados.
+local function ColetarGeradoresDasJanelas(resultado, vistos)
+    local InterfaceGrafica = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.UI and LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow
+    local instancias = InterfaceGrafica and InterfaceGrafica.instances
+    if not instancias then return end
 
-    for _, win in pairs(instances) do
-        AddLoadedGenerator(result, seen, win and win.generator or nil)
+    for _, janela in pairs(instancias) do
+        AdicionarGeradorCarregado(resultado, vistos, janela and janela.generator or nil)
     end
 end
 
-local function CollectNearbyPlayerGenerators(result, seen, radius)
-    local cell = getCell()
-    if not cell then return end
+--- Coleta geradores carregados no mapa nas imediações dos jogadores locais.
+--- @param resultado table A lista de destino.
+--- @param vistos table Conjunto de controle de duplicados.
+--- @param raio number|nil O raio de busca (padrão: 25).
+local function ColetarGeradoresProximosAoJogador(resultado, vistos, raio)
+    local celula = getCell()
+    if not celula then return end
 
-    radius = radius or 25
-    for i = 0, 3 do
-        local player = getSpecificPlayer and getSpecificPlayer(i) or nil
-        if player then
-            local psq = player:getSquare()
-            if psq then
-                local px, py, pz = psq:getX(), psq:getY(), psq:getZ()
-                local zLevels = { pz }
-                if pz ~= 0 then zLevels[#zLevels + 1] = 0 end
+    raio = raio or 25
+    for indiceJogador = 0, 3 do
+        local jogador = getSpecificPlayer and getSpecificPlayer(indiceJogador) or nil
+        if jogador then
+            local quadradoJogador = jogador:getSquare()
+            if quadradoJogador then
+                local coordenadaX, coordenadaY, coordenadaZ = quadradoJogador:getX(), quadradoJogador:getY(), quadradoJogador:getZ()
+                local niveisZ = { coordenadaZ }
+                if coordenadaZ ~= 0 then niveisZ[#niveisZ + 1] = 0 end
 
-                for _, searchZ in ipairs(zLevels) do
-                    for dx = -radius, radius do
-                        for dy = -radius, radius do
-                            local sq = cell:getGridSquare(px + dx, py + dy, searchZ)
-                            if sq then
-                                local objs = sq:getObjects()
-                                if objs then
-                                    for oi = 0, objs:size() - 1 do
-                                        local obj = objs:get(oi)
-                                        if obj and instanceof(obj, "IsoGenerator") then
-                                            AddLoadedGenerator(result, seen, obj)
+                for _, zPesquisa in ipairs(niveisZ) do
+                    for deslocamentoX = -raio, raio do
+                        for deslocamentoY = -raio, raio do
+                            local quadrado = celula:getGridSquare(coordenadaX + deslocamentoX, coordenadaY + deslocamentoY, zPesquisa)
+                            if quadrado then
+                                local objetos = quadrado:getObjects()
+                                if objetos then
+                                    for indiceObjeto = 0, objetos:size() - 1 do
+                                        local objeto = objetos:get(indiceObjeto)
+                                        if objeto and instanceof(objeto, "IsoGenerator") then
+                                            AdicionarGeradorCarregado(resultado, vistos, objeto)
                                             break
                                         end
                                     end
@@ -134,243 +162,238 @@ local function CollectNearbyPlayerGenerators(result, seen, radius)
     end
 end
 
--- ============================================================
--- CORE: APPLY / REMOVE
--- ============================================================
+-- ============================================================================
+-- APLICAÇÃO E REMOÇÃO DE FONTES DE CALOR (ISOHEATSOURCE)
+-- ============================================================================
 
---- Create IsoHeatSource objects for the given generator.
-function LKS_EletricidadeConstrucao_HeatingClient.Apply(generator)
-    if not generator then return false end
-    if not IsEnabled() then return false end
+--- Cria os objetos físicos IsoHeatSource nas posições radiantes associadas ao gerador.
+--- @param gerador any O gerador físico.
+--- @return boolean Retorna true se as fontes de calor foram aplicadas com sucesso.
+function LKS_EletricidadeConstrucao_HeatingClient.Apply(gerador)
+    if not gerador then return false end
+    if not IsSistemaAtivo() then return false end
     if isServer() and not isClient() then return false end
 
-    local sq = generator:getSquare()
-    if not sq then return false end
-    local genKey = sq:getX() .. "_" .. sq:getY() .. "_" .. sq:getZ()
+    local quadrado = gerador:getSquare()
+    if not quadrado then return false end
+    local chaveGerador = quadrado:getX() .. "_" .. quadrado:getY() .. "_" .. quadrado:getZ()
 
-    local md  = generator:getModData()
-    local pos = md.HeatingPositions
-    if not pos or type(pos) ~= "table" then return false end
-    -- NOTE: HeatingPositions is saved/loaded through IsoObject ModData which Kahlua
-    -- deserializes with string numeric keys ("1","2",...). # returns 0 on such tables.
-    -- Use a pairs-based emptiness check.
-    local _hasPos = false
-    for _ in pairs(pos) do _hasPos = true; break end
-    if not _hasPos then return false end
+    local dadosMod = gerador:getModData()
+    local posicoes = dadosMod.HeatingPositions
+    if not posicoes or type(posicoes) ~= "table" then return false end
+    
+    -- Verifica se a tabela possui posições (chaves numéricas Kahlua tratadas como strings)
+    local _possuiPosicoes = false
+    for _ in pairs(posicoes) do _possuiPosicoes = true; break end
+    if not _possuiPosicoes then return false end
 
-    LKS_EletricidadeConstrucao_HeatingClient.Remove(genKey)
+    LKS_EletricidadeConstrucao_HeatingClient.Remove(chaveGerador)
 
-    local cell = getCell()
-    if not cell then return false end
+    local celula = getCell()
+    if not celula then return false end
 
-    local actualTemp = (md.HeatingTargetTemp or DEFAULT_TEMP) + TEMP_OFFSET
-    local radius     = GetRadius()
-    local sources    = {}
-    local sourceCount = 0
+    local temperaturaReal = (dadosMod.HeatingTargetTemp or TEMPERATURA_PADRAO) + DESLOCAMENTO_TEMPERATURA
+    local raio            = ObterRaio()
+    local fontes          = {}
+    local quantidadeFontes = 0
 
-    -- Both pos and roomData.positions may have Kahlua string numeric keys; use pairs.
-    for _, roomData in pairs(pos) do
-        if roomData.positions then
-            for _, p in pairs(roomData.positions) do
-                local ok, hs = pcall(function()
-                    local src = IsoHeatSource.new(p.x, p.y, p.z, radius, actualTemp)
-                    src:setTemperature(actualTemp)
-                    src:setRadius(radius)
-                    cell:addHeatSource(src)
-                    return src
+    for _, dadosQuarto in pairs(posicoes) do
+        if dadosQuarto.positions then
+            for _, posicao in pairs(dadosQuarto.positions) do
+                local sucesso, fonteCalor = pcall(function()
+                    local fonte = IsoHeatSource.new(posicao.x, posicao.y, posicao.z, raio, temperaturaReal)
+                    fonte:setTemperature(temperaturaReal)
+                    fonte:setRadius(raio)
+                    celula:addHeatSource(fonte)
+                    return fonte
                 end)
-                if ok and hs then
-                    table.insert(sources, {source = hs, x = p.x, y = p.y, z = p.z})
-                    sourceCount = sourceCount + 1
+                if sucesso and fonteCalor then
+                    table.insert(fontes, {source = fonteCalor, x = posicao.x, y = posicao.y, z = posicao.z})
+                    quantidadeFontes = quantidadeFontes + 1
                 end
             end
         end
     end
 
-    _activeSources[genKey] = sources
+    _fontesAtivas[chaveGerador] = fontes
 
     LKS_EletricidadeConstrucao.Print(string.format(
-        "[Heating] Applied %d sources (target %dC) for generator %s",
-        sourceCount, md.HeatingTargetTemp or DEFAULT_TEMP, genKey))
+        "[Heating] Aplicadas %d fontes de calor (alvo: %dC) para o gerador %s",
+        quantidadeFontes, dadosMod.HeatingTargetTemp or TEMPERATURA_PADRAO, chaveGerador))
 
     return true
 end
 
---- Remove all IsoHeatSource objects for the given generator key.
-function LKS_EletricidadeConstrucao_HeatingClient.Remove(genKey)
-    if not genKey then return end
-    local sources = _activeSources[genKey]
-    if not sources then return end
+--- Remove todas as fontes de calor IsoHeatSource ativas vinculadas ao gerador.
+--- @param chaveGerador string A chave identificadora do gerador.
+function LKS_EletricidadeConstrucao_HeatingClient.Remove(chaveGerador)
+    if not chaveGerador then return end
+    local fontes = _fontesAtivas[chaveGerador]
+    if not fontes then return end
 
-    local cell = getCell()
-    if cell then
-        for _, sd in ipairs(sources) do
-            pcall(function() cell:removeHeatSource(sd.source) end)
+    local celula = getCell()
+    if celula then
+        for _, dadosFonte in ipairs(fontes) do
+            pcall(function() celula:removeHeatSource(dadosFonte.source) end)
         end
     end
 
-    _activeSources[genKey] = nil
+    _fontesAtivas[chaveGerador] = nil
 end
 
---- Returns true when heat sources are currently active for this genKey.
-function LKS_EletricidadeConstrucao_HeatingClient.IsActive(genKey)
-    return _activeSources[genKey] ~= nil and #_activeSources[genKey] > 0
+--- Retorna true se houver fontes de calor radiante ativas para a chave do gerador.
+--- @param chaveGerador string A chave do gerador.
+--- @return boolean Status de atividade.
+function LKS_EletricidadeConstrucao_HeatingClient.IsActive(chaveGerador)
+    return _fontesAtivas[chaveGerador] ~= nil and #_fontesAtivas[chaveGerador] > 0
 end
 
---- Remove ALL active heat sources from every tracked generator.
---- Called by WipeAllData (debug wipe) so old heat sources don't linger
---- after a state clear + new-pool creation.
+--- Remove TODAS as fontes de calor ativas do mapa e limpa o rastreador.
 function LKS_EletricidadeConstrucao_HeatingClient.ClearAll()
-    local cell = getCell()
-    for key, sources in pairs(_activeSources) do
-        if cell then
-            for _, sd in ipairs(sources) do
-                pcall(function() cell:removeHeatSource(sd.source) end)
+    local celula = getCell()
+    for chave, fontes in pairs(_fontesAtivas) do
+        if celula then
+            for _, dadosFonte in ipairs(fontes) do
+                pcall(function() celula:removeHeatSource(dadosFonte.source) end)
             end
         end
-        _activeSources[key] = nil
+        _fontesAtivas[chave] = nil
     end
-    LKS_EletricidadeConstrucao.Print("[Heating] ClearAll: all active heat sources removed.")
+    LKS_EletricidadeConstrucao.Print("[Heating] ClearAll: todas as fontes de calor ativas foram removidas.")
 end
 
--- ============================================================
--- GENERATOR SCAN
--- ============================================================
+-- ============================================================================
+-- RASTREAMENTO E MAPEAMENTO DE GERADORES
+-- ============================================================================
 
-local function GetAllLoadedGenerators()
-    local result = {}
-    local seen   = {}
-    local cell   = getCell()
-    if not cell then return result end
+--- Varre e retorna a lista de todos os geradores físicos relevantes carregados no cliente.
+--- @return table Lista de geradores carregados.
+local function ObterTodosGeradoresCarregados()
+    local resultado = {}
+    local vistos   = {}
+    local celula   = getCell()
+    if not celula then return resultado end
 
-    -- Use StateManager building data: all generator positions are already known.
-    -- This avoids any chunk-map iteration API that differs between PZ versions.
-    local SM = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    local buildings = SM and SM.GetAllBuildings and SM.GetAllBuildings() or nil
+    local gerenciadorEstado = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    local construcoes = gerenciadorEstado and gerenciadorEstado.GetAllBuildings and gerenciadorEstado.GetAllBuildings() or nil
 
-    -- Primary: local StateManager snapshot when it exists.
-    for _, bd in pairs(buildings or {}) do
-        if bd.connectedGenerators then
-            for _, genKey in pairs(bd.connectedGenerators) do
-                local px, py, pz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                if px then
-                    AddLoadedGenerator(result, seen, FindLoadedGeneratorAt(tonumber(px), tonumber(py), tonumber(pz)))
+    -- 1. Varre geradores conhecidos através do banco de dados elétrico do StateManager
+    for _, dadosConstrucao in pairs(construcoes or {}) do
+        if dadosConstrucao.connectedGenerators then
+            for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+                local coordenadaX, coordenadaY, coordenadaZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                if coordenadaX then
+                    AdicionarGeradorCarregado(resultado, vistos, LocalizarGeradorCarregadoEm(tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ)))
                 end
             end
         end
     end
 
-    -- MP fallback: keep already-active sources and any open generator windows alive even
-    -- when the client-side StateManager has not received a reliable building snapshot yet.
-    CollectActiveSourceGenerators(result, seen)
-    CollectWindowGenerators(result, seen)
+    -- 2. Mantém geradores com janelas abertas ou fontes já ativas mesmo sob boots lentos de sincronização multiplayer
+    ColetarGeradoresFontesAtivas(resultado, vistos)
+    ColetarGeradoresDasJanelas(resultado, vistos)
 
-    -- Last resort: discover loaded generators around local players directly from the world.
-    if #result == 0 then
-        CollectNearbyPlayerGenerators(result, seen, 25)
+    -- 3. Caso limite: varredura direta no mundo ao redor de jogadores locais
+    if #resultado == 0 then
+        ColetarGeradoresProximosAoJogador(resultado, vistos, 25)
     end
 
-    return result
+    return resultado
 end
 
--- ============================================================
--- UPDATE LOOP
--- ============================================================
+-- ============================================================================
+-- LOOP DE PROCESSAMENTO (TICK)
+-- ============================================================================
 
-local function UpdateAll()
-    if not IsEnabled() then
-        for key in pairs(_activeSources) do
-            LKS_EletricidadeConstrucao_HeatingClient.Remove(key)
+--- Avalia e sincroniza o estado elétrico de ativação física com a emissão de calor.
+local function AtualizarTodos()
+    if not IsSistemaAtivo() then
+        for chave in pairs(_fontesAtivas) do
+            LKS_EletricidadeConstrucao_HeatingClient.Remove(chave)
         end
         return
     end
 
-    local generators = GetAllLoadedGenerators()
+    local geradores = ObterTodosGeradoresCarregados()
 
-    -- Build the set of currently-connected generator keys so we can detect
-    -- disconnected generators (they still exist physically but are no longer
-    -- in any building's connectedGenerators list after DisconnectBuilding runs).
-    local connectedKeys = {}
-    for _, gen in ipairs(generators) do
-        local sq = gen:getSquare()
-        if sq then
-            connectedKeys[sq:getX() .. "_" .. sq:getY() .. "_" .. sq:getZ()] = true
+    -- Monta a lista de geradores atualmente vinculados para rastrear desvinculações ou destruições
+    local chavesConectadas = {}
+    for _, gerador in ipairs(geradores) do
+        local quadrado = gerador:getSquare()
+        if quadrado then
+            chavesConectadas[quadrado:getX() .. "_" .. quadrado:getY() .. "_" .. quadrado:getZ()] = true
         end
     end
 
-    -- Cleanup: remove sources for generators that are no longer connected
-    -- (disconnected, building removed from state) OR physically destroyed.
-    for key in pairs(_activeSources) do
-        if not connectedKeys[key] then
-            LKS_EletricidadeConstrucao_HeatingClient.Remove(key)
+    -- Remove fontes de geradores destruídos ou desconectados
+    for chave in pairs(_fontesAtivas) do
+        if not chavesConectadas[chave] then
+            LKS_EletricidadeConstrucao_HeatingClient.Remove(chave)
         end
     end
 
-    -- Process each generator
-    for _, gen in ipairs(generators) do
-        local sq = gen:getSquare()
-        if sq then
-            local key = sq:getX() .. "_" .. sq:getY() .. "_" .. sq:getZ()
-            local md  = gen:getModData()
+    -- Atualiza ou remove fontes baseando-se no estado de ativação
+    for _, gerador in ipairs(geradores) do
+        local quadrado = gerador:getSquare()
+        if quadrado then
+            local chave = quadrado:getX() .. "_" .. quadrado:getY() .. "_" .. quadrado:getZ()
+            local dadosMod  = gerador:getModData()
 
-            -- Auto-enable on first valid activation
-            -- NOTE: HeatingPositions from IsoObject ModData is Kahlua-deserialized
-            -- after save/load → string numeric keys, # always 0. Use pairs.
-            local _hasPosForAutoEnable = false
-            if md.HeatingPositions and type(md.HeatingPositions) == "table" then
-                for _ in pairs(md.HeatingPositions) do _hasPosForAutoEnable = true; break end
+            -- Configura o valor padrão explícito HeatingEnabled=false no primeiro boot do gerador
+            local _possuiPosicoesParaAutoAtivacao = false
+            if dadosMod.HeatingPositions and type(dadosMod.HeatingPositions) == "table" then
+                for _ in pairs(dadosMod.HeatingPositions) do _possuiPosicoesParaAutoAtivacao = true; break end
             end
-            -- Explicit default: HeatingEnabled=false when unset.
-            -- SyncToGenerators (server) writes false on first encounter, but guard here
-            -- too so the client never silently auto-enables heating on initial pool creation
-            -- or after a reload that drops the persisted false boolean.
-            if md.HeatingEnabled == nil and _hasPosForAutoEnable then
-                md.HeatingEnabled = false
+            
+            if dadosMod.HeatingEnabled == nil and _possuiPosicoesParaAutoAtivacao then
+                dadosMod.HeatingEnabled = false
                 if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                    gen:transmitModData()
+                    gerador:transmitModData()
                 end
             end
 
-            local _hasPos = false
-            if md.HeatingPositions and type(md.HeatingPositions) == "table" then
-                for _ in pairs(md.HeatingPositions) do _hasPos = true; break end
+            local _possuiPosicoes = false
+            if dadosMod.HeatingPositions and type(dadosMod.HeatingPositions) == "table" then
+                for _ in pairs(dadosMod.HeatingPositions) do _possuiPosicoes = true; break end
             end
-            local wantHeat = gen:isActivated()
-                and (md.HeatingEnabled == true)
-                and _hasPos
+            
+            local desejaAquecimento = gerador:isActivated()
+                and (dadosMod.HeatingEnabled == true)
+                and _possuiPosicoes
 
-            if wantHeat then
-                if not LKS_EletricidadeConstrucao_HeatingClient.IsActive(key) then
-                    LKS_EletricidadeConstrucao_HeatingClient.Apply(gen)
+            if desejaAquecimento then
+                if not LKS_EletricidadeConstrucao_HeatingClient.IsActive(chave) then
+                    LKS_EletricidadeConstrucao_HeatingClient.Apply(gerador)
                 end
             else
-                if LKS_EletricidadeConstrucao_HeatingClient.IsActive(key) then
-                    LKS_EletricidadeConstrucao_HeatingClient.Remove(key)
+                if LKS_EletricidadeConstrucao_HeatingClient.IsActive(chave) then
+                    LKS_EletricidadeConstrucao_HeatingClient.Remove(chave)
                 end
             end
         end
     end
 end
 
--- ============================================================
--- PERIODIC TEMPERATURE REFRESH (re-apply every 10 min)
--- ============================================================
+-- ============================================================================
+-- LOOP DE ATUALIZAÇÃO DE TEMPERATURAS (A CADA 10 MINUTOS)
+-- ============================================================================
 
-local function RefreshTemperatures()
-    local cell = getCell()
-    if not cell then return end
+--- Recria preventivamente as fontes ativas no mapa para atualização do calor climático.
+local function AtualizarTemperaturas()
+    local celula = getCell()
+    if not celula then return end
 
-    for key in pairs(_activeSources) do
-        local px, py, pz = string.match(key, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if px then
-            local sq = cell:getGridSquare(tonumber(px), tonumber(py), tonumber(pz))
-            if sq then
-                local objs = sq:getObjects()
-                for i = 0, objs:size() - 1 do
-                    local obj = objs:get(i)
-                    if obj and instanceof(obj, "IsoGenerator") then
-                        LKS_EletricidadeConstrucao_HeatingClient.Remove(key)
-                        LKS_EletricidadeConstrucao_HeatingClient.Apply(obj)
+    for chave in pairs(_fontesAtivas) do
+        local coordenadaX, coordenadaY, coordenadaZ = string.match(chave, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if coordenadaX then
+            local quadrado = celula:getGridSquare(tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ))
+            if quadrado then
+                local objetos = quadrado:getObjects()
+                for indiceObjeto = 0, objetos:size() - 1 do
+                    local objeto = objetos:get(indiceObjeto)
+                    if objeto and instanceof(objeto, "IsoGenerator") then
+                        LKS_EletricidadeConstrucao_HeatingClient.Remove(chave)
+                        LKS_EletricidadeConstrucao_HeatingClient.Apply(objeto)
                         break
                     end
                 end
@@ -379,28 +402,30 @@ local function RefreshTemperatures()
     end
 end
 
--- ============================================================
--- EVENTS
--- ============================================================
+-- ============================================================================
+-- INSCRIÇÃO DE EVENTOS DE TICK DO JOGO
+-- ============================================================================
 
-local _tickCount    = 0
-local _refreshCount = 0
+local _contadorTicks        = 0
+local _contadorAtualizacao  = 0
 
 Events.OnTick.Add(function()
-    _tickCount    = _tickCount    + 1
-    _refreshCount = _refreshCount + 1
+    _contadorTicks       = _contadorTicks       + 1
+    _contadorAtualizacao = _contadorAtualizacao + 1
 
-    if _tickCount >= 600 then
-        _tickCount = 0
-        UpdateAll()
+    -- Atualiza geradores físicos carregados a cada ~10 segundos (600 ticks)
+    if _contadorTicks >= 600 then
+        _contadorTicks = 0
+        AtualizarTodos()
     end
 
-    if _refreshCount >= 36000 then
-        _refreshCount = 0
-        RefreshTemperatures()
+    -- Atualiza o gradiente de calor radiante a cada ~10 minutos (36000 ticks)
+    if _contadorAtualizacao >= 36000 then
+        _contadorAtualizacao = 0
+        AtualizarTemperaturas()
     end
 end)
 
 LKS_EletricidadeConstrucao.RegisterModule("Heating.Client", "2.0.0")
 
-print("[LKS_EletricidadeConstrucao_Heating_Client] Loaded")
+print("[LKS_EletricidadeConstrucao_Heating_Client] Módulo de aquecimento do cliente carregado com sucesso.")

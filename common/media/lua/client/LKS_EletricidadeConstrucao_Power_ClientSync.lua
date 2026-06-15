@@ -1,204 +1,248 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Power_ClientSync.lua
--- Multiplayer client-side reconstruction of fake generator power for loaded squares.
+-- ARQUIVO: LKS_EletricidadeConstrucao_Power_ClientSync.lua
+-- OBJETIVO: Reconstrói no cliente a energia falsa do gerador para GridSquares carregados em multiplayer.
+-- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Power_ClientSync] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Power_ClientSync")
 
-local POWER_SYNC_KEY = "LKS_EletricidadeConstrucao_BuildingPowerSync"
+local CHAVE_SINCRONIZACAO_ENERGIA = "LKS_EletricidadeConstrucao_BuildingPowerSync"
 
-local function IsClientContext()
+--- Verifica se o contexto de execução atual é o cliente.
+--- @return boolean Retorna true se for cliente.
+local function IsContextoCliente()
     return LKS_EletricidadeConstrucao.IsClient and LKS_EletricidadeConstrucao.IsClient()
 end
 
-local function GetSquareAt(x, y, z)
+--- Obtém o GridSquare de coordenadas específicas.
+--- @param coordenadaX number Coordenada X.
+--- @param coordenadaY number Coordenada Y.
+--- @param coordenadaZ number Coordenada Z.
+--- @return any|nil O GridSquare correspondente ou nil.
+local function ObterQuadradoEm(coordenadaX, coordenadaY, coordenadaZ)
     if getSquare then
-        return getSquare(x, y, z)
+        return getSquare(coordenadaX, coordenadaY, coordenadaZ)
     end
 
-    local cell = getCell and getCell()
-    return cell and cell:getGridSquare(x, y, z) or nil
+    local celula = getCell and getCell()
+    return celula and celula:getGridSquare(coordenadaX, coordenadaY, coordenadaZ) or nil
 end
 
-local function GetLocalPacket()
-    local packet = ModData.get(POWER_SYNC_KEY)
-    if packet then
-        return packet
+--- Obtém a tabela de dados ModData local associada à chave de sincronismo.
+--- @return table A tabela ModData de sincronização de energia.
+local function ObterPacoteLocal()
+    local pacote = ModData.get(CHAVE_SINCRONIZACAO_ENERGIA)
+    if pacote then
+        return pacote
     end
-    return ModData.getOrCreate(POWER_SYNC_KEY)
+    return ModData.getOrCreate(CHAVE_SINCRONIZACAO_ENERGIA)
 end
 
-local function GetBuildingStates()
-    local packet = GetLocalPacket()
-    packet.buildings = packet.buildings or {}
-    return packet, packet.buildings
+--- Obtém o pacote local e a lista de estados de construções contida nele.
+--- @return table O pacote local ModData.
+--- @return table A lista de estados das construções.
+local function ObterEstadosConstrucoes()
+    local pacote = ObterPacoteLocal()
+    pacote.buildings = pacote.buildings or {}
+    return pacote, pacote.buildings
 end
 
-local function ShouldAffectSquare(square, state)
-    if not square or not state or not state.boundingBox then
+--- Verifica se o GridSquare deve ser afetado pelo estado elétrico da construção.
+--- @param quadrado any O GridSquare que está sendo avaliado.
+--- @param estado table O estado da construção que possui energia.
+--- @return boolean Retorna true se o quadrado deve ser energizado por esta construção.
+local function DeveAfetarQuadrado(quadrado, estado)
+    if not quadrado or not estado or not estado.boundingBox then
         return false
     end
 
-    local x = square:getX()
-    local y = square:getY()
-    local z = square:getZ()
-    local bb = state.boundingBox
-    if x < bb.minX or x > bb.maxX or y < bb.minY or y > bb.maxY then
+    local coordenadaX = quadrado:getX()
+    local coordenadaY = quadrado:getY()
+    local coordenadaZ = quadrado:getZ()
+    local caixaDelimitadora = estado.boundingBox
+
+    if coordenadaX < caixaDelimitadora.minX or coordenadaX > caixaDelimitadora.maxX or coordenadaY < caixaDelimitadora.minY or coordenadaY > caixaDelimitadora.maxY then
         return false
     end
 
-    local baseZ = state.z or 0
-    local minZ = math.max(0, baseZ - 3)
-    local maxZ = baseZ + 10
-    if z < minZ or z > maxZ then
+    local baseZ = estado.z or 0
+    local zMinimo = math.max(0, baseZ - 3)
+    local zMaximo = baseZ + 10
+    if coordenadaZ < zMinimo or coordenadaZ > zMaximo then
         return false
     end
 
-    local anchorSquare = GetSquareAt(state.x, state.y, state.z or 0)
-    local anchorBuilding = anchorSquare and anchorSquare:getBuilding() or nil
-    local squareBuilding = square:getBuilding()
-    return not anchorBuilding or squareBuilding == nil or squareBuilding == anchorBuilding
+    local quadradoAncora = ObterQuadradoEm(estado.x, estado.y, estado.z or 0)
+    local construcaoAncora = quadradoAncora and quadradoAncora:getBuilding() or nil
+    local construcaoQuadrado = quadrado:getBuilding()
+
+    return not construcaoAncora or construcaoQuadrado == nil or construcaoQuadrado == construcaoAncora
 end
 
-local function ApplyLocalSquarePower(square, shouldPower)
-    local chunk = square and square:getChunk()
-    if not chunk then
+--- Adiciona ou remove a posição virtual de gerador no Chunk correspondente ao quadrado.
+--- @param quadrado any O GridSquare que receberá ou perderá energia virtual.
+--- @param deveEnergizar boolean Define se deve adicionar (true) ou remover (false) a energia.
+--- @return any|nil O Chunk modificado ou nil se não encontrado.
+local function AplicarEnergiaQuadradoLocal(quadrado, deveEnergizar)
+    local pedaco = quadrado and quadrado:getChunk()
+    if not pedaco then
         return nil
     end
 
-    local x = square:getX()
-    local y = square:getY()
-    local z = square:getZ()
-    if shouldPower then
-        chunk:addGeneratorPos(x, y, z)
+    local coordenadaX = quadrado:getX()
+    local coordenadaY = quadrado:getY()
+    local coordenadaZ = quadrado:getZ()
+
+    if deveEnergizar then
+        pedaco:addGeneratorPos(coordenadaX, coordenadaY, coordenadaZ)
     else
-        chunk:removeGeneratorPos(x, y, z)
+        pedaco:removeGeneratorPos(coordenadaX, coordenadaY, coordenadaZ)
     end
 
-    if square.RecalcAllWithNeighbours then
-        square:RecalcAllWithNeighbours(false)
+    if quadrado.RecalcAllWithNeighbours then
+        quadrado:RecalcAllWithNeighbours(false)
     end
 
-    if chunk.recalcHashCodeObjects then
-        chunk:recalcHashCodeObjects()
+    if pedaco.recalcHashCodeObjects then
+        pedaco:recalcHashCodeObjects()
     end
 
-    return chunk
+    return pedaco
 end
 
-local function ApplyLoadedBuildingState(state, shouldPower)
-    if not state or not state.boundingBox then
+--- Aplica o estado de energia nas posições da construção carregadas no mapa.
+--- @param estado table O estado da construção que possui energia.
+--- @param deveEnergizar boolean Define se deve adicionar (true) ou remover (false) a energia.
+--- @return number, number O total de quadrados afetados e o total de chunks recalculados.
+local function AplicarEstadoConstrucaoCarregada(estado, deveEnergizar)
+    if not estado or not estado.boundingBox then
         return 0, 0
     end
 
-    local bb = state.boundingBox
-    local minZ = math.max(0, (state.z or 0) - 3)
-    local maxZ = (state.z or 0) + 10
-    local tileCount = 0
-    local touchedChunks = {}
+    local caixaDelimitadora = estado.boundingBox
+    local zMinimo = math.max(0, (estado.z or 0) - 3)
+    local zMaximo = (estado.z or 0) + 10
+    local totalQuadrados = 0
+    local pedacosAfetados = {}
 
-    for x = bb.minX, bb.maxX do
-        for y = bb.minY, bb.maxY do
-            for z = minZ, maxZ do
-                local square = GetSquareAt(x, y, z)
-                if square and ShouldAffectSquare(square, state) then
-                    local chunk = ApplyLocalSquarePower(square, shouldPower)
-                    if chunk then
-                        touchedChunks[tostring(chunk)] = chunk
-                        tileCount = tileCount + 1
+    for coordenadaX = caixaDelimitadora.minX, caixaDelimitadora.maxX do
+        for coordenadaY = caixaDelimitadora.minY, caixaDelimitadora.maxY do
+            for coordenadaZ = zMinimo, zMaximo do
+                local quadrado = ObterQuadradoEm(coordenadaX, coordenadaY, coordenadaZ)
+                if quadrado and DeveAfetarQuadrado(quadrado, estado) then
+                    local pedaco = AplicarEnergiaQuadradoLocal(quadrado, deveEnergizar)
+                    if pedaco then
+                        pedacosAfetados[tostring(pedaco)] = pedaco
+                        totalQuadrados = totalQuadrados + 1
                     end
                 end
             end
         end
     end
 
-    local chunkCount = 0
-    for _, chunk in pairs(touchedChunks) do
-        chunkCount = chunkCount + 1
-        if chunk.recalcHashCodeObjects then
-            chunk:recalcHashCodeObjects()
+    local totalPedacos = 0
+    for _, pedaco in pairs(pedacosAfetados) do
+        totalPedacos = totalPedacos + 1
+        if pedaco.recalcHashCodeObjects then
+            pedaco:recalcHashCodeObjects()
         end
     end
 
-    return tileCount, chunkCount
+    return totalQuadrados, totalPedacos
 end
 
-local function SyncFromPacket(newPacket)
-    local localPacket, currentStates = GetBuildingStates()
-    local nextStates = (newPacket and newPacket.buildings) or {}
-    local removed = 0
-    local applied = 0
+--- Sincroniza os estados de energia locais a partir de um novo pacote ModData de sincronização.
+--- @param novoPacote table O novo pacote ModData recebido do servidor.
+local function SincronizarAPartirDePacote(novoPacote)
+    local pacoteLocal, estadosAtuais = ObterEstadosConstrucoes()
+    local proximosEstados = (novoPacote and novoPacote.buildings) or {}
+    local removidos = 0
+    local aplicados = 0
 
-    for buildingID, previousState in pairs(currentStates) do
-        if previousState and not nextStates[buildingID] then
-            ApplyLoadedBuildingState(previousState, false)
-            removed = removed + 1
+    -- Remove energia das construções que não estão mais presentes no novo pacote
+    for idConstrucao, estadoAnterior in pairs(estadosAtuais) do
+        if estadoAnterior and not proximosEstados[idConstrucao] then
+            AplicarEstadoConstrucaoCarregada(estadoAnterior, false)
+            removidos = removidos + 1
         end
     end
 
-    localPacket.buildings = nextStates
-    ModData.add(POWER_SYNC_KEY, localPacket)
+    pacoteLocal.buildings = proximosEstados
+    ModData.add(CHAVE_SINCRONIZACAO_ENERGIA, pacoteLocal)
 
-    for _, state in pairs(nextStates) do
-        ApplyLoadedBuildingState(state, true)
-        applied = applied + 1
+    -- Aplica a energia para as construções presentes no novo pacote
+    for _, estado in pairs(proximosEstados) do
+        AplicarEstadoConstrucaoCarregada(estado, true)
+        aplicados = aplicados + 1
     end
 
-    if applied > 0 or removed > 0 then
-        print(string.format("[LKS_EletricidadeConstrucao_Power_ClientSync] synced %d powered building(s), removed %d", applied, removed))
+    if aplicados > 0 or removidos > 0 then
+        print(string.format("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Sincronizadas %d construções energizadas, %d removidas", aplicados, removidos))
     end
 end
 
-local function RequestState()
-    if not IsClientContext() then
+--- Solicita o estado atual das construções energizadas para o servidor.
+local function SolicitarEstado()
+    if not IsContextoCliente() then
         return
     end
     if ModData and ModData.request then
-        ModData.request(POWER_SYNC_KEY)
+        ModData.request(CHAVE_SINCRONIZACAO_ENERGIA)
     end
 end
 
-local function OnInitGlobalModData()
-    RequestState()
-    local packet = ModData.get(POWER_SYNC_KEY)
-    if packet and packet.buildings then
-        SyncFromPacket(packet)
+--- Inicializa e sincroniza os dados do ModData ao carregar os dados globais.
+local function AoIniciarModDataGlobal()
+    SolicitarEstado()
+    local pacote = ModData.get(CHAVE_SINCRONIZACAO_ENERGIA)
+    if pacote and pacote.buildings then
+        SincronizarAPartirDePacote(pacote)
     end
 end
 
-local function OnReceiveGlobalModData(key, packet)
-    if key ~= POWER_SYNC_KEY or not IsClientContext() then
+--- Executa a sincronização local ao receber a atualização de dados globais do servidor.
+--- @param chave string A chave do ModData atualizado.
+--- @param pacote table O pacote de dados recebido do servidor.
+local function AoReceberModDataGlobal(chave, pacote)
+    if chave ~= CHAVE_SINCRONIZACAO_ENERGIA or not IsContextoCliente() then
         return
     end
-    SyncFromPacket(packet)
+    SincronizarAPartirDePacote(pacote)
 end
 
-local function OnLoadGridsquare(square)
-    if not square or not IsClientContext() then
+--- Aplica a energia local ao carregar um novo GridSquare se pertencer a uma construção energizada.
+--- @param quadrado any O GridSquare que foi carregado no mapa.
+local function AoCarregarGridSquare(quadrado)
+    if not quadrado or not IsContextoCliente() then
         return
     end
 
-    local _, states = GetBuildingStates()
-    for _, state in pairs(states) do
-        if ShouldAffectSquare(square, state) then
-            ApplyLocalSquarePower(square, true)
+    local _, estados = ObterEstadosConstrucoes()
+    for _, estado in pairs(estados) do
+        if DeveAfetarQuadrado(quadrado, estado) then
+            AplicarEnergiaQuadradoLocal(quadrado, true)
             return
         end
     end
 end
 
 if Events.OnInitGlobalModData then
-    Events.OnInitGlobalModData.Add(OnInitGlobalModData)
+    Events.OnInitGlobalModData.Add(AoIniciarModDataGlobal)
 end
 
 if Events.OnReceiveGlobalModData then
@@ -206,23 +250,23 @@ if Events.OnReceiveGlobalModData then
 end
 
 if Events.LoadGridsquare then
-    Events.LoadGridsquare.Add(OnLoadGridsquare)
+    Events.LoadGridsquare.Add(AoCarregarGridSquare)
 elseif Events.OnLoadGridSquare then
-    Events.OnLoadGridSquare.Add(OnLoadGridsquare)
+    Events.OnLoadGridSquare.Add(AoCarregarGridSquare)
 elseif Events.OnLoadGridsquare then
-    Events.OnLoadGridsquare.Add(OnLoadGridsquare)
+    Events.OnLoadGridsquare.Add(AoCarregarGridSquare)
 end
 
 if Events.OnGameStart then
     Events.OnGameStart.Add(function()
-        RequestState()
-        local packet = ModData.get(POWER_SYNC_KEY)
-        if packet and packet.buildings then
-            SyncFromPacket(packet)
+        SolicitarEstado()
+        local pacote = ModData.get(CHAVE_SINCRONIZACAO_ENERGIA)
+        if pacote and pacote.buildings then
+            SincronizarAPartirDePacote(pacote)
         end
     end)
 end
 
-print("[LKS_EletricidadeConstrucao_Power_ClientSync] Loaded")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Carregado com sucesso!")
 
 return true

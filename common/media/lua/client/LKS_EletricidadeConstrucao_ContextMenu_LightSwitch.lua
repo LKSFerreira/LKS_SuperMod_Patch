@@ -1,121 +1,136 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_ContextMenu_LightSwitch.lua
--- Right-click on any IsoLightSwitch in a powered building
--- to open the central Building Power Info window.
--- LOCATION: client/
+-- ARQUIVO: LKS_EletricidadeConstrucao_ContextMenu_LightSwitch.lua
+-- OBJETIVO: Permite ao jogador clicar com o botão direito em interruptores de luz para consultar a carga elétrica e estado da rede de energia do prédio.
+-- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
-print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Loading Light Switch Context Menu...")
+print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Carregando Menu de Contexto do Interruptor de Luz...")
 
 LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_ContextMenu_LightSwitch")
 
--- ============================================================
--- HELPERS
--- ============================================================
+-- ============================================================================
+-- FUNÇÕES AUXILIARES
+-- ============================================================================
 
-local function GetGeneratorSelectionScore(gen, expectedBuildingId, expectedX, expectedY)
-    if not gen then return nil end
+--- Calcula a pontuação de relevância de um gerador para seleção.
+--- @param gerador any O objeto IsoGenerator.
+--- @param idConstrucaoEsperada string|nil O ID da construção esperada.
+--- @param esperadoX number|nil A coordenada X esperada.
+--- @param esperadoY number|nil A coordenada Y esperada.
+--- @return number Retorna a pontuação de relevância calculada.
+local function ObterPontuacaoSelecaoGerador(gerador, idConstrucaoEsperada, esperadoX, esperadoY)
+    if not gerador then return 0 end
 
-    local score = 0
-    local md = gen.getModData and gen:getModData() or nil
-    local bid = md and md.Gen_BuildingPoolID or nil
+    local pontuacao = 0
+    local dadosMod = gerador.getModData and gerador:getModData() or nil
+    local idConstrucao = dadosMod and dadosMod.Gen_BuildingPoolID or nil
 
-    if expectedBuildingId and bid == expectedBuildingId then
-        score = score + 300
+    if idConstrucaoEsperada and idConstrucao == idConstrucaoEsperada then
+        pontuacao = pontuacao + 300
     end
 
-    if bid and expectedX ~= nil and expectedY ~= nil then
-        local bx, by = string.match(bid, "^bld_(%-?%d+)_(%-?%d+)_")
-        if bx and tonumber(bx) == expectedX and tonumber(by) == expectedY then
-            score = score + 200
+    if idConstrucao and esperadoX ~= nil and esperadoY ~= nil then
+        local baseX, baseY = string.match(idConstrucao, "^bld_(%-?%d+)_(%-?%d+)_")
+        if baseX and tonumber(baseX) == esperadoX and tonumber(baseY) == esperadoY then
+            pontuacao = pontuacao + 200
         end
     end
 
-    if gen:isActivated() then
-        score = score + 100
+    if gerador:isActivated() then
+        pontuacao = pontuacao + 100
     end
 
-    if (gen:getFuel() or 0) > 0 then
-        score = score + 10
+    if (gerador:getFuel() or 0) > 0 then
+        pontuacao = pontuacao + 10
     end
 
-    return score
+    return pontuacao
 end
 
-local function IsBetterGeneratorCandidate(score, orderIdx, distance, bestScore, bestOrderIdx, bestDistance)
-    if bestScore == nil or score > bestScore then
+--- Decide se o novo candidato a gerador é melhor do que o atual campeão.
+--- @param pontuacao number Pontuação do novo gerador.
+--- @param indiceOrdem number|nil Posição de carregamento original na lista.
+--- @param distancia number|nil Distância geométrica.
+--- @param melhorPontuacao number|nil Melhor pontuação registrada.
+--- @param melhorIndiceOrdem number|nil Melhor posição de carregamento anterior.
+--- @param melhorDistancia number|nil Melhor distância geométrica anterior.
+--- @return boolean Retorna true se for um candidato melhor.
+local function EhMelhorCandidatoGerador(pontuacao, indiceOrdem, distancia, melhorPontuacao, melhorIndiceOrdem, melhorDistancia)
+    if melhorPontuacao == nil or pontuacao > melhorPontuacao then
         return true
     end
-    if score < bestScore then
+    if pontuacao < melhorPontuacao then
         return false
     end
-    if orderIdx ~= nil and bestOrderIdx ~= nil and orderIdx ~= bestOrderIdx then
-        return orderIdx < bestOrderIdx
+    if indiceOrdem ~= nil and melhorIndiceOrdem ~= nil and indiceOrdem ~= melhorIndiceOrdem then
+        return indiceOrdem < melhorIndiceOrdem
     end
-    if distance ~= nil and bestDistance ~= nil and distance ~= bestDistance then
-        return distance < bestDistance
+    if distancia ~= nil and melhorDistancia ~= nil and distancia ~= melhorDistancia then
+        return distancia < melhorDistancia
     end
     return false
 end
 
---- Find a generator connected to the building containing this light switch.
---- CLIENT-SIDE: Scans nearby generators' ModData for Gen_BuildingPoolID.
---- Returns any generator within 20 tiles that has a building pool ID set.
---- @param x number Light switch X coordinate
---- @param y number Light switch Y coordinate  
---- @param z number Light switch Z coordinate
---- @return IsoGenerator|nil Generator object or nil if not found
-local function FindGeneratorForLightSwitch(x, y, z)
-    local cell = getCell()
-    if not cell then return nil end
+--- Busca um gerador fisicamente conectado à construção contendo este interruptor de luz.
+--- Varre o ModData dos geradores próximos (raio de 20) procurando por Gen_BuildingPoolID compatível.
+--- @param coordenadaX number Coordenada X do interruptor.
+--- @param coordenadaY number Coordenada Y do interruptor.
+--- @param coordenadaZ number Coordenada Z do interruptor.
+--- @return any|nil O gerador IsoGenerator encontrado, ou nil.
+local function LocalizarGeradorParaInterruptor(coordenadaX, coordenadaY, coordenadaZ)
+    local celula = getCell()
+    if not celula then return nil end
 
-    local bestGenerator = nil
-    local bestScore = nil
-    local bestDistance = nil
+    local melhorGerador = nil
+    local melhorPontuacao = nil
+    local melhorDistancia = nil
 
-    -- Search at the clicked z AND at z=0 (canonical floor).
-    -- Buildings are registered under the ground-floor light switch (z=0).
-    -- A click on a z=1 switch must still find the generator at z=0.
-    local zLevels = {z}
-    if z ~= 0 then zLevels[#zLevels + 1] = 0 end
+    -- Pesquisa no nível clicado e no nível Z=0 (térreo canônico).
+    -- Construções lógicas e seus interruptores principais são catalogados em Z=0.
+    local niveisZ = {coordenadaZ}
+    if coordenadaZ ~= 0 then niveisZ[#niveisZ + 1] = 0 end
 
-    for _, searchZ in ipairs(zLevels) do
-        local expectedBuildingId = LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, searchZ)
-        for radius = 0, 20 do
-            for dx = -radius, radius do
-                for dy = -radius, radius do
-                    -- Only check perimeter at this radius (interior already checked)
-                    if math.abs(dx) == radius or math.abs(dy) == radius or radius == 0 then
-                        local sq = cell:getGridSquare(x + dx, y + dy, searchZ)
-                        if sq then
-                            local objs = sq:getObjects()
-                            if objs then
-                                for i = 0, objs:size() - 1 do
-                                    local obj = objs:get(i)
-                                    if obj and instanceof(obj, "IsoGenerator") then
-                                        local md = obj:getModData()
-                                        local bid = md.Gen_BuildingPoolID
+    for _, zPesquisa in ipairs(niveisZ) do
+        local idConstrucaoEsperada = LKS_EletricidadeConstrucao.Data.Building.MakeId(coordenadaX, coordenadaY, zPesquisa)
+        for raio = 0, 20 do
+            for deslocamentoX = -raio, raio do
+                for deslocamentoY = -raio, raio do
+                    -- Varre apenas o perímetro externo deste raio (o centro já foi checado)
+                    if math.abs(deslocamentoX) == raio or math.abs(deslocamentoY) == raio or raio == 0 then
+                        local quadrado = celula:getGridSquare(coordenadaX + deslocamentoX, coordenadaY + deslocamentoY, zPesquisa)
+                        if quadrado then
+                            local objetos = quadrado:getObjects()
+                            if objetos then
+                                for indiceObjeto = 0, objetos:size() - 1 do
+                                    local objeto = objetos:get(indiceObjeto)
+                                    if objeto and instanceof(objeto, "IsoGenerator") then
+                                        local dadosMod = objeto:getModData()
+                                        local idConstrucao = dadosMod.Gen_BuildingPoolID
 
-                                        if bid then
-                                            local dist = math.abs(dx) + math.abs(dy)
-
-                                            local score = GetGeneratorSelectionScore(obj, expectedBuildingId, x, y)
-                                            if score then
-                                                score = score - dist
-                                                if IsBetterGeneratorCandidate(score, nil, dist, bestScore, nil, bestDistance) then
-                                                    bestGenerator = obj
-                                                    bestScore = score
-                                                    bestDistance = dist
+                                        if idConstrucao then
+                                            local distancia = math.abs(deslocamentoX) + math.abs(deslocamentoY)
+                                            local pontuacao = ObterPontuacaoSelecaoGerador(objeto, idConstrucaoEsperada, coordenadaX, coordenadaY)
+                                            if pontuacao then
+                                                pontuacao = pontuacao - distancia
+                                                if EhMelhorCandidatoGerador(pontuacao, nil, distancia, melhorPontuacao, nil, melhorDistancia) then
+                                                    melhorGerador = objeto
+                                                    melhorPontuacao = pontuacao
+                                                    melhorDistancia = distancia
                                                 end
                                             end
                                         end
@@ -129,52 +144,47 @@ local function FindGeneratorForLightSwitch(x, y, z)
         end
     end
 
-    return bestGenerator
+    return melhorGerador
 end
 
---- Get the best loaded generator from a building's connected generators list.
---- Primary path: iterate buildingData.connectedGenerators (fast, set by server).
---- Fallback (B-105): when connectedGenerators is empty or all squares are
---- unloaded, reverse-scan StateManager.GetAllGenerators() for any generator
---- whose connectedBuildings references the same physical building (by ID or by
---- stored x/y coordinates when IDs are mismatched due to stale↔canonical drift).
---- @param buildingData BuildingData Building data
---- @return IsoGenerator|nil Generator object or nil
-local function GetBuildingGenerator(buildingData)
-    if not buildingData then return nil end
-    local cell = getCell()
-    if not cell then return nil end
-    local bid_main = buildingData.id
-    local bx, by = buildingData.x, buildingData.y
-    local bestGenerator = nil
-    local bestScore = nil
-    local bestOrderIdx = nil
+--- Obtém o melhor gerador físico carregado no mapa que pertence a esta construção.
+--- @param dadosConstrucao table Os limites da construção.
+--- @return any|nil O gerador IsoGenerator ou nil.
+local function ObterGeradorConstrucao(dadosConstrucao)
+    if not dadosConstrucao then return nil end
+    local celula = getCell()
+    if not celula then return nil end
 
-    local function considerGenerator(gen, orderIdx)
-        if not (gen and instanceof(gen, "IsoGenerator")) then return end
-        local score = GetGeneratorSelectionScore(gen, bid_main, bx, by)
-        if not score then return end
-        if IsBetterGeneratorCandidate(score, orderIdx, nil, bestScore, bestOrderIdx, nil) then
-            bestGenerator = gen
-            bestScore = score
-            bestOrderIdx = orderIdx
+    local idConstrucaoPrincipal = dadosConstrucao.id
+    local baseX, baseY = dadosConstrucao.x, dadosConstrucao.y
+    local melhorGerador = nil
+    local melhorPontuacao = nil
+    local melhorIndiceOrdem = nil
+
+    local function considerarGerador(gerador, indiceOrdem)
+        if not (gerador and instanceof(gerador, "IsoGenerator")) then return end
+        local pontuacao = ObterPontuacaoSelecaoGerador(gerador, idConstrucaoPrincipal, baseX, baseY)
+        if not pontuacao then return end
+        if EhMelhorCandidatoGerador(pontuacao, indiceOrdem, nil, melhorPontuacao, melhorIndiceOrdem, nil) then
+            melhorGerador = gerador
+            melhorPontuacao = pontuacao
+            melhorIndiceOrdem = indiceOrdem
         end
     end
 
-    -- ── Primary: connectedGenerators fast path ────────────────────────────────
-    -- NOTE: connectedGenerators is Kahlua-deserialized after GlobalModData reload
-    -- (string numeric keys). # always returns 0; use pairs() to iterate all keys.
-    if buildingData.connectedGenerators then
-        for idx, genKey in pairs(buildingData.connectedGenerators) do
-            local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-            if gx then
-                local sq = cell:getGridSquare(tonumber(gx), tonumber(gy), tonumber(gz))
-                if sq then
-                    local objs = sq:getObjects()
-                    if objs then
-                        for i = 0, objs:size() - 1 do
-                            local gen = objs:get(i)
-                            considerGenerator(gen, tonumber(idx) or math.huge)
+    -- 1. Caminho Rápido: connectedGenerators
+    -- Nota: connectedGenerators é desserializado do Kahlua no ModData e possui chaves de strings numéricas.
+    if dadosConstrucao.connectedGenerators then
+        for indice, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+            local geradorX, geradorY, geradorZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+            if geradorX then
+                local quadrado = celula:getGridSquare(tonumber(geradorX), tonumber(geradorY), tonumber(geradorZ))
+                if quadrado then
+                    local objetos = quadrado:getObjects()
+                    if objetos then
+                        for indiceObjeto = 0, objetos:size() - 1 do
+                            local gerador = objetos:get(indiceObjeto)
+                            considerarGerador(gerador, tonumber(indice) or math.huge)
                         end
                     end
                 end
@@ -182,80 +192,84 @@ local function GetBuildingGenerator(buildingData)
         end
     end
 
-    -- ── Fallback (B-105): StateManager reverse-lookup ─────────────────────────
-    -- Covers three failure modes:
-    --   1. connectedGenerators is empty (canonical building freshly created this
-    --      session, gen-keys not yet propagated via B-104 pass-2).
-    --   2. connectedGenerators has stale gen-key for a generator whose square
-    --      is already loaded under the correct coords but wasn't found above.
-    --   3. Generator entries reference the building by a different ID (stale
-    --      bld_def_… vs. canonical bld_X_Y_Z drift).
-    local SM = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if SM and SM.GetAllGenerators then
-        for _, gd in pairs(SM.GetAllGenerators() or {}) do
-            local found = false
-            for _, gbid in pairs(gd.connectedBuildings or {}) do
-                if gbid == bid_main then
-                    found = true; break
+    -- 2. Caminho Secundário/Fallback: Varredura reversa no StateManager
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if gerenciadorEstado and gerenciadorEstado.GetAllGenerators then
+        for _, dadosGerador in pairs(gerenciadorEstado.GetAllGenerators() or {}) do
+            local encontrado = false
+            for _, idConstrucaoGerador in pairs(dadosGerador.connectedBuildings or {}) do
+                if idConstrucaoGerador == idConstrucaoPrincipal then
+                    encontrado = true
+                    break
                 end
-                -- Coord-based match: handles stale ↔ canonical ID drift.
-                -- 1) Canonical ID bld_X_Y_Z – decode coords from the key itself.
-                if bx and by then
-                    local cx, cy = string.match(gbid, "^bld_(%-?%d+)_(%-?%d+)_")
-                    if cx and tonumber(cx) == bx and tonumber(cy) == by then
-                        found = true; break
+                
+                -- Casamento por coordenadas para evitar problemas de drift de IDs salvos
+                if baseX and baseY then
+                    local coordenadaX, coordenadaY = string.match(idConstrucaoGerador, "^bld_(%-?%d+)_(%-?%d+)_")
+                    if coordenadaX and tonumber(coordenadaX) == baseX and tonumber(coordenadaY) == baseY then
+                        encontrado = true
+                        break
                     end
-                    -- 2) Non-canonical (bld_def_…) – look up the building and
-                    --    compare its stored x/y to our building's coordinates.
-                    local refBld = SM.GetBuilding(gbid)
-                    if refBld and refBld.x == bx and refBld.y == by then
-                        found = true; break
+                    local construcaoReferenciada = gerenciadorEstado.GetBuilding(idConstrucaoGerador)
+                    if construcaoReferenciada and construcaoReferenciada.x == baseX and construcaoReferenciada.y == baseY then
+                        encontrado = true
+                        break
                     end
                 end
             end
-            if found then
-                local sq = cell:getGridSquare(gd.x, gd.y, gd.z)
-                if sq then
-                    local objs = sq:getObjects()
-                    if objs then
-                        for i = 0, objs:size() - 1 do
-                            local gen = objs:get(i)
-                            considerGenerator(gen, nil)
+
+            if encontrado then
+                local quadrado = celula:getGridSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+                if quadrado then
+                    local objetos = quadrado:getObjects()
+                    if objetos then
+                        for indiceObjeto = 0, objetos:size() - 1 do
+                            local gerador = objetos:get(indiceObjeto)
+                            considerarGerador(gerador, nil)
                         end
                     end
                 end
             end
         end
     end
-    -- ─────────────────────────────────────────────────────────────────────────
-    return bestGenerator
+
+    return melhorGerador
 end
 
-local function IsInsideBuildingBounds(buildingData, x, y)
-    local bb = buildingData and buildingData.boundingBox
-    if not bb then return false end
+--- Verifica se as coordenadas estão compreendidas nos limites da construção.
+--- @param dadosConstrucao table Os limites da construção.
+--- @param coordenadaX number Coordenada X.
+--- @param coordenadaY number Coordenada Y.
+--- @return boolean Retorna true se estiver contido na área delimitada.
+local function EstaDentroDosLimitesConstrucao(dadosConstrucao, coordenadaX, coordenadaY)
+    local caixaDelimitadora = dadosConstrucao and dadosConstrucao.boundingBox
+    if not caixaDelimitadora then return false end
 
-    local minX = tonumber(bb.minX or bb[1])
-    local minY = tonumber(bb.minY or bb[2])
-    local maxX = tonumber(bb.maxX or bb[3])
-    local maxY = tonumber(bb.maxY or bb[4])
+    local minimoX = tonumber(caixaDelimitadora.minX or caixaDelimitadora[1])
+    local minimoY = tonumber(caixaDelimitadora.minY or caixaDelimitadora[2])
+    local maximoX = tonumber(caixaDelimitadora.maxX or caixaDelimitadora[3])
+    local maximoY = tonumber(caixaDelimitadora.maxY or caixaDelimitadora[4])
 
-    if not (minX and minY and maxX and maxY) then
+    if not (minimoX and minimoY and maximoX and maximoY) then
         return false
     end
 
-    return x >= minX and x <= maxX and y >= minY and y <= maxY
+    return coordenadaX >= minimoX and coordenadaX <= maximoX and coordenadaY >= minimoY and coordenadaY <= maximoY
 end
 
-local function BuildingHasConsumerAtSquare(buildingData, square)
-    if not (buildingData and buildingData.powerConsumers and square) then return false end
+--- Verifica se a construção lógica do estado possui um consumidor ativo registrado no quadrado.
+--- @param dadosConstrucao table A construção.
+--- @param quadrado any O GridSquare consultado.
+--- @return boolean Retorna true se houver consumidor cadastrado nesta coordenada.
+local function ConstrucaoPossuiConsumidorNoQuadrado(dadosConstrucao, quadrado)
+    if not (dadosConstrucao and dadosConstrucao.powerConsumers and quadrado) then return false end
 
-    local sx, sy, sz = square:getX(), square:getY(), square:getZ()
-    for _, consumer in pairs(buildingData.powerConsumers) do
-        local cx = tonumber(consumer and (consumer.squareX or consumer.x))
-        local cy = tonumber(consumer and (consumer.squareY or consumer.y))
-        local cz = tonumber(consumer and (consumer.squareZ or consumer.z))
-        if cx == sx and cy == sy and (cz == nil or cz == sz) then
+    local quadradoX, quadradoY, quadradoZ = quadrado:getX(), quadrado:getY(), quadrado:getZ()
+    for _, consumidor in pairs(dadosConstrucao.powerConsumers) do
+        local consumidorX = tonumber(consumidor and (consumidor.squareX or consumidor.x))
+        local consumidorY = tonumber(consumidor and (consumidor.squareY or consumer.y))
+        local consumidorZ = tonumber(consumidor and (consumidor.squareZ or consumer.z))
+        if consumidorX == quadradoX and consumidorY == quadradoY and (consumidorZ == nil or consumidorZ == quadradoZ) then
             return true
         end
     end
@@ -263,132 +277,129 @@ local function BuildingHasConsumerAtSquare(buildingData, square)
     return false
 end
 
-local function ResolveBuildingDataForLightSwitch(square)
-    if not square then return nil end
+--- Localiza e resolve a construção lógica do estado associada a este interruptor.
+--- @param quadrado any O GridSquare do interruptor.
+--- @return table|nil O registro de dados da construção ou nil se não encontrado.
+local function ResolverDadosConstrucaoParaInterruptor(quadrado)
+    if not quadrado then return nil end
 
-    local SM = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not SM then return nil end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado then return nil end
 
-    local ax, ay, az = square:getX(), square:getY(), square:getZ()
-    local directId = LKS_EletricidadeConstrucao.Data.Building.MakeId(ax, ay, az)
-    local directBuilding = SM.GetBuilding and SM.GetBuilding(directId) or nil
-    if directBuilding then
-        return directBuilding
+    local ancoraX, ancoraY, ancoraZ = quadrado:getX(), quadrado:getY(), quadrado:getZ()
+    local idDireto = LKS_EletricidadeConstrucao.Data.Building.MakeId(ancoraX, ancoraY, ancoraZ)
+    local construcaoDireta = gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(idDireto) or nil
+    if construcaoDireta then
+        return construcaoDireta
     end
 
-    local cell = getCell()
-    local clickedIsoBuilding = cell and square:getBuilding() or nil
-    local bestBuilding = nil
-    local bestScore = nil
+    local celula = getCell()
+    local predioIsoClicado = celula and quadrado:getBuilding() or nil
+    local melhorConstrucao = nil
+    local melhorPontuacao = nil
 
-    if SM.GetAllBuildings then
-        for _, bd in pairs(SM.GetAllBuildings() or {}) do
-            local score = 0
+    if gerenciadorEstado.GetAllBuildings then
+        for _, dadosConstrucao in pairs(gerenciadorEstado.GetAllBuildings() or {}) do
+            local pontuacao = 0
 
-            if bd.x == ax and bd.y == ay then
-                score = score + 300
-                if bd.z == az then
-                    score = score + 25
+            if dadosConstrucao.x == ancoraX and dadosConstrucao.y == ancoraY then
+                pontuacao = pontuacao + 300
+                if dadosConstrucao.z == ancoraZ then
+                    pontuacao = pontuacao + 25
                 end
             end
 
-            if BuildingHasConsumerAtSquare(bd, square) then
-                score = score + 250
+            if ConstrucaoPossuiConsumidorNoQuadrado(dadosConstrucao, quadrado) then
+                pontuacao = pontuacao + 250
             end
 
-            if clickedIsoBuilding and cell and bd.x and bd.y and bd.z then
-                local bdSq = cell:getGridSquare(bd.x, bd.y, bd.z)
-                if bdSq and bdSq:getBuilding() == clickedIsoBuilding then
-                    score = score + 200
+            if predioIsoClicado and celula and dadosConstrucao.x and dadosConstrucao.y and dadosConstrucao.z then
+                local quadradoConstrucao = celula:getGridSquare(dadosConstrucao.x, dadosConstrucao.y, dadosConstrucao.z)
+                if quadradoConstrucao and quadradoConstrucao:getBuilding() == predioIsoClicado then
+                    pontuacao = pontuacao + 200
                 end
             end
 
-            if IsInsideBuildingBounds(bd, ax, ay) then
-                score = score + 100
+            if EstaDentroDosLimitesConstrucao(dadosConstrucao, ancoraX, ancoraY) then
+                pontuacao = pontuacao + 100
             end
 
-            if score > 0 and (not bestScore or score > bestScore) then
-                bestScore = score
-                bestBuilding = bd
+            if pontuacao > 0 and (not melhorPontuacao or pontuacao > melhorPontuacao) then
+                melhorPontuacao = pontuacao
+                melhorConstrucao = dadosConstrucao
             end
         end
     end
 
-    return bestBuilding
+    return melhorConstrucao
 end
 
---- Return the first IsoLightSwitch found in worldobjects, or nil.
-local function FindLightSwitch(worldobjects)
-    if not worldobjects then return nil end
-    for _, obj in ipairs(worldobjects) do
-        if instanceof(obj, "IsoLightSwitch") then
-            return obj
+--- Extrai o objeto Java IsoLightSwitch da lista de itens clicados.
+--- @param objetosMundo table A lista de objetos na coordenada do clique.
+--- @return any|nil Retorna o interruptor ou nil.
+local function LocalizarInterruptorLuz(objetosMundo)
+    if not objetosMundo then return nil end
+    for _, objeto in ipairs(objetosMundo) do
+        if instanceof(objeto, "IsoLightSwitch") then
+            return objeto
         end
     end
     return nil
 end
 
--- ============================================================
--- CONTEXT MENU HOOK
--- ============================================================
+-- ============================================================================
+-- EVENTO DE INJEÇÃO DO MENU DE CONTEXTO DO JOGO
+-- ============================================================================
 
-Events.OnFillWorldObjectContextMenu.Add(function(player, context, worldobjects, test)
-    local playerObj = getSpecificPlayer(player)
-    if not playerObj then return end
+Events.OnFillWorldObjectContextMenu.Add(function(numeroJogador, contexto, objetosMundo, modoTeste)
+    local jogadorObjeto = getSpecificPlayer(numeroJogador)
+    if not jogadorObjeto then return end
 
-    local lightSwitch = FindLightSwitch(worldobjects)
-    if not lightSwitch then return end
+    local interruptorLuz = LocalizarInterruptorLuz(objetosMundo)
+    if not interruptorLuz then return end
 
-    local square = lightSwitch:getSquare()
-    if not square then return end
+    local quadrado = interruptorLuz:getSquare()
+    if not quadrado then return end
 
-    local generator = nil
-    local buildingData = ResolveBuildingDataForLightSwitch(square)
-    if buildingData then
-        generator = GetBuildingGenerator(buildingData)
+    local gerador = nil
+    local dadosConstrucao = ResolverDadosConstrucaoParaInterruptor(quadrado)
+    if dadosConstrucao then
+        gerador = ObterGeradorConstrucao(dadosConstrucao)
     end
 
-    -- FALLBACK: proximity scan for player-built buildings (no IsoBuilding).
-    if not generator and not buildingData then
-        generator = FindGeneratorForLightSwitch(
-            square:getX(), square:getY(), square:getZ())
+    -- Escaneia proximidades caso seja uma construção fabricada por players sem IsoBuilding estruturado
+    if not gerador and not dadosConstrucao then
+        gerador = LocalizarGeradorParaInterruptor(quadrado:getX(), quadrado:getY(), quadrado:getZ())
     end
 
-    if not generator and not buildingData then return end
+    if not gerador and not dadosConstrucao then return end
 
-    -- test mode: signal that we would add an option
-    if test then return true end
+    -- Sinaliza apenas a presença das opções em modo teste
+    if modoTeste then return true end
 
-    -- --------------------------------------------------------
-    -- Add "Building Power Info" option
-    -- --------------------------------------------------------
-    local buildingPowerInfoOption = context:addOption(
-        getText("IGUI_BuildingPowerInfoMenu") or "Building Power Info",
+    -- Adiciona a opção "Informações de Energia"
+    local opcaoInfoEnergiaConstrucao = contexto:addOption(
+        getText("IGUI_BuildingPowerInfoMenu") or "Informações de Energia",
         nil,
         function()
-            -- Walk to an adjacent square only when not already there.
-            -- NOTE: luautils.walkAdj returns nil (falsy) when the player is
-            -- already adjacent, so we must NOT gate the open call on its
-            -- return value -- we just let it queue a walk if needed.
-            luautils.walkAdj(playerObj, square)
+            -- Força a aproximação física do jogador ao quadrado
+            luautils.walkAdj(jogadorObjeto, quadrado)
 
             if LKS_EletricidadeConstrucao.UI and LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow then
-                -- Open directly from the light-switch context so off-chunk and
-                -- state-backed fallbacks do not depend on the timed-action path.
-                LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open(playerObj, generator, square, buildingData)
-            elseif generator and LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.OpenInfoWindow then
+                LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open(jogadorObjeto, gerador, quadrado, dadosConstrucao)
+            elseif gerador and LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.OpenInfoWindow then
                 ISTimedActionQueue.add(
                     LKS_EletricidadeConstrucao.Actions.OpenInfoWindow:new(
-                        playerObj,
-                        generator,
-                        square,
-                        buildingData and buildingData.id or nil))
+                        jogadorObjeto,
+                        gerador,
+                        quadrado,
+                        dadosConstrucao and dadosConstrucao.id or nil))
             else
-                LKS_EletricidadeConstrucao.Warn("[LightSwitchMenu] GeneratorInfoWindow not loaded")
+                LKS_EletricidadeConstrucao.Warn("[LightSwitchMenu] Interface GeneratorInfoWindow não carregada!")
             end
         end
     )
-    buildingPowerInfoOption.iconTexture = getTexture("media/ui/LKS_House_Electricity_On.png")
+    opcaoInfoEnergiaConstrucao.iconTexture = getTexture("media/ui/LKS_House_Electricity_On.png")
 end)
 
-print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Light Switch Context Menu loaded successfully")
+print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Menu de contexto do interruptor carregado com sucesso.")

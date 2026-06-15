@@ -1,59 +1,77 @@
 -- ============================================================================
--- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
--- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) por sua fantástica contribuição para a comunidade!
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_ContextMenu_Barrel.lua
-print("[LKS PATCH - LKS_EletricidadeConstrucao_ContextMenu_Barrel.lua] Carregando Menu de Contexto do Barril...")
--- LKS_EletricidadeConstrucao V2 - Right-click context menu for petrol barrels.
--- Shows Link / Unlink options when a linkable barrel is right-clicked
--- near a powered building.
+-- ARQUIVO: LKS_EletricidadeConstrucao_ContextMenu_Barrel.lua
+-- OBJETIVO: Constrói as opções de menu de contexto (clique direito) para barris de combustível e água.
+-- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then return end
 
 require "actions/LKS_EletricidadeConstrucao_Actions_LinkBarrel"
 
-local function TableHasEntries(t)
-    if type(t) ~= "table" then return false end
-    for _ in pairs(t) do
+print("[LKS PATCH - LKS_EletricidadeConstrucao_ContextMenu_Barrel.lua] Carregando Menu de Contexto do Barril...")
+
+--- Verifica se uma tabela Lua possui entradas válidas.
+--- @param tabela table A tabela a ser analisada.
+--- @return boolean Retorna true se a tabela contiver chaves.
+local function TabelaPossuiEntradas(tabela)
+    if type(tabela) ~= "table" then return false end
+    for _ in pairs(tabela) do
         return true
     end
     return false
 end
 
-local function IsInsideBoundingBox(buildingData, x, y)
-    local bb = buildingData and buildingData.boundingBox
-    if type(bb) ~= "table" then return false end
+--- Verifica se as coordenadas informadas estão dentro da caixa delimitadora da construção.
+--- @param dadosConstrucao table Os limites geométricos da construção.
+--- @param coordenadaX number Coordenada X física.
+--- @param coordenadaY number Coordenada Y física.
+--- @return boolean Retorna true se estiver contido na área delimitada.
+local function EstaDentroDaCaixaDelimitadora(dadosConstrucao, coordenadaX, coordenadaY)
+    local caixaDelimitadora = dadosConstrucao and dadosConstrucao.boundingBox
+    if type(caixaDelimitadora) ~= "table" then return false end
 
-    local minX = tonumber(bb.minX or bb[1])
-    local minY = tonumber(bb.minY or bb[2])
-    local maxX = tonumber(bb.maxX or bb[3])
-    local maxY = tonumber(bb.maxY or bb[4])
-    if not (minX and minY and maxX and maxY) then
+    local minimoX = tonumber(caixaDelimitadora.minX or caixaDelimitadora[1])
+    local minimoY = tonumber(caixaDelimitadora.minY or caixaDelimitadora[2])
+    local maximoX = tonumber(caixaDelimitadora.maxX or caixaDelimitadora[3])
+    local maximoY = tonumber(caixaDelimitadora.maxY or caixaDelimitadora[4])
+    if not (minimoX and minimoY and maximoX and maximoY) then
         return false
     end
 
-    return x >= (minX - 1) and x <= (maxX + 1)
-       and y >= (minY - 1) and y <= (maxY + 1)
+    return coordenadaX >= (minimoX - 1) and coordenadaX <= (maximoX + 1)
+       and coordenadaY >= (minimoY - 1) and coordenadaY <= (maximoY + 1)
 end
 
-local function FindNearbyIsoBuilding(cell, square, radius)
-    local isoBuilding = square and square:getBuilding() or nil
-    if isoBuilding then return isoBuilding end
-    if not cell or not square then return nil end
+--- Realiza busca nas proximidades por uma estrutura predial nativa da engine (IsoBuilding).
+--- @param celula any A célula ativa do mapa.
+--- @param quadrado any O GridSquare referenciado.
+--- @param raio integer Raio de varredura.
+--- @return any|nil O objeto IsoBuilding correspondente ou nil.
+local function LocalizarPredioProximo(celula, quadrado, raio)
+    local predioIso = quadrado and quadrado:getBuilding() or nil
+    if predioIso then return predioIso end
+    if not celula or not quadrado then return nil end
 
-    local bx, by, bz = square:getX(), square:getY(), square:getZ()
-    for r = 1, radius do
-        for dx = -r, r do
-            for dy = -r, r do
-                if math.abs(dx) == r or math.abs(dy) == r then
-                    local sq2 = cell:getGridSquare(bx + dx, by + dy, bz)
-                    if sq2 then
-                        isoBuilding = sq2:getBuilding()
-                        if isoBuilding then
-                            return isoBuilding
+    local baseX, baseY, baseZ = quadrado:getX(), quadrado:getY(), quadrado:getZ()
+    for r = 1, raio do
+        for deslocamentoX = -r, r do
+            for deslocamentoY = -r, r do
+                if math.abs(deslocamentoX) == r or math.abs(deslocamentoY) == r then
+                    local quadradoAdjacente = celula:getGridSquare(baseX + deslocamentoX, baseY + deslocamentoY, baseZ)
+                    if quadradoAdjacente then
+                        predioIso = quadradoAdjacente:getBuilding()
+                        if predioIso then
+                            return predioIso
                         end
                     end
                 end
@@ -64,59 +82,74 @@ local function FindNearbyIsoBuilding(cell, square, radius)
     return nil
 end
 
-local function BuildingMatchesIso(buildingData, isoBuilding, cell, fallbackZ)
-    if not buildingData or not isoBuilding or not cell then return false end
-    if buildingData.x == nil or buildingData.y == nil then return false end
+--- Valida se uma construção lógica do estado corresponde ao objeto físico IsoBuilding da engine.
+--- @param dadosConstrucao table Os limites da construção no estado.
+--- @param predioIso any O objeto IsoBuilding correspondente.
+--- @param celula any A célula ativa do mapa.
+--- @param fallbackZ integer Altura Z de fallback.
+--- @return boolean Retorna true se houver correspondência física de quadrantes.
+local function PredioCorrespondeAoIso(dadosConstrucao, predioIso, celula, fallbackZ)
+    if not dadosConstrucao or not predioIso or not celula then return false end
+    if dadosConstrucao.x == nil or dadosConstrucao.y == nil then return false end
 
-    local lsSq = cell:getGridSquare(buildingData.x, buildingData.y, buildingData.z or fallbackZ or 0)
-    return lsSq and lsSq:getBuilding() == isoBuilding or false
+    local quadradoInterruptor = celula:getGridSquare(dadosConstrucao.x, dadosConstrucao.y, dadosConstrucao.z or fallbackZ or 0)
+    return quadradoInterruptor and quadradoInterruptor:getBuilding() == predioIso or false
 end
 
-local function IsGeneratorRunning(generatorData)
-    local GeneratorData = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
-    if GeneratorData and GeneratorData.IsRunning then
-        return GeneratorData.IsRunning(generatorData)
+--- Verifica se o gerador está ativamente em operação no estado.
+--- @param dadosGerador table Os dados estruturados do gerador.
+--- @return boolean Retorna true se estiver em funcionamento ativo.
+local function IsGeradorFuncionando(dadosGerador)
+    local ClasseDadosGerador = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
+    if ClasseDadosGerador and ClasseDadosGerador.IsRunning then
+        return ClasseDadosGerador.IsRunning(dadosGerador)
     end
 
-    return generatorData and (generatorData.fuelAmount or 0) > 0 and generatorData.activated ~= false
+    return dadosGerador and (dadosGerador.fuelAmount or 0) > 0 and dadosGerador.activated ~= false
 end
 
-local function GeneratorReferencesBuilding(generatorData, buildingData, square, stateManager)
-    if not generatorData or not buildingData then return false end
+--- Analisa se um determinado gerador possui dependência direta ou indireta de links com a construção.
+--- @param dadosGerador table Os dados do gerador.
+--- @param dadosConstrucao table A construção correspondente.
+--- @param quadrado any O GridSquare do barril.
+--- @param gerenciadorEstado table Referência do StateManager.
+--- @return boolean Retorna true se houver qualquer vínculo elétrico entre ambos.
+local function GeradorReferenciaConstrucao(dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado)
+    if not dadosGerador or not dadosConstrucao then return false end
 
-    local targetX, targetY = buildingData.x, buildingData.y
-    local squareX = square and square:getX() or nil
-    local squareY = square and square:getY() or nil
+    local alvoX, alvoY = dadosConstrucao.x, dadosConstrucao.y
+    local quadradoX = quadrado and quadrado:getX() or nil
+    local quadradoY = quadrado and quadrado:getY() or nil
 
-    for _, connectedId in pairs(generatorData.connectedBuildings or {}) do
-        if connectedId == buildingData.id then
+    for _, idConectado in pairs(dadosGerador.connectedBuildings or {}) do
+        if idConectado == dadosConstrucao.id then
             return true
         end
 
-        local refBld = stateManager and stateManager.GetBuilding and stateManager.GetBuilding(connectedId) or nil
-        if refBld then
-            if targetX and targetY and refBld.x == targetX and refBld.y == targetY then
+        local construcaoReferenciada = gerenciadorEstado and gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(idConectado) or nil
+        if construcaoReferenciada then
+            if alvoX and alvoY and construcaoReferenciada.x == alvoX and construcaoReferenciada.y == alvoY then
                 return true
             end
-            if refBld.x and refBld.y and IsInsideBoundingBox(buildingData, refBld.x, refBld.y) then
+            if construcaoReferenciada.x and construcaoReferenciada.y and EstaDentroDaCaixaDelimitadora(dadosConstrucao, construcaoReferenciada.x, construcaoReferenciada.y) then
                 return true
             end
-            if targetX and targetY and IsInsideBoundingBox(refBld, targetX, targetY) then
+            if alvoX and alvoY and EstaDentroDaCaixaDelimitadora(construcaoReferenciada, alvoX, alvoY) then
                 return true
             end
-            if squareX and squareY and IsInsideBoundingBox(buildingData, squareX, squareY)
-                    and IsInsideBoundingBox(refBld, squareX, squareY) then
+            if quadradoX and quadradoY and EstaDentroDaCaixaDelimitadora(dadosConstrucao, quadradoX, quadradoY)
+                    and EstaDentroDaCaixaDelimitadora(construcaoReferenciada, quadradoX, quadradoY) then
                 return true
             end
         else
-            local cx, cy = string.match(connectedId, "^bld_(%-?%d+)_(%-?%d+)_")
-            cx = tonumber(cx)
-            cy = tonumber(cy)
-            if cx and cy then
-                if targetX and targetY and cx == targetX and cy == targetY then
+            local coordenadaX, coordenadaY = string.match(idConectado, "^bld_(%-?%d+)_(%-?%d+)_")
+            coordenadaX = tonumber(coordenadaX)
+            coordenadaY = tonumber(coordenadaY)
+            if coordenadaX and coordenadaY then
+                if alvoX and alvoY and coordenadaX == alvoX and coordenadaY == alvoY then
                     return true
                 end
-                if IsInsideBoundingBox(buildingData, cx, cy) then
+                if EstaDentroDaCaixaDelimitadora(dadosConstrucao, coordenadaX, coordenadaY) then
                     return true
                 end
             end
@@ -126,22 +159,27 @@ local function GeneratorReferencesBuilding(generatorData, buildingData, square, 
     return false
 end
 
-local function GetBuildingGeneratorScore(buildingData, square, stateManager)
-    if not buildingData or not stateManager then return 0 end
+--- Calcula a pontuação de relevância de geradores associados a uma construção específica.
+--- @param dadosConstrucao table Os limites da construção.
+--- @param quadrado any O quadrado de origem.
+--- @param gerenciadorEstado table Instância do StateManager.
+--- @return integer Retorna a pontuação de prioridade baseada na proximidade e no uptime elétrico.
+local function ObterPontuacaoGeradorConstrucao(dadosConstrucao, quadrado, gerenciadorEstado)
+    if not dadosConstrucao or not gerenciadorEstado then return 0 end
 
-    local anyGenerator = false
-    local GeneratorData = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
+    local possuiQualquerGerador = false
+    local ClasseDadosGerador = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
 
-    if buildingData.connectedGenerators and GeneratorData and GeneratorData.MakeId and stateManager.GetGenerator then
-        for _, genKey in pairs(buildingData.connectedGenerators) do
-            local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-            if gx then
-                local gxi, gyi, gzi = tonumber(gx), tonumber(gy), tonumber(gz)
-                local genId = (gxi and gyi and gzi) and GeneratorData.MakeId(gxi, gyi, gzi) or nil
-                local genData = genId and stateManager.GetGenerator(genId) or nil
-                if genData and GeneratorReferencesBuilding(genData, buildingData, square, stateManager) then
-                    anyGenerator = true
-                    if IsGeneratorRunning(genData) then
+    if dadosConstrucao.connectedGenerators and ClasseDadosGerador and ClasseDadosGerador.MakeId and gerenciadorEstado.GetGenerator then
+        for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+            local geradorX, geradorY, geradorZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+            if geradorX then
+                local geradorXInt, geradorYInt, geradorZInt = tonumber(geradorX), tonumber(geradorY), tonumber(geradorZ)
+                local idGerador = (geradorXInt and geradorYInt and geradorZInt) and ClasseDadosGerador.MakeId(geradorXInt, geradorYInt, geradorZInt) or nil
+                local dadosGerador = idGerador and gerenciadorEstado.GetGenerator(idGerador) or nil
+                if dadosGerador and GeradorReferenciaConstrucao(dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado) then
+                    possuiQualquerGerador = true
+                    if IsGeradorFuncionando(dadosGerador) then
                         return 2
                     end
                 end
@@ -149,114 +187,132 @@ local function GetBuildingGeneratorScore(buildingData, square, stateManager)
         end
     end
 
-    if stateManager.GetAllGenerators then
-        for _, genData in pairs(stateManager.GetAllGenerators() or {}) do
-            if GeneratorReferencesBuilding(genData, buildingData, square, stateManager) then
-                anyGenerator = true
-                if IsGeneratorRunning(genData) then
+    if gerenciadorEstado.GetAllGenerators then
+        for _, dadosGerador in pairs(gerenciadorEstado.GetAllGenerators() or {}) do
+            if GeradorReferenciaConstrucao(dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado) then
+                possuiQualquerGerador = true
+                if IsGeradorFuncionando(dadosGerador) then
                     return 2
                 end
             end
         end
     end
 
-    return anyGenerator and 1 or 0
+    return possuiQualquerGerador and 1 or 0
 end
 
-local function ScoreBuildingCandidate(buildingData, square, isoBuilding, radius, cell, stateManager, preferredBuildingID)
-    if not buildingData or not buildingData.id then return nil end
+--- Pontua um candidato predial com base na distância geométrica e status da rede elétrica.
+--- @param dadosConstrucao table Os limites prediais no estado.
+--- @param quadrado any O quadrado físico do barril.
+--- @param predioIso any O objeto IsoBuilding correspondente (se detectado).
+--- @param raio number O raio máximo de varredura.
+--- @param celula any A célula ativa do mapa.
+--- @param gerenciadorEstado table Instância do StateManager.
+--- @param idConstrucaoPreferencial string|nil O ID da construção preferencial já vinculada.
+--- @return number|nil Retorna a pontuação de prioridade final do candidato, ou nil se rejeitado.
+local function PontuarCandidatoConstrucao(dadosConstrucao, quadrado, predioIso, raio, celula, gerenciadorEstado, idConstrucaoPreferencial)
+    if not dadosConstrucao or not dadosConstrucao.id then return nil end
 
-    local bx, by = square:getX(), square:getY()
-    local dx = buildingData.x ~= nil and (buildingData.x - bx) or nil
-    local dy = buildingData.y ~= nil and (buildingData.y - by) or nil
-    local d2 = (dx and dy) and (dx * dx + dy * dy) or nil
-    local radiusSq = radius * radius
-    local inside = IsInsideBoundingBox(buildingData, bx, by)
-    local isoMatch = BuildingMatchesIso(buildingData, isoBuilding, cell, square:getZ())
-    local withinRadius = d2 and d2 <= radiusSq or false
+    local baseX, baseY = quadrado:getX(), quadrado:getY()
+    local deslocamentoX = dadosConstrucao.x ~= nil and (dadosConstrucao.x - baseX) or nil
+    local deslocamentoY = dadosConstrucao.y ~= nil and (dadosConstrucao.y - baseY) or nil
+    local distanciaAoQuadrado = (deslocamentoX and deslocamentoY) and (deslocamentoX * deslocamentoX + deslocamentoY * deslocamentoY) or nil
+    local raioAoQuadrado = raio * raio
+    local estaDentro = EstaDentroDaCaixaDelimitadora(dadosConstrucao, baseX, baseY)
+    local correspondeIso = PredioCorrespondeAoIso(dadosConstrucao, predioIso, celula, quadrado:getZ())
+    local dentroDoRaio = distanciaAoQuadrado and distanciaAoQuadrado <= raioAoQuadrado or false
 
-    if not inside and not isoMatch and not withinRadius then
+    if not estaDentro and not correspondeIso and not dentroDoRaio then
         return nil
     end
 
-    local generatorScore = GetBuildingGeneratorScore(buildingData, square, stateManager)
-    if generatorScore == 0 then
+    local pontuacaoGerador = ObterPontuacaoGeradorConstrucao(dadosConstrucao, quadrado, gerenciadorEstado)
+    if pontuacaoGerador == 0 then
         return nil
     end
 
-    local score = 0
-    if inside then score = score + 200 end
-    if isoMatch then score = score + 120 end
-    if withinRadius and d2 then
-        score = score + math.floor((radiusSq - d2) / math.max(radius, 1))
+    local pontuacao = 0
+    if estaDentro then pontuacao = pontuacao + 200 end
+    if correspondeIso then pontuacao = pontuacao + 120 end
+    if dentroDoRaio and distanciaAoQuadrado then
+        pontuacao = pontuacao + math.floor((raioAoQuadrado - distanciaAoQuadrado) / math.max(raio, 1))
     end
-    score = score + (generatorScore == 2 and 80 or 30)
-    if buildingData.isPowered then score = score + 40 end
-    if preferredBuildingID and buildingData.id == preferredBuildingID then
-        score = score + 5
+    pontuacao = pontuacao + (pontuacaoGerador == 2 and 80 or 30)
+    if dadosConstrucao.isPowered then pontuacao = pontuacao + 40 end
+    if idConstrucaoPreferencial and dadosConstrucao.id == idConstrucaoPreferencial then
+        pontuacao = pontuacao + 5
     end
 
-    return score
+    return pontuacao
 end
 
-local function FindNearestBuilding(square, radius, preferredBuildingID)
-    radius = radius or 20
+--- Localiza no estado a construção com maior adequabilidade para ser vinculada ao barril.
+--- @param quadrado any O GridSquare do barril.
+--- @param raio integer O raio físico máximo de alcance.
+--- @param idConstrucaoPreferencial string|nil O ID do prédio previamente vinculado.
+--- @return table|nil Retorna o registro da construção mais adequada, ou nil se nenhum candidato for aprovado.
+local function LocalizarConstrucaoMaisProxima(quadrado, raio, idConstrucaoPreferencial)
+    raio = raio or 20
 
-    local stateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not stateManager or not stateManager.GetAllBuildings then return nil end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado or not gerenciadorEstado.GetAllBuildings then return nil end
 
-    local buildings = stateManager.GetAllBuildings()
-    if not TableHasEntries(buildings) then return nil end
+    local construcoes = gerenciadorEstado.GetAllBuildings()
+    if not TabelaPossuiEntradas(construcoes) then return nil end
 
-    local cell = getCell()
-    if not cell or not square then return nil end
+    local celula = getCell()
+    if not celula or not quadrado then return nil end
 
-    local isoBuilding = FindNearbyIsoBuilding(cell, square, radius)
-    local bestBuilding, bestScore = nil, nil
+    local predioIso = LocalizarPredioProximo(celula, quadrado, raio)
+    local melhorConstrucao, melhorPontuacao = nil, nil
 
-    for _, buildingData in pairs(buildings) do
-        local score = ScoreBuildingCandidate(
-            buildingData, square, isoBuilding, radius, cell, stateManager, preferredBuildingID)
-        if score and (not bestScore or score > bestScore) then
-            bestScore = score
-            bestBuilding = buildingData
+    for _, dadosConstrucao in pairs(construcoes) do
+        local pontuacao = PontuarCandidatoConstrucao(
+            dadosConstrucao, quadrado, predioIso, raio, celula, gerenciadorEstado, idConstrucaoPreferencial)
+        if pontuacao and (not melhorPontuacao or pontuacao > melhorPontuacao) then
+            melhorPontuacao = pontuacao
+            melhorConstrucao = dadosConstrucao
         end
     end
 
-    return bestBuilding
+    return melhorConstrucao
 end
 
-local function FindNearbyGeneratorPoolID(square, radius)
-    if not square then return nil end
+--- Localiza nas proximidades o ID da piscina elétrica de geradores nativos da engine.
+--- @param quadrado any O GridSquare inicial.
+--- @param raio integer O raio de varredura.
+--- @return string|nil Retorna o ID da piscina de construções, ou nil se nenhum gerador ativo for achado.
+local function LocalizarIdFiltroGeradorProximo(quadrado, raio)
+    if not quadrado then return nil end
 
-    radius = radius or 20
-    local cell = getCell()
-    if not cell then return nil end
+    raio = raio or 20
+    local celula = getCell()
+    if not celula then return nil end
 
-    local bestPoolID = nil
-    local bestScore = nil
-    local bx, by, bz = square:getX(), square:getY(), square:getZ()
+    local melhorIdGrupo = nil
+    local melhorPontuacao = nil
+    local baseX, baseY, baseZ = quadrado:getX(), quadrado:getY(), quadrado:getZ()
 
-    for dx = -radius, radius do
-        for dy = -radius, radius do
-            local sq = cell:getGridSquare(bx + dx, by + dy, bz)
-            if sq then
-                local objs = sq:getObjects()
-                if objs then
-                    for i = 0, objs:size() - 1 do
-                        local obj = objs:get(i)
-                        if obj and instanceof(obj, "IsoGenerator") then
-                            local md = obj:getModData()
-                            local poolID = md and md.Gen_BuildingPoolID or nil
-                            if poolID then
-                                local dist = math.abs(dx) + math.abs(dy)
-                                local score = dist
-                                if obj:isActivated() then
-                                    score = score - 100
+    for deslocamentoX = -raio, raio do
+        for deslocamentoY = -raio, raio do
+            local quadradoAlvo = celula:getGridSquare(baseX + deslocamentoX, baseY + deslocamentoY, baseZ)
+            if quadradoAlvo then
+                local objetos = quadradoAlvo:getObjects()
+                if objetos then
+                    for indiceObjeto = 0, objetos:size() - 1 do
+                        local objeto = objetos:get(indiceObjeto)
+                        if objeto and instanceof(objeto, "IsoGenerator") then
+                            local dadosMod = objeto:getModData()
+                            local idGrupo = dadosMod and dadosMod.Gen_BuildingPoolID or nil
+                            if idGrupo then
+                                local distancia = math.abs(deslocamentoX) + math.abs(deslocamentoY)
+                                local pontuacao = distancia
+                                if objeto:isActivated() then
+                                    pontuacao = pontuacao - 100
                                 end
-                                if bestScore == nil or score < bestScore then
-                                    bestScore = score
-                                    bestPoolID = poolID
+                                if melhorPontuacao == nil or pontuacao < melhorPontuacao then
+                                    melhorPontuacao = pontuacao
+                                    melhorIdGrupo = idGrupo
                                 end
                             end
                         end
@@ -266,87 +322,100 @@ local function FindNearbyGeneratorPoolID(square, radius)
         end
     end
 
-    return bestPoolID
+    return melhorIdGrupo
 end
 
-local function FindBarrel(worldobjects)
-    if not worldobjects then return nil end
-    local Barrels = LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels
-    if not Barrels then return nil end
-    -- worldobjects is a plain Lua table in B42 (not a Java ArrayList)
-    for _, obj in ipairs(worldobjects) do
-        if obj and Barrels.IsLinkable(obj) then return obj end
+--- Procura um barril de combustível válido na lista de objetos interagíveis do quadrado clicado.
+--- @param objetosMundo table A lista de objetos selecionados pelo clique direito.
+--- @return any|nil Retorna o objeto IsoObject do barril se for elegível, ou nil.
+local function LocalizarBarril(objetosMundo)
+    if not objetosMundo then return nil end
+    local ClasseBarris = LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels
+    if not ClasseBarris then return nil end
+    
+    -- No B42, objetosMundo é uma tabela padrão Lua em vez de um ArrayList Java.
+    for _, objeto in ipairs(objetosMundo) do
+        if objeto and ClasseBarris.IsLinkable(objeto) then return objeto end
     end
     return nil
 end
 
-Events.OnFillWorldObjectContextMenu.Add(function(playerNum, context, worldobjects, test)
-    local Barrels = LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels
-    if not Barrels then return end
-    local Runtime = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
-    local isMPClient = Runtime and Runtime.IsMultiplayerClient and Runtime.IsMultiplayerClient()
+-- ============================================================================
+-- EVENTO DE INJEÇÃO DO MENU DE CONTEXTO DO JOGO
+-- ============================================================================
 
-    local barrel = FindBarrel(worldobjects)
-    if not barrel then return end
+Events.OnFillWorldObjectContextMenu.Add(function(numeroJogador, contexto, objetosMundo, modoTeste)
+    local ClasseBarris = LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels
+    if not ClasseBarris then return end
+    
+    local ClasseRuntime = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
+    local ehClienteMultiplayer = ClasseRuntime and ClasseRuntime.IsMultiplayerClient and ClasseRuntime.IsMultiplayerClient()
 
-    if test then return true end  -- signal: we'd add an option
+    local barril = LocalizarBarril(objetosMundo)
+    if not barril then return end
 
-    local player = getSpecificPlayer(playerNum)
-    if not player then return end
+    -- Sinaliza para a engine que pretendemos adicionar opções
+    if modoTeste then return true end
 
-    local sq        = barrel:getSquare()
-    if not sq then return end
-    local stateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    local linkedBuildingID = Barrels.GetLinkedBuilding and Barrels.GetLinkedBuilding(barrel) or nil
-    local buildingData = linkedBuildingID and stateManager and stateManager.GetBuilding
-        and stateManager.GetBuilding(linkedBuildingID) or nil
-    local generatorPoolID = nil
-    if not buildingData then
-        buildingData = FindNearestBuilding(sq, 20, linkedBuildingID)
+    local jogador = getSpecificPlayer(numeroJogador)
+    if not jogador then return end
+
+    local quadrado = barril:getSquare()
+    if not quadrado then return end
+    
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    local idConstrucaoVinculada = ClasseBarris.GetLinkedBuilding and ClasseBarris.GetLinkedBuilding(barril) or nil
+    local dadosConstrucao = idConstrucaoVinculada and gerenciadorEstado and gerenciadorEstado.GetBuilding
+        and gerenciadorEstado.GetBuilding(idConstrucaoVinculada) or nil
+    
+    local idGrupoGeradores = nil
+    if not dadosConstrucao then
+        dadosConstrucao = LocalizarConstrucaoMaisProxima(quadrado, 20, idConstrucaoVinculada)
     end
-    if not buildingData then
-        generatorPoolID = FindNearbyGeneratorPoolID(sq, 20)
-        if generatorPoolID and stateManager and stateManager.GetBuilding then
-            buildingData = stateManager.GetBuilding(generatorPoolID)
+    if not dadosConstrucao then
+        idGrupoGeradores = LocalizarIdFiltroGeradorProximo(quadrado, 20)
+        if idGrupoGeradores and gerenciadorEstado and gerenciadorEstado.GetBuilding then
+            dadosConstrucao = gerenciadorEstado.GetBuilding(idGrupoGeradores)
         end
     end
-    local linked = linkedBuildingID ~= nil
-    local allowServerResolvedLink = isMPClient and not linked
-    local resolvedBuildingID = (buildingData and buildingData.id) or generatorPoolID or nil
-    local canLink = resolvedBuildingID ~= nil or allowServerResolvedLink
+    
+    local estaVinculado = idConstrucaoVinculada ~= nil
+    local permitirVinculoResolvidoPeloServidor = ehClienteMultiplayer and not estaVinculado
+    local idConstrucaoResolvida = (dadosConstrucao and dadosConstrucao.id) or idGrupoGeradores or nil
+    local podeVincular = idConstrucaoResolvida ~= nil or permitirVinculoResolvidoPeloServidor
 
-    if linked then
-        -- Unlink option
-        local opt = context:addOption(
+    if estaVinculado then
+        -- Opção de Desvincular Barril
+        local opcao = contexto:addOption(
             getText("IGUI_LKS_EletricidadeConstrucao_UnlinkBarrel") or "Desvincular do Reservatório de Combustível",
-            worldobjects,
+            objetosMundo,
             function()
                 ISTimedActionQueue.add(
-                    LKS_EletricidadeConstrucao_LinkBarrelAction:new(player, barrel, sq, linkedBuildingID, false))
+                    LKS_EletricidadeConstrucao_LinkBarrelAction:new(jogador, barril, quadrado, idConstrucaoVinculada, false))
             end
         )
-        _ = opt  -- used
+        _ = opcao
     else
-        -- Link option
-        local opt = context:addOption(
+        -- Opção de Vincular Barril
+        local opcao = contexto:addOption(
             getText("IGUI_LKS_EletricidadeConstrucao_LinkBarrel") or "Vincular ao Reservatório de Combustível",
-            worldobjects,
+            objetosMundo,
             function()
-                if not canLink then
-                    player:Say(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhum edifício energizado por perto")
+                if not podeVincular then
+                    jogador:Say(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhum edifício energizado por perto")
                     return
                 end
                 ISTimedActionQueue.add(
-                    LKS_EletricidadeConstrucao_LinkBarrelAction:new(player, barrel, sq, resolvedBuildingID, true))
+                    LKS_EletricidadeConstrucao_LinkBarrelAction:new(jogador, barril, quadrado, idConstrucaoResolvida, true))
             end
         )
-        if not canLink then
-            opt.notAvailable = true
-            local tip = ISToolTip:new()
-            tip:initialise()
-            tip:setVisible(false)
-            tip:setName(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhum edifício energizado por perto")
-            opt.toolTip = tip
+        if not podeVincular then
+            opcao.notAvailable = true
+            local dicaContexto = ISToolTip:new()
+            dicaContexto:initialise()
+            dicaContexto:setVisible(false)
+            dicaContexto:setName(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhum edifício energizado por perto")
+            opcao.toolTip = dicaContexto
         end
     end
 end)

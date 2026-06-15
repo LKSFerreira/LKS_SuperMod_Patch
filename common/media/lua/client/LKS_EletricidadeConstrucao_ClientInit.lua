@@ -1,18 +1,23 @@
 -- ============================================================================
--- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
--- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) por sua fantástica contribuição para a comunidade!
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_ClientInit.lua
+-- ARQUIVO: LKS_EletricidadeConstrucao_ClientInit.lua
+-- OBJETIVO: Inicialização do lado do cliente (carrega interfaces, menus e utilitários).
+-- LOCALIZAÇÃO: client
+
 print("[LKS PATCH - LKS_EletricidadeConstrucao_ClientInit.lua] Carregando Inicialização de Cliente do LKS_EletricidadeConstrucao...")
--- Client-side initialization
--- Loads UI, context menus, and input handlers
--- LOCATION: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_ClientInit] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_ClientInit] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
@@ -21,66 +26,66 @@ if LKS_EletricidadeConstrucao.Config and not LKS_EletricidadeConstrucao.Config.M
     return
 end
 
--- Register module
+-- Registra o módulo de inicialização do cliente no namespace
 LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_ClientInit")
 
--- ============================================================
--- LOAD CONTEXT MENUS
--- ============================================================
+-- ============================================================================
+-- CARREGAMENTO DOS MENUS DE CONTEXTO
+-- ============================================================================
 
--- Generator context menu
+-- Menu de contexto para geradores
 require "LKS_EletricidadeConstrucao_ContextMenu_Generator"
 
--- Light Switch context menu (Building Power Info from any switch)
+-- Menu de contexto para interruptores de luz (informações de energia do prédio)
 require "LKS_EletricidadeConstrucao_ContextMenu_LightSwitch"
 
--- Install vanilla lightswitch items with preview
+-- Menu de contexto para instalação de interruptores de luz nativos com visualização prévia
 require "LKS_EletricidadeConstrucao_ContextMenu_LightSwitchInstall"
 
--- TODO: Barrel context menu (Phase 5)
+-- TODO: Menu de contexto para barris (Fase 5)
 if not LKS_EletricidadeConstrucao.Config or LKS_EletricidadeConstrucao.Config.BarrelSystemEnabled then
     require "actions/LKS_EletricidadeConstrucao_Actions_LinkBarrel"
     require "LKS_EletricidadeConstrucao_ContextMenu_Barrel"
 end
 
--- ============================================================
--- LOAD UI MODULES
--- ============================================================
+-- ============================================================================
+-- CARREGAMENTO DOS MÓDULOS DE INTERFACE GRÁFICA (UI)
+-- ============================================================================
 
--- Generator Info Window
+-- Janela de informações do gerador
 require "ui/LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow"
 
--- Debug Panel (Admin/Debug mode, toggle with "-" key)
+-- Painel de Depuração (apenas se o modo debug estiver ativo no sandbox, alternar com a tecla "-")
 if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.DebugMode then
     require "ui/LKS_EletricidadeConstrucao_UI_DebugPanel"
 end
 
--- Heating client (manages IsoHeatSource objects)
+-- Mecânica do cliente de aquecimento (gerencia objetos IsoHeatSource)
 if not LKS_EletricidadeConstrucao.Config or LKS_EletricidadeConstrucao.Config.HeatingSystemEnabled then
     require "LKS_EletricidadeConstrucao_Heating_Client"
 end
 
--- Multiplayer client-side reconstruction of building power for loaded squares
+-- Sincronização e reconstrução de energia de prédios carregados na tela (Multiplayer)
 require "LKS_EletricidadeConstrucao_Power_ClientSync"
 
--- Client-side server command responses / MP action acknowledgements
+-- Manipuladores de respostas a comandos enviados pelo servidor (confirmações no Multiplayer)
 require "LKS_EletricidadeConstrucao_ClientCommands"
 
--- TODO: Range Visualization (Phase 3)
+-- TODO: Visualização gráfica do raio de alcance do gerador (Fase 3)
 -- require "ui/LKS_EletricidadeConstrucao_UI_RangeVisualization"
 
--- ============================================================
--- LOAD INPUT HANDLERS
--- ============================================================
+-- ============================================================================
+-- CARREGAMENTO DE MANIPULADORES DE ENTRADA (TECLADO/ATALHOS)
+-- ============================================================================
 
--- TODO: Hotkeys (Phase 9)
+-- TODO: Teclas de atalho (Fase 9)
 -- require "input/LKS_EletricidadeConstrucao_Input_Hotkeys"
 
--- ============================================================
--- LOAD RENDERING MODULES
--- ============================================================
+-- ============================================================================
+-- CARREGAMENTO DE MÓDULOS DE RENDERIZAÇÃO GRÁFICA
+-- ============================================================================
 
--- TODO: Debug overlay (Phase 10)
+-- TODO: Camada gráfica de depuração do mapa (Fase 10)
 -- require "rendering/LKS_EletricidadeConstrucao_Render_DebugOverlay"
 
 print("[LKS PATCH - LKS_EletricidadeConstrucao_ClientInit.lua] Carregado com sucesso!")
