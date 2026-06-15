@@ -2,8 +2,8 @@
     "ContextMenu_TurnOn": "Ligar",
     "ContextMenu_TurnOff": "Desligar",
     "ContextMenu_InstallLightswitch": "Instalar Interruptor",
-    "ContextMenu_PB_Generator": "Gerador",
-    "ContextMenu_PB_AddFuel": "Colocar Combustível",
+    "ContextMenu_LKS_EletricidadeConstrucao_Generator": "Gerador",
+    "ContextMenu_LKS_EletricidadeConstrucao_AddFuel": "Colocar Combustível",
     "ContextMenu_ComboWasherDryer_SetModeDryer": "Alterar Modo para Secadora",
     "ContextMenu_ComboWasherDryer_SetModeWasher": "Alterar Modo para Lavadora"
 }

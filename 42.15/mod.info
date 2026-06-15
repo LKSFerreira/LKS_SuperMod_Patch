@@ -6,6 +6,6 @@ icon=icon.png
 modversion=1.0
 author=LKSFerreira
 homepage=https://github.com/LKSFerreira
-require=buildinggenpowerv2
+incompatible=buildinggenpowerv2,buildinggenpowermp,buildinggenpower
 tags=Tools,Translation,Fix,Improvement,Features
 versionMin=42.15

@@ -1,0 +1,97 @@
+VERSION = 1,
+
+option LKS_EletricidadeConstrucao.EletricidadeRealistaEnabled
+{
+    type = boolean,
+    default = true,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_EletricidadeRealistaEnabled,
+}
+
+option LKS_EletricidadeConstrucao.HeatingSystemEnabled
+{
+    type = boolean,
+    default = true,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_HeatingSystemEnabled,
+}
+
+option LKS_EletricidadeConstrucao.BarrelSystemEnabled
+{
+    type = boolean,
+    default = true,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_BarrelSystemEnabled,
+}
+
+option LKS_EletricidadeConstrucao.RefrigerationEnabled
+{
+    type = boolean,
+    default = true,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_RefrigerationEnabled,
+}
+
+option LKS_EletricidadeConstrucao.LaundryEnabled
+{
+    type = boolean,
+    default = true,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_LaundryEnabled,
+}
+
+option LKS_EletricidadeConstrucao.CookingEnabled
+{
+    type = boolean,
+    default = true,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_CookingEnabled,
+}
+
+option LKS_EletricidadeConstrucao.DebugToolsEnabled
+{
+    type = boolean,
+    default = false,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_DebugToolsEnabled,
+}
+
+option LKS_EletricidadeConstrucao.HeatRadius
+{
+    type = integer,
+    min = 15,
+    max = 100,
+    default = 20,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_HeatRadius,
+}
+
+option LKS_EletricidadeConstrucao.BaseLoadCapacity
+{
+    type = integer,
+    min = 20,
+    max = 500,
+    default = 120,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_BaseLoadCapacity,
+}
+
+option LKS_EletricidadeConstrucao.MaxConsumersPerBuilding
+{
+    type = integer,
+    min = 50,
+    max = 5000,
+    default = 500,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_MaxConsumersPerBuilding,
+}
+
+option LKS_EletricidadeConstrucao.MaxGeneratorsPerBuilding
+{
+    type = integer,
+    min = 1,
+    max = 50,
+    default = 10,
+    page = LKS_EletricidadeConstrucao,
+    translation = LKS_EletricidadeConstrucao_MaxGeneratorsPerBuilding,
+}
