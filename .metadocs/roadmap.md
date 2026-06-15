@@ -34,3 +34,5 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Correção de Auditoria e Ajustes do Banner (14/06/2026)**: Resolução de falsos positivos na auditoria, correção e substituição automática de links locais e alinhamento visual simétrico do menu interativo.
 - [x] **Padronização do Driver de Refrigeração (14/06/2026)**: Refatoração do Fridges Off para driver `LKS_Device_Refrigeration`, expansão do kernel `LKS_ApplianceManager` e suporte a saves legados.
 - [x] **Desacoplamento Nativo do Generator Powered Buildings (14/06/2026)**: Incorporação dos módulos do GeneratorPlus2 como `LKS_EletricidadeConstrucao`, remoção de `require=buildinggenpowerv2`, incompatibilidade explícita com IDs originais, traduções PTBR/EN e flags de sandbox para controle modular.
+- [x] **Readequação de Badges e Ajuste de Auditoria (15/06/2026)**: Refinamento do sistema de Badges dinâmicos nos aparelhos e modificação do filtro de integridade em `auditoria_mod.py` para ignorar assets vanilla da Build 42.
+

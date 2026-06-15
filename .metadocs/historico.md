@@ -17,3 +17,5 @@ Registre aqui entregas concluídas, decisões importantes e links para walkthrou
 - **14/06/2026**: [Correção de Auditoria e Ajustes do Banner](walkthrough/correcao_auditoria.md) - Resolução de falsos positivos na auditoria, correção e substituição automática de links locais e alinhamento visual simétrico do menu interativo.
 - **14/06/2026**: [Padronização do Driver de Refrigeração](walkthrough/padronizacao_refrigeracao.md) - Refatoração do Fridges Off para driver LKS_Device_Refrigeration, expansão do kernel Appliance Manager e suporte a saves legados.
 - **14/06/2026**: [Desacoplamento Nativo do Generator Powered Buildings](walkthrough/desacoplamento_generator_powered_buildings.md) - Remoção da dependência obrigatória do GeneratorPlus2, vendorização dos módulos como LKS_EletricidadeConstrucao, incompatibilidade explícita com os IDs originais e modularização por Sandbox Options.
+- **15/06/2026**: [Readequação de Badges e Ajuste de Auditoria](walkthrough/readequacao_assets_auditoria.md) - Refinamento na renderização de badges nos aparelhos com validação de container válido e correção da ferramenta de auditoria para ignorar texturas nativas do jogo.
+

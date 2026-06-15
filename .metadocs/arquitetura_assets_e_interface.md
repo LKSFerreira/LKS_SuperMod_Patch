@@ -34,8 +34,8 @@ Para quase todos os outros recipientes (ex: Combo Washer Dryer, armários, caixo
 ### 💡 Hack de Modding: Injeção na Tabela Global
 Como a tabela `ContainerButtonIcons` é global, nós podemos registrar novos ícones de contêineres customizados (ou sobrescrever os existentes) injetando o caminho direto do nosso mod no Lua:
 ```lua
--- Injeção no Lua do mod para dar um ícone único para a Combo Washer Dryer:
-ContainerButtonIcons.combo_washer_dryer = getTexture("media/ui/Combo_Washer_Dryer_Blue_S.png")
+-- Injeção no Lua do mod para registrar as variantes de desligado apontando para o ícone padrão, permitindo a sobreposição dinâmica:
+ContainerButtonIcons.geladeira_desligada = ContainerButtonIcons.fridge or getTexture("media/ui/Container_Fridge.png")
 ```
 
 ---
@@ -126,7 +126,7 @@ python tools/gerenciador_assets.py <nome_do_sprite>
     ```bash
     python tools/gerenciador_assets.py appliances_laundry_01_0
     ```
-    *(Gera automaticamente o nome amigável sugerido: `common/media/ui/Combo_Washer_Dryer_Blue_S.png` extraído em alta qualidade do `Tiles2x.pack`).*
+    *(Gera automaticamente o nome amigável sugerido: `common/media/ui/Exemplo_Combo__Washer_Dryer_Blue_S.png` extraído em alta qualidade do `Tiles2x.pack`).*
 
 ### O Que o Gerenciador Faz Por Trás das Cenas:
 1.  **Dedução de Intenção**: Identifica que você passou o nome de um sprite e ativa a rotina de extração.
