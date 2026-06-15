@@ -1,355 +1,381 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao V2: Debug Commands
--- Purpose: Admin/debug commands for testing and troubleshooting
--- Simplified - avoids top-level namespace aliasing issues
+-- ARQUIVO: LKS_EletricidadeConstrucao_DebugCommands.lua
+-- OBJETIVO: Comandos de administração e depuração do sistema elétrico.
+-- LOCALIZAÇÃO: server
 
 if not LKS_EletricidadeConstrucao or not LKS_EletricidadeConstrucao.Core then
-    print("[LKS_EletricidadeConstrucao_DebugCommands] LKS_EletricidadeConstrucao V2 not loaded - skipping")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Namespace LKS_EletricidadeConstrucao ou Core não encontrado - pulando carregamento do módulo")
     return
 end
+
 if not LKS_EletricidadeConstrucao.Core.Logger or not LKS_EletricidadeConstrucao.Core.Logger.Info then
-    print("[LKS_EletricidadeConstrucao_DebugCommands] Logger not ready - skipping")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Logger não inicializado - pulando carregamento do módulo")
     return
 end
 
 local Logger = LKS_EletricidadeConstrucao.Core.Logger
 local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
 
--- Ensure sub-tables exist BEFORE any function definitions that index them
--- NOTE: LKS_EletricidadeConstrucao.Debug is already a FUNCTION (utility logger in LKS_EletricidadeConstrucao_Core_Namespace.lua)
--- so we use LKS_EletricidadeConstrucao.DebugCommands as the namespace for server commands
 LKS_EletricidadeConstrucao.DebugCommands = LKS_EletricidadeConstrucao.DebugCommands or {}
 LKS_EletricidadeConstrucao.DebugCommands.Commands = LKS_EletricidadeConstrucao.DebugCommands.Commands or {}
 
---------------------------------------------------------------------------------
--- COMMAND HANDLERS (local, server-only)
---------------------------------------------------------------------------------
+-- ============================================================================
+-- MANIPULADORES DE COMANDOS (EXCLUSIVOS DO SERVIDOR)
+-- ============================================================================
 
---- Print all registered generators
-local function CMD_ListGenerators(player, args)
-    Logger.Info("Debug", "=== GENERATOR LIST ===")
+--- Imprime todos os geradores registrados no console.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_ListarGeradores(player, args)
+    Logger.Info("Debug", "=== LISTA DE GERADORES ===")
     
-    local generators = StateManager.GetAllGenerators()
-    if not generators or #generators == 0 then
-        Logger.Info("Debug", "No generators registered")
+    local geradores = StateManager.GetAllGenerators()
+    if not geradores or #geradores == 0 then
+        Logger.Info("Debug", "Nenhum gerador registrado")
         return
     end
     
-    Logger.Info("Debug", string.format("Total generators: %d", #generators))
+    Logger.Info("Debug", string.format("Total de geradores: %d", #geradores))
     
-    for _, genData in ipairs(generators) do
+    for _, dadosGerador in ipairs(geradores) do
         Logger.Info("Debug", string.format(
-            "  Generator %s at (%d,%d,%d): %s, Fuel: %.1f%%, Load: %.1f/%.1f, Efficiency: %.1f%%",
-            genData.id,
-            genData.x, genData.y, genData.z,
-            genData.isActive and "ON" or "OFF",
-            genData.fuelLevel * 100,
-            genData.currentLoad,
-            genData.maxLoad,
-            genData.efficiency * 100
+            "  Gerador %s em (%d,%d,%d): %s, Combustível: %.1f%%, Carga: %.1f/%.1f, Eficiência: %.1f%%",
+            dadosGerador.id,
+            dadosGerador.x, dadosGerador.y, dadosGerador.z,
+            dadosGerador.isActive and "LIGADO" or "DESLIGADO",
+            dadosGerador.fuelLevel * 100,
+            dadosGerador.currentLoad,
+            dadosGerador.maxLoad,
+            dadosGerador.efficiency * 100
         ))
     end
     
     Logger.Info("Debug", "======================")
 end
 
---- Print all registered buildings
-local function CMD_ListBuildings(player, args)
-    Logger.Info("Debug", "=== BUILDING LIST ===")
+--- Imprime todas as construções registradas no console.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_ListarConstrucoes(player, args)
+    Logger.Info("Debug", "=== LISTA DE CONSTRUÇÕES ===")
     
-    local buildings = StateManager.GetAllBuildings()
-    -- GetAllBuildings() returns a hash-map; # operator always returns 0 for hash-maps
-    local _anyBld2 = false
-    for _ in pairs(buildings or {}) do _anyBld2 = true; break end
-    if not buildings or not _anyBld2 then
-        Logger.Info("Debug", "No buildings registered")
+    local construcoes = StateManager.GetAllBuildings()
+    local _qualquerConstrucao = false
+    for _ in pairs(construcoes or {}) do _qualquerConstrucao = true; break end
+    if not construcoes or not _qualquerConstrucao then
+        Logger.Info("Debug", "Nenhuma construção registrada")
         return
     end
     
-    local _bldCount2 = 0
-    for _ in pairs(buildings) do _bldCount2 = _bldCount2 + 1 end
-    Logger.Info("Debug", string.format("Total buildings: %d", _bldCount2))
+    local _totalConstrucoes = 0
+    for _ in pairs(construcoes) do _totalConstrucoes = _totalConstrucoes + 1 end
+    Logger.Info("Debug", string.format("Total de construções: %d", _totalConstrucoes))
     
-    for _, buildingData in pairs(buildings) do
-        local consumerCount = 0
-        if buildingData.powerConsumers then
-            for _ in pairs(buildingData.powerConsumers) do consumerCount = consumerCount + 1 end
+    for _, dadosConstrucao in pairs(construcoes) do
+        local totalConsumidores = 0
+        if dadosConstrucao.powerConsumers then
+            for _ in pairs(dadosConstrucao.powerConsumers) do totalConsumidores = totalConsumidores + 1 end
         end
-        local genCount = 0
-        if buildingData.connectedGenerators then
-            for _ in pairs(buildingData.connectedGenerators) do genCount = genCount + 1 end
+        local totalGeradores = 0
+        if dadosConstrucao.connectedGenerators then
+            for _ in pairs(dadosConstrucao.connectedGenerators) do totalGeradores = totalGeradores + 1 end
         end
         
         Logger.Info("Debug", string.format(
-            "  Building %s at (%d,%d,%d): %s, Consumers: %d, Power: %.1f, Generators: %d",
-            buildingData.id,
-            buildingData.centerX, buildingData.centerY, buildingData.z,
-            buildingData.isPowered and "POWERED" or "UNPOWERED",
-            consumerCount,
-            buildingData.totalPowerDraw or 0,
-            genCount
+            "  Construção %s em (%d,%d,%d): %s, Consumidores: %d, Energia: %.1f, Geradores: %d",
+            dadosConstrucao.id,
+            dadosConstrucao.centerX, dadosConstrucao.centerY, dadosConstrucao.z,
+            dadosConstrucao.isPowered and "ENERGIZADA" or "SEM_ENERGIA",
+            totalConsumidores,
+            dadosConstrucao.totalPowerDraw or 0,
+            totalGeradores
         ))
     end
     
     Logger.Info("Debug", "=====================")
 end
 
---- Print all power connections
-local function CMD_ListConnections(player, args)
-    Logger.Info("Debug", "=== POWER CONNECTIONS ===")
+--- Imprime todas as conexões ativas de energia.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_ListarConexoes(player, args)
+    Logger.Info("Debug", "=== CONEXÕES DE ENERGIA ===")
     if not LKS_EletricidadeConstrucao.Power or not LKS_EletricidadeConstrucao.Power.Manager then
-        Logger.Warn("Debug", "Power Manager not loaded")
+        Logger.Warn("Debug", "Gerenciador de Energia não carregado")
         return
     end
     LKS_EletricidadeConstrucao.Power.Manager.PrintConnections()
 end
 
---- Print detailed building info
-local function CMD_BuildingInfo(player, args)
-    local buildingId = args[1]
+--- Imprime informações detalhadas de uma construção específica.
+--- @param player any O jogador executando.
+--- @param args table Lista com o id da construção.
+local function CMD_InformacoesConstrucao(player, args)
+    local idConstrucao = args[1]
     
-    if not buildingId then
-        Logger.Warn("Debug", "Usage: /pbbuilding <buildingId>")
+    if not idConstrucao then
+        Logger.Warn("Debug", "Uso: /pbbuilding <idConstrucao>")
         return
     end
     
-    local buildingData = StateManager.GetBuilding(buildingId)
-    if not buildingData then
-        Logger.Warn("Debug", "Building not found: " .. buildingId)
+    local dadosConstrucao = StateManager.GetBuilding(idConstrucao)
+    if not dadosConstrucao then
+        Logger.Warn("Debug", "Construção não encontrada: " .. idConstrucao)
         return
     end
     
-    Logger.Info("Debug", "=== BUILDING INFO ===")
-    Logger.Info("Debug", "ID: " .. buildingData.id)
-    Logger.Info("Debug", string.format("Position: (%d,%d,%d)", buildingData.centerX, buildingData.centerY, buildingData.z))
-    Logger.Info("Debug", string.format("Bounding Box: (%d,%d) to (%d,%d)", 
-        buildingData.minX, buildingData.minY, buildingData.maxX, buildingData.maxY))
-    Logger.Info("Debug", "Powered: " .. tostring(buildingData.isPowered))
-    Logger.Info("Debug", string.format("Power Draw: %.1f", buildingData.totalPowerDraw or 0))
+    Logger.Info("Debug", "=== INFORMAÇÕES DA CONSTRUÇÃO ===")
+    Logger.Info("Debug", "ID: " .. dadosConstrucao.id)
+    Logger.Info("Debug", string.format("Posição: (%d,%d,%d)", dadosConstrucao.centerX, dadosConstrucao.centerY, dadosConstrucao.z))
+    Logger.Info("Debug", string.format("Caixa Delimitadora: (%d,%d) a (%d,%d)", 
+        dadosConstrucao.minX, dadosConstrucao.minY, dadosConstrucao.maxX, dadosConstrucao.maxY))
+    Logger.Info("Debug", "Energizada: " .. tostring(dadosConstrucao.isPowered))
+    Logger.Info("Debug", string.format("Consumo de Energia: %.1f", dadosConstrucao.totalPowerDraw or 0))
     
-    if buildingData.powerConsumers then
-        local _consCount = 0
-        for _ in pairs(buildingData.powerConsumers) do _consCount = _consCount + 1 end
-        Logger.Info("Debug", string.format("Consumers: %d", _consCount))
-        local _ci = 0
-        for _, consumer in pairs(buildingData.powerConsumers) do
-            _ci = _ci + 1
-            Logger.Info("Debug", string.format("  %d. %s at (%d,%d,%d) - Draw: %.1f",
-                _ci, consumer.objectType, consumer.squareX, consumer.squareY, consumer.squareZ, consumer.powerDraw))
+    if dadosConstrucao.powerConsumers then
+        local _totalConsumidores = 0
+        for _ in pairs(dadosConstrucao.powerConsumers) do _totalConsumidores = _totalConsumidores + 1 end
+        Logger.Info("Debug", string.format("Consumidores: %d", _totalConsumidores))
+        local _indiceConsumidor = 0
+        for _, consumidor in pairs(dadosConstrucao.powerConsumers) do
+            _indiceConsumidor = _indiceConsumidor + 1
+            Logger.Info("Debug", string.format("  %d. %s em (%d,%d,%d) - Consumo: %.1f",
+                _indiceConsumidor, consumidor.objectType, consumidor.squareX, consumidor.squareY, consumidor.squareZ, consumidor.powerDraw))
         end
     end
     
-    if buildingData.connectedGenerators then
-        local _genCount = 0
-        for _ in pairs(buildingData.connectedGenerators) do _genCount = _genCount + 1 end
-        Logger.Info("Debug", string.format("Connected Generators: %d", _genCount))
+    if dadosConstrucao.connectedGenerators then
+        local _indiceGerador = 0
+        for _ in pairs(dadosConstrucao.connectedGenerators) do _indiceGerador = _indiceGerador + 1 end
+        Logger.Info("Debug", string.format("Geradores Conectados: %d", _indiceGerador))
         local _gi = 0
-        for _, genKey in pairs(buildingData.connectedGenerators) do
+        for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
             _gi = _gi + 1
-            Logger.Info("Debug", string.format("  %d. %s", _gi, genKey))
+            Logger.Info("Debug", string.format("  %d. %s", _gi, chaveGerador))
         end
     end
     
     Logger.Info("Debug", "====================")
 end
 
---- Scan for buildings manually
-local function CMD_ScanBuildings(player, args)
-    Logger.Info("Debug", "Scanning for light switches...")
+--- Força o escaneamento manual de todas as construções no servidor.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_EscanearConstrucoes(player, args)
+    Logger.Info("Debug", "Escaneando por interruptores de luz...")
     if not LKS_EletricidadeConstrucao.Building or not LKS_EletricidadeConstrucao.Building.Scanner then
-        Logger.Warn("Debug", "Building Scanner not loaded")
+        Logger.Warn("Debug", "Escaneador de Construção não carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Building.Scanner.ScanAllLightSwitches then
         LKS_EletricidadeConstrucao.Building.Scanner.ScanAllLightSwitches()
     end
-    Logger.Info("Debug", "Scan complete.")
+    Logger.Info("Debug", "Escaneamento concluído.")
 end
 
---- Force power connection update
-local function CMD_UpdateConnections(player, args)
-    Logger.Info("Debug", "Forcing power connection update...")
+--- Força a atualização imediata das conexões de energia.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_AtualizarConexoes(player, args)
+    Logger.Info("Debug", "Forçando atualização de conexão de energia...")
     if not LKS_EletricidadeConstrucao.Power or not LKS_EletricidadeConstrucao.Power.Manager then
-        Logger.Warn("Debug", "Power Manager not loaded")
+        Logger.Warn("Debug", "Gerenciador de Energia não carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Power.Manager.UpdateConnections then
         LKS_EletricidadeConstrucao.Power.Manager.UpdateConnections()
     end
-    Logger.Info("Debug", "Connection update complete.")
+    Logger.Info("Debug", "Atualização de conexão concluída.")
 end
 
---- Force power distribution update
-local function CMD_UpdatePower(player, args)
-    Logger.Info("Debug", "Forcing power distribution update...")
+--- Força a atualização da distribuição de carga elétrica nas redes.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_AtualizarEnergia(player, args)
+    Logger.Info("Debug", "Forçando atualização da distribuição de energia...")
     if not LKS_EletricidadeConstrucao.Power or not LKS_EletricidadeConstrucao.Power.Distributor then
-        Logger.Warn("Debug", "Power Distributor not loaded")
+        Logger.Warn("Debug", "Distribuidor de Energia não carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
         LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
     end
-    Logger.Info("Debug", "Power distribution update complete.")
+    Logger.Info("Debug", "Atualização da distribuição de energia concluída.")
 end
 
---- Scan building at player's position
-local function CMD_ScanHere(player, args)
+--- Escaneia a construção ao redor da posição atual do jogador.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_EscanearAqui(player, args)
     if not player then return end
-    local square = player:getSquare()
-    if not square then return end
-    local x, y, z = square:getX(), square:getY(), square:getZ()
-    Logger.Info("Debug", string.format("Scanning at (%d,%d,%d)...", x, y, z))
+    local quadrado = player:getSquare()
+    if not quadrado then return end
+    local coordenadaX, coordenadaY, coordenadaZ = quadrado:getX(), quadrado:getY(), quadrado:getZ()
+    Logger.Info("Debug", string.format("Escaneando em (%d,%d,%d)...", coordenadaX, coordenadaY, coordenadaZ))
     if LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding then
-        LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z)
+        LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(coordenadaX, coordenadaY, coordenadaZ)
     else
-        Logger.Warn("Debug", "Building Scanner not loaded")
+        Logger.Warn("Debug", "Escaneador de Construção não carregado")
     end
-    Logger.Info("Debug", "Scan complete.")
+    Logger.Info("Debug", "Escaneamento concluído.")
 end
 
---- Rescan all buildings
-local function CMD_RescanAll(player, args)
-    Logger.Info("Debug", "Rescanning all registered buildings...")
+--- Rescaneia completamente todas as construções registradas em memória.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_ReescanearTudo(player, args)
+    Logger.Info("Debug", "Reescaneando todas as construções registradas...")
     if not LKS_EletricidadeConstrucao.Building or not LKS_EletricidadeConstrucao.Building.Scanner then
-        Logger.Warn("Debug", "Building Scanner not loaded")
+        Logger.Warn("Debug", "Escaneador de Construção não carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Building.Scanner.RescanAllBuildings then
         LKS_EletricidadeConstrucao.Building.Scanner.RescanAllBuildings()
     end
-    Logger.Info("Debug", "Rescan complete.")
+    Logger.Info("Debug", "Reescaneamento concluído.")
 end
 
---- Print system status
-local function CMD_Status(player, args)
-    Logger.Info("Debug", "=== LKS_EletricidadeConstrucao STATUS ===")
+--- Exibe estatísticas consolidadas do estado elétrico do servidor.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_Estado(player, args)
+    Logger.Info("Debug", "=== ESTADO DO LKS_EletricidadeConstrucao ===")
     
-    -- Generators
-    local generators = StateManager.GetAllGenerators()
-    local genCount = generators and #generators or 0
-    local activeGens = 0
-    for _, gen in ipairs(generators or {}) do
-        if gen.isActive then activeGens = activeGens + 1 end
+    -- Geradores
+    local geradores = StateManager.GetAllGenerators()
+    local totalGeradores = geradores and #geradores or 0
+    local geradoresAtivos = 0
+    for _, gerador in ipairs(geradores or {}) do
+        if gerador.isActive then geradoresAtivos = geradoresAtivos + 1 end
     end
-    Logger.Info("Debug", string.format("Generators: %d total, %d active", genCount, activeGens))
+    Logger.Info("Debug", string.format("Geradores: %d no total, %d ativos", totalGeradores, geradoresAtivos))
     
-    -- Buildings
-    local buildings = StateManager.GetAllBuildings()
-    -- GetAllBuildings() returns a hash-map; # operator always returns 0 for hash-maps
-    local buildingCount = 0
-    local LKS_EletricidadeConstrucao = 0
-    local totalConsumers = 0
-    for _, building in pairs(buildings or {}) do
-        buildingCount = buildingCount + 1
-        if building.isPowered then LKS_EletricidadeConstrucao = LKS_EletricidadeConstrucao + 1 end
-        if building.powerConsumers then
-            local _pc = 0
-            for _ in pairs(building.powerConsumers) do _pc = _pc + 1 end
-            totalConsumers = totalConsumers + _pc
+    -- Construções
+    local construcoes = StateManager.GetAllBuildings()
+    local totalConstrucoes = 0
+    local construcoesEnergizadas = 0
+    local totalConsumidores = 0
+    for _, construcao in pairs(construcoes or {}) do
+        totalConstrucoes = totalConstrucoes + 1
+        if construcao.isPowered then construcoesEnergizadas = construcoesEnergizadas + 1 end
+        if construcao.powerConsumers then
+            local _contagemConsumidores = 0
+            for _ in pairs(construcao.powerConsumers) do _contagemConsumidores = _contagemConsumidores + 1 end
+            totalConsumidores = totalConsumidores + _contagemConsumidores
         end
     end
-    Logger.Info("Debug", string.format("Buildings: %d total, %d powered, %d consumers", 
-        buildingCount, LKS_EletricidadeConstrucao, totalConsumers))
+    Logger.Info("Debug", string.format("Construções: %d no total, %d energizadas, %d consumidores", 
+        totalConstrucoes, construcoesEnergizadas, totalConsumidores))
     
-    -- Connections
-    local connectionCount = 0
+    -- Conexões
+    local totalConexoes = 0
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and LKS_EletricidadeConstrucao.Power.Manager.GetConnectionCount then
-        connectionCount = LKS_EletricidadeConstrucao.Power.Manager.GetConnectionCount()
+        totalConexoes = LKS_EletricidadeConstrucao.Power.Manager.GetConnectionCount()
     end
-    Logger.Info("Debug", string.format("Power Connections: %d", connectionCount))
-    Logger.Info("Debug", "Fuel Manager: " .. (LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and "Active" or "Not loaded"))
-    Logger.Info("Debug", "Building Scanner: " .. (LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and "Active" or "Not loaded"))
-    Logger.Info("Debug", "Power Distribution: " .. (LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and "Active" or "Not loaded"))
+    Logger.Info("Debug", string.format("Conexões de Energia: %d", totalConexoes))
+    Logger.Info("Debug", "Gerenciador de Combustível: " .. (LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and "Ativo" or "Não carregado"))
+    Logger.Info("Debug", "Escaneador de Construção: " .. (LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and "Ativo" or "Não carregado"))
+    Logger.Info("Debug", "Distribuição de Energia: " .. (LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and "Ativa" or "Não carregada"))
     
     Logger.Info("Debug", "==============================")
 end
 
---- Save state manually
-local function CMD_SaveState(player, args)
-    Logger.Info("Debug", "Forcing state save...")
+--- Força o salvamento manual do estado em disco.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_SalvarEstado(player, args)
+    Logger.Info("Debug", "Forçando salvamento do estado...")
     StateManager.Save(true)
-    Logger.Info("Debug", "State saved successfully.")
+    Logger.Info("Debug", "Estado salvo com sucesso.")
 end
 
---- Clear all state (dangerous!)
-local function CMD_ClearState(player, args)
-    local confirm = args and args[1]
-    if confirm ~= "CONFIRM" then
-        Logger.Warn("Debug", "Usage: /pbclear CONFIRM - Wipes ALL GlobalModData and in-memory state")
-        Logger.Warn("Debug", "This will delete: LKS_EletricidadeConstrucaoV2, LKS_EletricidadeConstrucaoV2_GeneratorIndex, LKS_EletricidadeConstrucaoV2_Backup")
+--- Limpa completamente todo o estado elétrico salvo e em memória (AÇÃO DESTRUTIVA!).
+--- @param player any O jogador executando.
+--- @param args table Argumentos de confirmação.
+local function CMD_LimparEstado(player, args)
+    local confirmacao = args and args[1]
+    if confirmacao ~= "CONFIRM" then
+        Logger.Warn("Debug", "Uso: /pbclear CONFIRM - Limpa TODO o GlobalModData e o estado em memória")
+        Logger.Warn("Debug", "Isso excluirá: LKS_EletricidadeConstrucaoV2, LKS_EletricidadeConstrucaoV2_GeneratorIndex, LKS_EletricidadeConstrucaoV2_Backup")
         return
     end
 
-    -- Delegate to WipeAllData which also clears IsoGenerator ModData (incl. heating).
     LKS_EletricidadeConstrucao.DebugCommands.WipeAllData()
-    Logger.Info("Debug", "/pbclear CONFIRM complete — see console output for details.")
+    Logger.Info("Debug", "/pbclear CONFIRM concluído — consulte a saída do console para detalhes.")
 end
 
---- Print help
-local function CMD_Help(player, args)
+--- Exibe o painel de ajuda dos comandos de depuração admin.
+--- @param player any O jogador executando.
+--- @param args table Argumentos adicionais.
+local function CMD_Ajuda(player, args)
     Logger.Info("Debug", "=== LKS_EletricidadeConstrucao DEBUG COMMANDS ===")
-    Logger.Info("Debug", "/pbstatus - Show system status")
-    Logger.Info("Debug", "/pbgenerators - List all generators")
-    Logger.Info("Debug", "/pbbuildings - List all buildings")
-    Logger.Info("Debug", "/pbconnections - List power connections")
-    Logger.Info("Debug", "/pbbuilding <id> - Show building details")
-    Logger.Info("Debug", "/pbscan - Scan all light switches")
-    Logger.Info("Debug", "/pbscanhere - Scan building at player position")
-    Logger.Info("Debug", "/pbrescan - Rescan all buildings")
-    Logger.Info("Debug", "/pbupdatecon - Force connection update")
-    Logger.Info("Debug", "/pbupdatepower - Force power update")
-    Logger.Info("Debug", "/pbsave - Force state save")
-    Logger.Info("Debug", "/pbclear CONFIRM - Wipe ALL GlobalModData (dangerous!)")
-    Logger.Info("Debug", "/pbhelp - Show this help")
+    Logger.Info("Debug", "/pbstatus - Exibe o status consolidado do sistema")
+    Logger.Info("Debug", "/pbgenerators - Lista todos os geradores registrados")
+    Logger.Info("Debug", "/pbbuildings - Lista todas as construções registradas")
+    Logger.Info("Debug", "/pbconnections - Lista as conexões ativas de rede de fiação")
+    Logger.Info("Debug", "/pbbuilding <id> - Detalha uma construção específica")
+    Logger.Info("Debug", "/pbscan - Escaneia interruptores carregados no mapa")
+    Logger.Info("Debug", "/pbscanhere - Escaneia a construção ao redor do jogador")
+    Logger.Info("Debug", "/pbrescan - Recarrega e reavalia todas as construções")
+    Logger.Info("Debug", "/pbupdatecon - Força a atualização do acoplamento elétrico")
+    Logger.Info("Debug", "/pbupdatepower - Força o recálculo do consumo de energia")
+    Logger.Info("Debug", "/pbsave - Salva o estado elétrico atual em disco")
+    Logger.Info("Debug", "/pbclear CONFIRM - Wipa completamente todos os dados salvos do mod")
+    Logger.Info("Debug", "/pbhelp - Exibe este guia de ajuda")
     Logger.Info("Debug", "=======================================")
 end
 
---------------------------------------------------------------------------------
--- COMMAND REGISTRATION
---------------------------------------------------------------------------------
+-- ============================================================================
+-- REGISTRO DOS COMANDOS
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao.DebugCommands.RegisterCommands()
-    -- Only skip on pure multiplayer clients (not on singleplayer or servers)
+    -- Evita o registro dos handlers se for um cliente multiplayer puro
     if isClient() and not isServer() then 
-        Logger.Info("Debug", "Skipping command registration on MP client")
+        Logger.Info("Debug", "Ignorando registro de comandos no cliente MP")
         return 
     end
     
-    Logger.Info("Debug", "Registering debug commands...")
+    Logger.Info("Debug", "Registrando comandos de depuração elétricos...")
     
-    Events.OnClientCommand.Add(function(module, command, player, args)
-        if module ~= "LKS_EletricidadeConstrucao" then return end
+    Events.OnClientCommand.Add(function(modulo, comando, player, args)
+        if modulo ~= "LKS_EletricidadeConstrucao" then return end
         
-        if     command == "status"      then CMD_Status(player, args)
-        elseif command == "generators"  then CMD_ListGenerators(player, args)
-        elseif command == "buildings"   then CMD_ListBuildings(player, args)
-        elseif command == "connections" then CMD_ListConnections(player, args)
-        elseif command == "building"    then CMD_BuildingInfo(player, args)
-        elseif command == "scan"        then CMD_ScanBuildings(player, args)
-        elseif command == "scanhere"    then CMD_ScanHere(player, args)
-        elseif command == "rescan"      then CMD_RescanAll(player, args)
-        elseif command == "updatecon"   then CMD_UpdateConnections(player, args)
-        elseif command == "updatepower" then CMD_UpdatePower(player, args)
-        elseif command == "save"        then CMD_SaveState(player, args)
-        elseif command == "clear"       then CMD_ClearState(player, args)
-        elseif command == "help"        then CMD_Help(player, args)
+        if     comando == "status"      then CMD_Estado(player, args)
+        elseif comando == "generators"  then CMD_ListarGeradores(player, args)
+        elseif comando == "buildings"   then CMD_ListarConstrucoes(player, args)
+        elseif comando == "connections" then CMD_ListarConexoes(player, args)
+        elseif comando == "building"    then CMD_InformacoesConstrucao(player, args)
+        elseif comando == "scan"        then CMD_EscanearConstrucoes(player, args)
+        elseif comando == "scanhere"    then CMD_EscanearAqui(player, args)
+        elseif comando == "rescan"      then CMD_ReescanearTudo(player, args)
+        elseif comando == "updatecon"   then CMD_AtualizarConexoes(player, args)
+        elseif comando == "updatepower" then CMD_AtualizarEnergia(player, args)
+        elseif comando == "save"        then CMD_SalvarEstado(player, args)
+        elseif comando == "clear"       then CMD_LimparEstado(player, args)
+        elseif comando == "help"        then CMD_Ajuda(player, args)
         end
     end)
     
-    Logger.Info("Debug", "Debug commands registered.")
+    Logger.Info("Debug", "Comandos de depuração registrados com sucesso.")
 end
 
 function LKS_EletricidadeConstrucao.DebugCommands.Initialize()
     LKS_EletricidadeConstrucao.DebugCommands.RegisterCommands()
 end
 
--- Client-side command senders (SP: isServer()=false during load → block runs)
+-- Envio dos comandos pelo cliente (SP)
 if not isServer() then
     local C = LKS_EletricidadeConstrucao.DebugCommands.Commands
     function C.Status()      sendClientCommand("LKS_EletricidadeConstrucao", "status",     {}) end
@@ -362,68 +388,64 @@ if not isServer() then
     function C.Help()        sendClientCommand("LKS_EletricidadeConstrucao", "help",       {}) end
 end
 
--- Direct Lua console commands (works in singleplayer)
---- Nil out all LKS_EletricidadeConstrucao-owned keys on a live IsoGenerator object.
-local function _WipeGeneratorIsoModData(obj)
-    local md = obj:getModData()
-    md.Gen_BuildingPoolID         = nil
-    md.LKS_EletricidadeConstrucao_WorldId                 = nil
-    md.LKS_EletricidadeConstrucao_PoolData                = nil
-    md.Gen_LastCalcWorldAge       = nil
-    md.Gen_Stats_Consumers        = nil
-    md.Gen_Stats_ActiveConsumers  = nil
-    md.Gen_Stats_Lights           = nil
-    md.Gen_Stats_ActiveLights     = nil
-    md.Gen_Stats_Lamps            = nil
-    md.Gen_Stats_ActiveLamps      = nil
-    md.Gen_Stats_Appliances       = nil
-    md.Gen_Stats_ActiveAppliances = nil
-    md.Gen_Stats_PowerDraw        = nil
-    md.Gen_Stats_Strain           = nil
-    md.Gen_Stats_FuelRateLph      = nil
-    md.Gen_Stats_Powered          = nil
-    -- Heating state lives on the IsoObject, not in GlobalModData.
-    -- Must be wiped here so a fresh pool does not inherit old heating config.
-    md.HeatingEnabled             = nil
-    md.HeatingPositions           = nil
-    md.HeatingTargetTemp          = nil
+-- Comandos diretos de console Lua
+--- Zera todas as chaves do mod no ModData de um objeto físico IsoGenerator.
+--- @param objeto any O objeto IsoGenerator.
+local function _LimparDadosModIsoGerador(objeto)
+    local dadosMod = objeto:getModData()
+    dadosMod.Gen_BuildingPoolID         = nil
+    dadosMod.LKS_EletricidadeConstrucao_WorldId                 = nil
+    dadosMod.LKS_EletricidadeConstrucao_PoolData                = nil
+    dadosMod.Gen_LastCalcWorldAge       = nil
+    dadosMod.Gen_Stats_Consumers        = nil
+    dadosMod.Gen_Stats_ActiveConsumers  = nil
+    dadosMod.Gen_Stats_Lights           = nil
+    dadosMod.Gen_Stats_ActiveLights     = nil
+    dadosMod.Gen_Stats_Lamps            = nil
+    dadosMod.Gen_Stats_ActiveLamps      = nil
+    dadosMod.Gen_Stats_Appliances       = nil
+    dadosMod.Gen_Stats_ActiveAppliances = nil
+    dadosMod.Gen_Stats_PowerDraw        = nil
+    dadosMod.Gen_Stats_Strain           = nil
+    dadosMod.Gen_Stats_FuelRateLph      = nil
+    dadosMod.Gen_Stats_Powered          = nil
+    
+    -- Limpa também o estado do aquecedor integrado
+    dadosMod.HeatingEnabled             = nil
+    dadosMod.HeatingPositions           = nil
+    dadosMod.HeatingTargetTemp          = nil
+    
     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-        obj:transmitModData()
+        objeto:transmitModData()
     end
 end
 
 function LKS_EletricidadeConstrucao.DebugCommands.WipeAllData()
     print("=== WIPING ALL LKS_EletricidadeConstrucao DATA ===")
 
-    -- 1. Clear runtime power manager connections
+    -- 1. Limpa as conexões elétricas em memória do Power Manager
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager then
         LKS_EletricidadeConstrucao.Power.Manager.connections = {}
-        print("Cleared: runtime power connections")
+        print("Limpo: conexões elétricas de runtime do Power.Manager")
     end
 
-    -- 1b. Clear LKS_EletricidadeConstrucao keys from all live IsoGenerator objects BEFORE state is wiped.
-    --     GlobalModData is cleared in step 2, but IsoGenerator ModData is stored on
-    --     the IsoObject itself and is NOT touched by ClearAll/Save.  Without this step,
-    --     generators retain Gen_BuildingPoolID, HeatingPositions, HeatingEnabled etc.
-    --     and will re-establish stale pool links on the next chunk load.
-    local cell = getCell and getCell()
-    local _genWipeCount = 0
-    if cell and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
-        local allGens = LKS_EletricidadeConstrucao.Core.StateManager.GetAllGenerators()
-        if allGens then
-            for _, genData in pairs(allGens) do
-                -- genId format: "gen_X_Y_Z"
-                local px, py, pz = string.match(genData.id or "",
-                    "^gen_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+    -- 2. Limpa os ModData dos IsoGenerators ativos carregados no mapa
+    local celula = getCell and getCell()
+    local _totalGeradoresLimpos = 0
+    if celula and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
+        local todosGeradores = LKS_EletricidadeConstrucao.Core.StateManager.GetAllGenerators()
+        if todosGeradores then
+            for _, dadosGerador in pairs(todosGeradores) do
+                local px, py, pz = string.match(dadosGerador.id or "", "^gen_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
                 if px then
-                    local sq = cell:getGridSquare(tonumber(px), tonumber(py), tonumber(pz))
-                    if sq then
-                        local objs = sq:getObjects()
-                        for i = 0, objs:size() - 1 do
-                            local obj = objs:get(i)
-                            if obj and instanceof(obj, "IsoGenerator") then
-                                _WipeGeneratorIsoModData(obj)
-                                _genWipeCount = _genWipeCount + 1
+                    local quadrado = celula:getGridSquare(tonumber(px), tonumber(py), tonumber(pz))
+                    if quadrado then
+                        local objetos = quadrado:getObjects()
+                        for i = 0, objetos:size() - 1 do
+                            local objeto = objetos:get(i)
+                            if objeto and instanceof(objeto, "IsoGenerator") then
+                                _LimparDadosModIsoGerador(objeto)
+                                _totalGeradoresLimpos = _totalGeradoresLimpos + 1
                                 break
                             end
                         end
@@ -432,39 +454,35 @@ function LKS_EletricidadeConstrucao.DebugCommands.WipeAllData()
             end
         end
     end
-    print("Cleared: IsoGenerator ModData for " .. _genWipeCount .. " loaded generators (incl. heating)")
+    print("Limpo: ModData do IsoGenerator para " .. _totalGeradoresLimpos .. " geradores carregados (incluindo aquecimento)")
 
-    -- 1c. Flush the client-side _activeSources table so IsoHeatSource objects from the
-    --     old pool are removed immediately.  Without this step, old heat sources linger
-    --     in the world until the next UpdateAll tick (up to 600 ticks / ~1 game-minute)
-    --     even after the generator ModData has been wiped.  In SP both server and client
-    --     live in the same Lua context, so we can call LKS_EletricidadeConstrucao_HeatingClient directly.
+    -- 3. Limpa a tabela de aquecedores ativos do cliente para cessar a radiação de calor física imediatamente
     if LKS_EletricidadeConstrucao_HeatingClient and LKS_EletricidadeConstrucao_HeatingClient.ClearAll then
         LKS_EletricidadeConstrucao_HeatingClient.ClearAll()
-        print("Cleared: active heating sources via LKS_EletricidadeConstrucao_HeatingClient.ClearAll()")
+        print("Limpo: fontes de calor ativas no mapa via LKS_EletricidadeConstrucao_HeatingClient.ClearAll()")
     end
 
-    -- 2. Clear in-memory state via StateManager (touches the real _state table)
+    -- 4. Limpa os estados em memória e wipa o StateManager
     if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
         LKS_EletricidadeConstrucao.Core.StateManager.ClearAll()
-        print("Cleared: in-memory state")
+        print("Limpo: estado do StateManager em memória")
 
-        -- 3. Flush the now-empty state to ModData immediately
+        -- Escreve o estado vazio no disco para persistência
         LKS_EletricidadeConstrucao.Core.StateManager.Save(true)
-        print("Saved: empty state written to LKS_EletricidadeConstrucaoV2.state")
+        print("Salvo: estado vazio gravado no arquivo de estado")
     else
-        print("WARNING: StateManager not available, skipping in-memory clear")
+        print("AVISO: StateManager não disponível - pulando limpeza de estado em memória")
     end
 
-    -- 4. Wipe index and backup entries (not managed by Save)
+    -- 5. Remove os índices globais extras e backups salvos no ModData do jogo
     ModData.remove("LKS_EletricidadeConstrucaoV2_GeneratorIndex")
     ModData.remove("LKS_EletricidadeConstrucaoV2_Backup")
     ModData.add("LKS_EletricidadeConstrucaoV2_GeneratorIndex", {})
-    print("Cleared: LKS_EletricidadeConstrucaoV2_GeneratorIndex and LKS_EletricidadeConstrucaoV2_Backup")
+    print("Limpo: LKS_EletricidadeConstrucaoV2_GeneratorIndex e LKS_EletricidadeConstrucaoV2_Backup no ModData do jogo")
 
     print("=== WIPE COMPLETE ===")
 end
 
 LKS_EletricidadeConstrucao.RegisterModule("Debug.Commands", "2.0.0")
-print("[LKS_EletricidadeConstrucao_DebugCommands] Loaded OK")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Módulo de comandos de depuração carregado com sucesso!")
 return LKS_EletricidadeConstrucao.DebugCommands

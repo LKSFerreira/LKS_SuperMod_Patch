@@ -1,34 +1,33 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Fuel_Barrels.lua
--- LKS_EletricidadeConstrucao V2 - Fuel Barrel System (Server/Shared)
--- Links petrol barrels to building generator pools for auto-refuelling.
--- Barrels drain first, keeping generator tanks as backup reserves.
---
--- ModData key: "LKS_EletricidadeConstrucao_FuelBarrels"
---   .linkedBarrels[buildingID][barrelKey] = true
--- Barrel ModData:
---   .LKS_EletricidadeConstrucao_LinkedBuilding = buildingID  (nil = unlinked)
+-- ARQUIVO: LKS_EletricidadeConstrucao_Fuel_Barrels.lua
+-- OBJETIVO: Conecta barris de combustível líquidos à rede elétrica de geradores para abastecimento automático.
+-- LOCALIZAÇÃO: server/fuel
 
 if not LKS_EletricidadeConstrucao then return end
 
 LKS_EletricidadeConstrucao.Fuel = LKS_EletricidadeConstrucao.Fuel or {}
 LKS_EletricidadeConstrucao.Fuel.Barrels = LKS_EletricidadeConstrucao.Fuel.Barrels or {}
 
-local Barrels  = LKS_EletricidadeConstrucao.Fuel.Barrels
-local Logger   = LKS_EletricidadeConstrucao.Core.Logger
+local Barrels = LKS_EletricidadeConstrucao.Fuel.Barrels
+local Logger  = LKS_EletricidadeConstrucao.Core.Logger
 
--- ============================================================
--- CONSTANTS
--- ============================================================
+-- ============================================================================
+-- CONSTANTES
+-- ============================================================================
 
--- Sprites treated as linkable petrol containers.
-local LINKABLE_SPRITES = {
+-- Sprites de objetos no mapa que são tratados como barris/recipientes de gasolina acopláveis.
+local SPRITES_ACOPLAVEIS = {
     ["useful_barrels_1_2"]                   = true,
     ["crafted_01_28"]                        = true,
     ["crafted_01_32"]                        = true,
@@ -43,333 +42,352 @@ local LINKABLE_SPRITES = {
     ["location_military_generic_01_6"]       = true,
 }
 
-local MODDATA_KEY = "LKS_EletricidadeConstrucao_FuelBarrels"
+local CHAVE_MODDATA = "LKS_EletricidadeConstrucao_FuelBarrels"
 
--- ============================================================
--- HELPERS
--- ============================================================
+-- ============================================================================
+-- FUNÇÕES AUXILIARES
+-- ============================================================================
 
-local function BarrelKey(barrel)
-    local sq = barrel:getSquare()
-    return sq:getX() .. "_" .. sq:getY() .. "_" .. sq:getZ()
+--- Retorna a chave de coordenada única para um barril específico.
+--- @param barril any O objeto do barril.
+--- @return string A string identificadora.
+local function ChaveDoBarril(barril)
+    local quadrado = barril:getSquare()
+    return quadrado:getX() .. "_" .. quadrado:getY() .. "_" .. quadrado:getZ()
 end
 
-local function GetBarrelDB()
-    local md = ModData.getOrCreate(MODDATA_KEY)
-    if not md.linkedBarrels then md.linkedBarrels = {} end
-    return md
+--- Recupera o banco de dados persistente no ModData do jogo.
+--- @return table A tabela de barris vinculados.
+local function ObterBancoDadosBarris()
+    local dadosMod = ModData.getOrCreate(CHAVE_MODDATA)
+    if not dadosMod.linkedBarrels then dadosMod.linkedBarrels = {} end
+    return dadosMod
 end
 
-local function SaveBarrelDB(md)
-    ModData.add(MODDATA_KEY, md)
+--- Salva o banco de dados persistente no ModData do jogo.
+--- @param dadosMod table Os dados de barris vinculados.
+local function SalvarBancoDadosBarris(dadosMod)
+    ModData.add(CHAVE_MODDATA, dadosMod)
 end
 
--- ============================================================
--- PETROL API
--- ============================================================
+-- ============================================================================
+-- API DE COMBUSTÍVEL
+-- ============================================================================
 
---- Check if a world object is a linkable petrol barrel.
-function Barrels.IsLinkable(obj)
-    if not obj then return false end
-    local sp = obj:getSprite()
-    if not sp then return false end
-    local name = sp:getName()
-    if not name then return false end
-    if LINKABLE_SPRITES[name] then return true end
-    -- Also accept any object that has a fluid container with petrol
-    if obj.getFluidContainer then
-        local ok, fc = pcall(function() return obj:getFluidContainer() end)
-        if ok and fc then
-            local ok2, hasPetrol = pcall(function() return fc:contains(Fluid.Petrol) end)
-            if ok2 and hasPetrol then return true end
+--- Verifica se um objeto do mapa pode ser acoplado à rede de combustível.
+--- @param objeto any O objeto a ser avaliado.
+--- @return boolean Retorna true se for acoplável.
+function Barrels.IsLinkable(objeto)
+    if not objeto then return false end
+    local sprite = objeto:getSprite()
+    if not sprite then return false end
+    local nome = sprite:getName()
+    if not nome then return false end
+    if SPRITES_ACOPLAVEIS[nome] then return true end
+    
+    -- Também aceita qualquer objeto que contenha um fluid container com gasolina
+    if objeto.getFluidContainer then
+        local ok, recipienteFluidos = pcall(function() return objeto:getFluidContainer() end)
+        if ok and recipienteFluidos then
+            local ok2, possuiGasolina = pcall(function() return recipienteFluidos:contains(Fluid.Petrol) end)
+            if ok2 and possuiGasolina then return true end
         end
     end
     return false
 end
 
---- Get the petrol amount in a barrel (0 if empty / wrong fluid / unavailable).
-function Barrels.GetPetrolAmount(barrel)
-    if not barrel then return 0 end
-    if not barrel.getFluidAmount then return 0 end
+--- Retorna a quantidade de gasolina contida em um barril específico.
+--- @param barril any O objeto do barril.
+--- @return number A quantidade de combustível em litros.
+function Barrels.GetPetrolAmount(barril)
+    if not barril then return 0 end
+    if not barril.getFluidAmount then return 0 end
 
-    -- Primary: check via FluidContainer (language-independent)
-    if barrel.getFluidContainer then
-        local ok, fc = pcall(function() return barrel:getFluidContainer() end)
-        if ok and fc and fc.contains then
-            local ok2, hasPetrol = pcall(function() return fc:contains(Fluid.Petrol) end)
-            if ok2 and hasPetrol then
-                local amt = barrel:getFluidAmount()
-                return amt > 0 and amt or 0
+    -- Tenta verificar via FluidContainer (independe do idioma do jogo)
+    if barril.getFluidContainer then
+        local ok, recipienteFluidos = pcall(function() return barril:getFluidContainer() end)
+        if ok and recipienteFluidos and recipienteFluidos.contains then
+            local ok2, possuiGasolina = pcall(function() return recipienteFluidos:contains(Fluid.Petrol) end)
+            if ok2 and possuiGasolina then
+                local quantidade = barril:getFluidAmount()
+                return quantidade > 0 and quantidade or 0
             end
-            return 0        -- different fluid
+            return 0
         end
     end
 
-    -- Fallback: check via UI name
-    if barrel.getFluidUiName then
-        local fluidName = barrel:getFluidUiName()
-        local petrolName = getText("Fluid_Name_Petrol")
-        if string.lower(fluidName or "") == string.lower(petrolName or "") then
-            local amt = barrel:getFluidAmount()
-            return amt > 0 and amt or 0
+    -- Fallback: verifica pelo nome do fluido na interface
+    if barril.getFluidUiName then
+        local nomeFluido = barril:getFluidUiName()
+        local nomeGasolina = getText("Fluid_Name_Petrol")
+        if string.lower(nomeFluido or "") == string.lower(nomeGasolina or "") then
+            local quantidade = barril:getFluidAmount()
+            return quantidade > 0 and quantidade or 0
         end
     end
 
     return 0
 end
 
---- Remove up to `amount` petrol from a barrel.
---- Returns the amount actually removed (may be less if barrel was low).
-function Barrels.RemoveFuel(barrel, amount)
-    if not barrel or amount <= 0 then return 0 end
-    if not barrel.getFluidAmount then return 0 end
+--- Retira gasolina de um barril até o limite solicitado.
+--- @param barril any O objeto do barril.
+--- @param quantidade number A quantidade máxima a retirar em litros.
+--- @return number A quantidade real que foi drenada.
+function Barrels.RemoveFuel(barril, quantidade)
+    if not barril or quantidade <= 0 then return 0 end
+    if not barril.getFluidAmount then return 0 end
 
-    local sq = barrel:getSquare()
-    if not sq or not sq:getChunk() then return 0 end
+    local quadrado = barril:getSquare()
+    if not quadrado or not quadrado:getChunk() then return 0 end
 
-    -- Must contain petrol
-    if barrel.getFluidContainer then
-        local ok, fc = pcall(function() return barrel:getFluidContainer() end)
-        if not ok or not fc then return 0 end
-        local ok2, hasPetrol = pcall(function() return fc:contains(Fluid.Petrol) end)
-        if not ok2 or not hasPetrol then return 0 end
+    if barril.getFluidContainer then
+        local ok, recipienteFluidos = pcall(function() return barril:getFluidContainer() end)
+        if not ok or not recipienteFluidos then return 0 end
+        local ok2, possuiGasolina = pcall(function() return recipienteFluidos:contains(Fluid.Petrol) end)
+        if not ok2 or not possuiGasolina then return 0 end
     end
 
-    local current = barrel:getFluidAmount()
-    if current <= 0 then return 0 end
+    local atual = barril:getFluidAmount()
+    if atual <= 0 then return 0 end
 
-    local remove = math.min(amount, current)
-    local keep   = current - remove
+    local remover = math.min(quantidade, atual)
+    local manter = atual - remover
 
-    barrel:emptyFluid()
-    if keep > 0 then
-        if not sq:getChunk() then return remove end
-        barrel:addFluid(FluidType.Petrol, keep)
+    barril:emptyFluid()
+    if manter > 0 then
+        if not quadrado:getChunk() then return remover end
+        barril:addFluid(FluidType.Petrol, manter)
     end
     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-        barrel:transmitModData()
+        barril:transmitModData()
     end
-    return remove
+    return remover
 end
 
--- ============================================================
--- LINK / UNLINK
--- ============================================================
+-- ============================================================================
+-- VINCULAR / DESVINCULAR
+-- ============================================================================
 
---- Link a barrel to a building's fuel pool.
---- Returns true on success, false + error message on failure.
-function Barrels.Link(barrel, buildingID)
-    if not barrel or not buildingID then
-        return false, "nil argument"
+--- Vincula um barril físico à rede de combustível de uma construção lógica.
+--- @param barril any O objeto físico do barril.
+--- @param idConstrucao string O ID da construção correspondente.
+--- @return boolean, string|nil Retorna status de sucesso e mensagem de erro se falhar.
+function Barrels.Link(barril, idConstrucao)
+    if not barril or not idConstrucao then
+        return false, "argumento nulo (nil)"
     end
-    if not Barrels.IsLinkable(barrel) then
-        return false, "not a linkable barrel"
+    if not Barrels.IsLinkable(barril) then
+        return false, "não é um barril acoplável"
     end
 
-    local key = BarrelKey(barrel)
-    local bmd = barrel:getModData()
-    local previousBuildingID = bmd.LKS_EletricidadeConstrucao_LinkedBuilding
+    local chave = ChaveDoBarril(barril)
+    local dadosModBarril = barril:getModData()
+    local idConstrucaoAnterior = dadosModBarril.LKS_EletricidadeConstrucao_LinkedBuilding
 
-    local db = GetBarrelDB()
-    if previousBuildingID and previousBuildingID ~= buildingID and db.linkedBarrels[previousBuildingID] then
-        db.linkedBarrels[previousBuildingID][key] = nil
+    local bancoDados = ObterBancoDadosBarris()
+    if idConstrucaoAnterior and idConstrucaoAnterior ~= idConstrucao and bancoDados.linkedBarrels[idConstrucaoAnterior] then
+        bancoDados.linkedBarrels[idConstrucaoAnterior][chave] = nil
         local _anyLeft = false
-        for _ in pairs(db.linkedBarrels[previousBuildingID]) do _anyLeft = true; break end
-        if not _anyLeft then db.linkedBarrels[previousBuildingID] = nil end
+        for _ in pairs(bancoDados.linkedBarrels[idConstrucaoAnterior]) do _anyLeft = true; break end
+        if not _anyLeft then bancoDados.linkedBarrels[idConstrucaoAnterior] = nil end
     end
 
-    -- Barrel ModData (per-object)
-    bmd.LKS_EletricidadeConstrucao_LinkedBuilding = buildingID
+    -- Salva no ModData do próprio barril físico
+    dadosModBarril.LKS_EletricidadeConstrucao_LinkedBuilding = idConstrucao
     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-        barrel:transmitModData()
+        barril:transmitModData()
     end
 
-    -- Global ModData (per-game)
-    if not db.linkedBarrels[buildingID] then
-        db.linkedBarrels[buildingID] = {}
+    -- Salva no banco persistente do mod
+    if not bancoDados.linkedBarrels[idConstrucao] then
+        bancoDados.linkedBarrels[idConstrucao] = {}
     end
-    db.linkedBarrels[buildingID][key] = true
-    SaveBarrelDB(db)
+    bancoDados.linkedBarrels[idConstrucao][chave] = true
+    SalvarBancoDadosBarris(bancoDados)
 
-    Logger.Info(string.format("Linked barrel %s to building %s", key, buildingID), "Fuel.Barrels")
+    Logger.Info(string.format("Barril %s acoplado à construção %s", chave, idConstrucao), "Fuel.Barrels")
     return true
 end
 
---- Unlink a barrel from its building.
-function Barrels.Unlink(barrel, buildingID)
-    if not barrel then return end
+--- Desvincula um barril físico.
+--- @param barril any O objeto do barril.
+--- @param idConstrucao string|nil O ID da construção associada (opcional).
+function Barrels.Unlink(barril, idConstrucao)
+    if not barril then return end
 
-    local key = BarrelKey(barrel)
-    local bid = buildingID or barrel:getModData().LKS_EletricidadeConstrucao_LinkedBuilding
+    local chave = ChaveDoBarril(barril)
+    local bid = idConstrucao or barril:getModData().LKS_EletricidadeConstrucao_LinkedBuilding
 
-    -- Clear barrel ModData
-    local bmd = barrel:getModData()
-    bmd.LKS_EletricidadeConstrucao_LinkedBuilding = nil
+    -- Limpa do barril físico
+    local dadosModBarril = barril:getModData()
+    dadosModBarril.LKS_EletricidadeConstrucao_LinkedBuilding = nil
     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-        barrel:transmitModData()
+        barril:transmitModData()
     end
 
     if not bid then return end
 
-    -- Remove from global DB
-    local db = GetBarrelDB()
-    if db.linkedBarrels[bid] then
-        db.linkedBarrels[bid][key] = nil
-        -- Clean empty entry (next() not available in Kahlua)
+    -- Limpa do banco de dados global
+    local bancoDados = ObterBancoDadosBarris()
+    if bancoDados.linkedBarrels[bid] then
+        bancoDados.linkedBarrels[bid][chave] = nil
         local _anyLeft = false
-        for _ in pairs(db.linkedBarrels[bid]) do _anyLeft = true; break end
-        if not _anyLeft then db.linkedBarrels[bid] = nil end
+        for _ in pairs(bancoDados.linkedBarrels[bid]) do _anyLeft = true; break end
+        if not _anyLeft then bancoDados.linkedBarrels[bid] = nil end
     end
-    SaveBarrelDB(db)
+    SalvarBancoDadosBarris(bancoDados)
 
-    Logger.Info(string.format("Unlinked barrel %s from building %s", key, bid), "Fuel.Barrels")
+    Logger.Info(string.format("Barril %s desacoplado da construção %s", chave, bid), "Fuel.Barrels")
 end
 
---- Check if a barrel is currently linked to a specific building.
-function Barrels.IsLinked(barrel, buildingID)
-    if not barrel or not buildingID then return false end
-    local bmd = barrel:getModData()
-    return bmd.LKS_EletricidadeConstrucao_LinkedBuilding == buildingID
+--- Verifica se o barril está vinculado à construção específica.
+--- @param barril any O objeto do barril.
+--- @param idConstrucao string O ID da construção.
+--- @return boolean Retorna true se estiver vinculado.
+function Barrels.IsLinked(barril, idConstrucao)
+    if not barril or not idConstrucao then return false end
+    local dadosModBarril = barril:getModData()
+    return dadosModBarril.LKS_EletricidadeConstrucao_LinkedBuilding == idConstrucao
 end
 
---- Return the buildingID this barrel is linked to (or nil).
-function Barrels.GetLinkedBuilding(barrel)
-    if not barrel then return nil end
-    return barrel:getModData().LKS_EletricidadeConstrucao_LinkedBuilding
+--- Retorna o ID da construção vinculada ao barril.
+--- @param barril any O objeto do barril.
+--- @return string|nil O ID da construção ou nil.
+function Barrels.GetLinkedBuilding(barril)
+    if not barril then return nil end
+    return barril:getModData().LKS_EletricidadeConstrucao_LinkedBuilding
 end
 
--- ============================================================
--- QUERY LINKED BARRELS
--- ============================================================
+-- ============================================================================
+-- CONSULTA DE BARRIS ACOPLADOS
+-- ============================================================================
 
---- Find all live barrel objects linked to a building.
---- Silently discards stale entries whose chunk is no longer loaded.
-function Barrels.GetLinkedBarrels(buildingID)
-    if not buildingID then return {} end
-    local db = GetBarrelDB()
-    if not db.linkedBarrels or not db.linkedBarrels[buildingID] then return {} end
+--- Coleta a lista de objetos de barris vinculados à construção que estão atualmente carregados no mundo.
+--- @param idConstrucao string O ID da construção.
+--- @return table A lista de objetos de barris físicos ativos.
+function Barrels.GetLinkedBarrels(idConstrucao)
+    if not idConstrucao then return {} end
+    local bancoDados = ObterBancoDadosBarris()
+    if not bancoDados.linkedBarrels or not bancoDados.linkedBarrels[idConstrucao] then return {} end
 
-    local cell    = getCell()
-    if not cell then return {} end
+    local celula = getCell()
+    if not celula then return {} end
 
-    local result  = {}
-    local stale   = {}
+    local resultado = {}
+    local obsoletos = {}
 
-    for key, _ in pairs(db.linkedBarrels[buildingID]) do
-        local px, py, pz = string.match(key, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if px then
-            local sq = cell:getGridSquare(tonumber(px), tonumber(py), tonumber(pz))
-            if sq and sq:getChunk() then
-                local objs = sq:getObjects()
-                local found = false
-                for i = 0, objs:size() - 1 do
-                    local obj = objs:get(i)
-                    if obj and Barrels.IsLinkable(obj) then
-                        local linkedBuildingID = obj:getModData().LKS_EletricidadeConstrucao_LinkedBuilding
-                        if linkedBuildingID == buildingID then
-                            table.insert(result, obj)
-                            found = true
+    for chave, _ in pairs(bancoDados.linkedBarrels[idConstrucao]) do
+        local posicaoX, posicaoY, posicaoZ = string.match(chave, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if posicaoX then
+            local quadrado = celula:getGridSquare(tonumber(posicaoX), tonumber(posicaoY), tonumber(posicaoZ))
+            if quadrado and quadrado:getChunk() then
+                local objetos = quadrado:getObjects()
+                local encontrado = false
+                for i = 0, objetos:size() - 1 do
+                    local objeto = objetos:get(i)
+                    if objeto and Barrels.IsLinkable(objeto) then
+                        local idConstrucaoAcoplada = objeto:getModData().LKS_EletricidadeConstrucao_LinkedBuilding
+                        if idConstrucaoAcoplada == idConstrucao then
+                            table.insert(resultado, objeto)
+                            encontrado = true
                             break
                         end
                     end
                 end
-                if not found then
-                    table.insert(stale, key)
+                if not encontrado then
+                    table.insert(obsoletos, chave)
                 end
             end
-            -- chunk not loaded: skip silently (not stale, just unloaded)
         end
     end
 
-    -- Prune keys where the barrel was actually removed from the world
-    if #stale > 0 then
-        for _, k in ipairs(stale) do
-            db.linkedBarrels[buildingID][k] = nil
+    -- Remove do banco as chaves de barris deletados ou destruídos
+    if #obsoletos > 0 then
+        for _, k in ipairs(obsoletos) do
+            bancoDados.linkedBarrels[idConstrucao][k] = nil
         end
         local _anyRemain = false
-        for _ in pairs(db.linkedBarrels[buildingID]) do _anyRemain = true; break end
+        for _ in pairs(bancoDados.linkedBarrels[idConstrucao]) do _anyRemain = true; break end
         if not _anyRemain then
-            db.linkedBarrels[buildingID] = nil
+            bancoDados.linkedBarrels[idConstrucao] = nil
         end
-        SaveBarrelDB(db)
+        SalvarBancoDadosBarris(bancoDados)
     end
 
-    return result
+    return resultado
 end
 
--- ============================================================
--- AUTO-REFUEL
--- ============================================================
+-- ============================================================================
+-- AUTO-ABASTECIMENTO
+-- ============================================================================
 
---- Top up all generators for a building from linked barrels.
---- Draws petrol from barrels and distributes it proportionally.
-function Barrels.AutoRefuel(buildingData)
-    if not buildingData then return end
-    if not buildingData.connectedGenerators
-       or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(buildingData.connectedGenerators) then return end
+--- Executa o abastecimento automático de combustível a partir dos barris acoplados aos geradores vinculados.
+--- @param dadosConstrucao table Os dados da construção lógica.
+function Barrels.AutoRefuel(dadosConstrucao)
+    if not dadosConstrucao then return end
+    if not dadosConstrucao.connectedGenerators
+       or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(dadosConstrucao.connectedGenerators) then return end
 
-    local barrels = Barrels.GetLinkedBarrels(buildingData.id)
+    local barrels = Barrels.GetLinkedBarrels(dadosConstrucao.id)
     if #barrels == 0 then return end
 
-    local Power = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager
-    if not Power then return end
+    local GerenciadorEnergia = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager
+    if not GerenciadorEnergia then return end
 
-    -- Collect generators that need fuel
-    local generators = {}
-    local fuelNeeded = 0
+    local geradores = {}
+    local combustivelNecessario = 0
 
-    -- connectedGenerators is Kahlua-deserialized (string numeric keys); use pairs
-    for _, genKey in pairs(buildingData.connectedGenerators) do
-        local px, py, pz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if px then
-            local gen = Power.GetGeneratorAt(tonumber(px), tonumber(py), tonumber(pz))
-            if gen then
-                local maxFuel  = gen:getMaxFuel()
-                local curFuel  = gen:getFuel()
-                local needed   = maxFuel - curFuel
-                if needed > 0.01 then
-                    table.insert(generators, {gen=gen, needed=needed})
-                    fuelNeeded = fuelNeeded + needed
+    for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+        local posicaoX, posicaoY, posicaoZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if posicaoX then
+            local gerador = GerenciadorEnergia.GetGeneratorAt(tonumber(posicaoX), tonumber(posicaoY), tonumber(posicaoZ))
+            if gerador then
+                local maxFuel = gerador:getMaxFuel()
+                local curFuel = gerador:getFuel()
+                local necessario = maxFuel - curFuel
+                if necessario > 0.01 then
+                    table.insert(geradores, {gen=gerador, needed=necessario})
+                    combustivelNecessario = combustivelNecessario + necessario
                 end
             end
         end
     end
 
-    if fuelNeeded <= 0 or #generators == 0 then return end
+    if combustivelNecessario <= 0 or #geradores == 0 then return end
 
-    -- Draw from barrels (stop once we have what we need)
-    local fuelDrawn = 0
-    for _, barrel in ipairs(barrels) do
-        if fuelDrawn >= fuelNeeded then break end
-        local draw   = math.min(Barrels.GetPetrolAmount(barrel), fuelNeeded - fuelDrawn)
-        local actual = Barrels.RemoveFuel(barrel, draw)
-        fuelDrawn = fuelDrawn + actual
+    -- Drena dos barris acoplados até sanar a necessidade total da fiação
+    local combustivelRetirado = 0
+    for _, barril in ipairs(barrels) do
+        if combustivelRetirado >= combustivelNecessario then break end
+        local retirar = math.min(Barrels.GetPetrolAmount(barril), combustivelNecessario - combustivelRetirado)
+        local real = Barrels.RemoveFuel(barril, retirar)
+        combustivelRetirado = combustivelRetirado + real
     end
 
-    if fuelDrawn <= 0 then return end
+    if combustivelRetirado <= 0 then return end
 
-    -- Distribute proportionally
-    for _, entry in ipairs(generators) do
-        local share = fuelDrawn * (entry.needed / fuelNeeded)
-        local cur   = entry.gen:getFuel()
-        entry.gen:setFuel(cur + share)
+    -- Distribui proporcionalmente entre os geradores conectados
+    for _, entrada in ipairs(geradores) do
+        local parcela = combustivelRetirado * (entrada.needed / combustivelNecessario)
+        local cur = entrada.gen:getFuel()
+        entrada.gen:setFuel(cur + parcela)
         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-            entry.gen:transmitModData()
+            entrada.gen:transmitModData()
         end
     end
 
     Logger.Info("Fuel.Barrels", string.format(
-        "AutoRefuel building %s: drew %.1f L from %d barrels for %d generators",
-        tostring(buildingData.id), fuelDrawn, #barrels, #generators))
+        "Abastecimento automático da construção %s: retirados %.1f L de %d barris para %d geradores",
+        tostring(dadosConstrucao.id), combustivelRetirado, #barrels, #geradores))
 end
 
---- Run AutoRefuel for all buildings. Called every 10 minutes.
+--- Executa a rotina de reabastecimento automático em todas as construções cadastradas.
 function Barrels.UpdateAll()
     local SM = LKS_EletricidadeConstrucao.Core.StateManager
     if not SM then return end
     local buildings = SM.GetAllBuildings()
     if not buildings then return end
-    -- GetAllBuildings() returns a hash-map (pairs, not ipairs)
+    
     for _, bd in pairs(buildings) do
         if bd.connectedGenerators and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(bd.connectedGenerators) then
             Barrels.AutoRefuel(bd)
@@ -377,5 +395,10 @@ function Barrels.UpdateAll()
     end
 end
 
+-- ============================================================================
+-- REGISTRO DO MÓDULO
+-- ============================================================================
+
 LKS_EletricidadeConstrucao.RegisterModule("Fuel.Barrels", "2.0.0")
+
 return Barrels

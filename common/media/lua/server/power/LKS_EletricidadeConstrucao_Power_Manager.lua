@@ -1,17 +1,17 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
+-- 🌟 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL 🌟
 -- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
+-- (ID Workshop: 3597471949) por sua excelente contribuição à comunidade de Project Zomboid.
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao V2: Power Manager
--- Purpose: Connect generators to nearby buildings and manage power distribution
--- Author: AI Assistant
--- Created: 2025
+-- LKS_EletricidadeConstrucao V2: Gerenciador de Conexões de Energia (Power Manager)
+-- Objetivo: Conectar geradores a prédios próximos e gerenciar a distribuição de energia
+-- Autor: Assistente de IA
+-- Criado em: 2025
 
 if not LKS_EletricidadeConstrucao then 
-    print("[LKS_EletricidadeConstrucao_Power_Manager] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Power_Manager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return 
 end
 
@@ -19,193 +19,193 @@ LKS_EletricidadeConstrucao = LKS_EletricidadeConstrucao or {}
 LKS_EletricidadeConstrucao.Power = LKS_EletricidadeConstrucao.Power or {}
 LKS_EletricidadeConstrucao.Power.Manager = LKS_EletricidadeConstrucao.Power.Manager or {}
 
-local Power = LKS_EletricidadeConstrucao.Power.Manager
-local Logger = LKS_EletricidadeConstrucao.Core.Logger
-local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-local Math = LKS_EletricidadeConstrucao.Utils.Math
-local Validation = LKS_EletricidadeConstrucao.Utils.Validation
+local Gerenciador = LKS_EletricidadeConstrucao.Power.Manager
+local Registrador = LKS_EletricidadeConstrucao.Core.Logger
+local GerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+local Matematica = LKS_EletricidadeConstrucao.Utils.Math
+local Validacao = LKS_EletricidadeConstrucao.Utils.Validation
 
 --------------------------------------------------------------------------------
--- CONSTANTS
+-- CONSTANTES
 --------------------------------------------------------------------------------
 
-Power.MAX_POWER_RANGE = 30  -- Maximum distance (tiles) from generator to building
-Power.CONNECTION_UPDATE_INTERVAL = 60  -- Update connections every 60 seconds
-Power.DEBUG = false
+Gerenciador.MAX_POWER_RANGE = 30  -- Distância máxima (em ladrilhos) do gerador ao prédio
+Gerenciador.CONNECTION_UPDATE_INTERVAL = 60  -- Atualiza as conexões a cada 60 segundos
+Gerenciador.DEBUG = false
 
 --------------------------------------------------------------------------------
--- STATE
+-- ESTADO
 --------------------------------------------------------------------------------
 
--- Connection tracking: generatorId -> { ... }
-Power.connections = {}
+-- Rastreamento de conexões: generatorId -> { ... }
+Gerenciador.connections = {}
 
--- Last update timestamp
-Power.lastUpdate = 0
+-- Timestamp da última atualização
+Gerenciador.lastUpdate = 0
 
 --------------------------------------------------------------------------------
--- INITIALIZATION
+-- INICIALIZAÇÃO
 --------------------------------------------------------------------------------
 
---- Initialize the Power Manager
-function Power.Initialize()
-    Logger.Info("Power.Manager", "Initializing Power Manager...")
+--- Inicializa o Gerenciador de Energia
+function Gerenciador.Initialize()
+    Registrador.Info("Power.Manager", "Inicializando Gerenciador de Energia...")
     
-    Power.connections = {}
-    Power.lastUpdate = 0
+    Gerenciador.connections = {}
+    Gerenciador.lastUpdate = 0
     
-    Logger.Info("Power.Manager", "Power Manager initialized.")
+    Registrador.Info("Power.Manager", "Gerenciador de Energia inicializado.")
 end
 
 --------------------------------------------------------------------------------
--- GENERATOR DETECTION
+-- DETECÇÃO DE GERADORES
 --------------------------------------------------------------------------------
 
---- Find all generators in loaded chunks
--- Looks up known generator positions from StateManager and returns any whose
--- IsoGenerator object is currently in memory.  This avoids chunk traversal
--- APIs (getChunkMap / getSquares) that are not reliably available in Kahlua.
--- @return table List of IsoGenerator objects
-function Power.GetAllGenerators()
-    local generators = {}
-    local cell = getCell()
+--- Encontra todos os geradores nos chunks carregados
+-- Busca as posições de geradores conhecidos do GerenciadorEstado e retorna os que têm
+-- o objeto IsoGenerator na memória. Isso evita APIs de varredura de chunks
+-- (getChunkMap / getSquares) que não estão sempre disponíveis de forma confiável no Kahlua.
+-- @return table Lista de objetos IsoGenerator
+function Gerenciador.GetAllGenerators()
+    local geradores = {}
+    local celula = getCell()
 
-    if not cell then
-        Logger.Warn("Power.Manager", "GetAllGenerators: No cell found")
-        return generators
+    if not celula then
+        Registrador.Warn("Power.Manager", "GetAllGenerators: Nenhuma célula do mundo encontrada")
+        return geradores
     end
 
-    -- Iterate known generators from StateManager rather than scanning chunks.
-    local allGenData = StateManager.GetAllGenerators()
-    for _, genData in pairs(allGenData) do
-        local sq = cell:getGridSquare(genData.x, genData.y, genData.z)
-        if sq then
-            local objs = sq:getObjects()
-            for i = 0, objs:size() - 1 do
-                local obj = objs:get(i)
-                if obj and instanceof(obj, "IsoGenerator") then
-                    table.insert(generators, obj)
+    -- Percorre os geradores conhecidos no GerenciadorEstado em vez de escanear os chunks.
+    local todosDadosGeradores = GerenciadorEstado.GetAllGenerators()
+    for _, dadosGerador in pairs(todosDadosGeradores) do
+        local quadrado = celula:getGridSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+        if quadrado then
+            local objetos = quadrado:getObjects()
+            for indice = 0, objetos:size() - 1 do
+                local objeto = objetos:get(indice)
+                if objeto and instanceof(objeto, "IsoGenerator") then
+                    table.insert(geradores, objeto)
                     break
                 end
             end
         end
     end
 
-    Logger.Debug("Power.Manager", "GetAllGenerators: Found " .. #generators .. " generators")
-    return generators
+    Registrador.Debug("Power.Manager", "GetAllGenerators: Encontrados " .. #geradores .. " geradores")
+    return geradores
 end
 
---- Find generators near a specific building
--- @param buildingData BuildingData object
--- @param radius number Maximum search radius (optional, defaults to MAX_POWER_RANGE)
--- @return table List of IsoGenerator objects within range
-function Power.FindNearbyGenerators(buildingData, radius)
-    if not buildingData then
-        Logger.Error("Power.Manager", "FindNearbyGenerators: buildingData is nil")
+--- Encontra geradores próximos a um prédio específico
+-- @param dadosPredio BuildingData objeto
+-- @param raio number Raio máximo de busca (opcional, padrão MAX_POWER_RANGE)
+-- @return table Lista de objetos IsoGenerator dentro do raio de alcance
+function Gerenciador.FindNearbyGenerators(dadosPredio, raio)
+    if not dadosPredio then
+        Registrador.Error("Power.Manager", "FindNearbyGenerators: dadosPredio é nil")
         return {}
     end
     
-    radius = radius or Power.MAX_POWER_RANGE
+    raio = raio or Gerenciador.MAX_POWER_RANGE
     
-    local nearbyGenerators = {}
-    local allGenerators = Power.GetAllGenerators()
+    local geradoresProximos = {}
+    local todosGeradores = Gerenciador.GetAllGenerators()
     
-    -- Building center coordinates (some states don't store centerX/centerY).
-    -- Derive from bounding box if available, otherwise fall back to anchor x/y.
-    local function toNum(v, fallback)
-        local n = tonumber(v)
-        if n == nil then return fallback or 0 end
-        return n
+    -- Coordenadas centrais do prédio (alguns estados não armazenam centerX/centerY).
+    -- Obtém a partir da caixa delimitadora se disponível, caso contrário usa a âncora x/y.
+    local function paraNumero(valor, fallback)
+        local num = tonumber(valor)
+        if num == nil then return fallback or 0 end
+        return num
     end
-    local buildingX = toNum(buildingData.x, 0)
-    local buildingY = toNum(buildingData.y, 0)
-    local buildingZ = toNum(buildingData.z, 0)
-    local bb = buildingData.boundingBox
+    local predioX = paraNumero(dadosPredio.x, 0)
+    local predioY = paraNumero(dadosPredio.y, 0)
+    local predioZ = paraNumero(dadosPredio.z, 0)
+    local bb = dadosPredio.boundingBox
     if type(bb) == "table" then
-        local minX = toNum(bb[1], buildingX)
-        local minY = toNum(bb[2], buildingY)
-        local maxX = toNum(bb[3], buildingX)
-        local maxY = toNum(bb[4], buildingY)
-        buildingX = (minX + maxX) / 2
-        buildingY = (minY + maxY) / 2
+        local minX = paraNumero(bb[1], predioX)
+        local minY = paraNumero(bb[2], predioY)
+        local maxX = paraNumero(bb[3], predioX)
+        local maxY = paraNumero(bb[4], predioY)
+        predioX = (minX + maxX) / 2
+        predioY = (minY + maxY) / 2
     end
     
-    for _, generator in ipairs(allGenerators) do
-        local genSquare = generator:getSquare()
-        if genSquare then
-            local genX = genSquare:getX()
-            local genY = genSquare:getY()
-            local genZ = genSquare:getZ()
+    for _, gerador in ipairs(todosGeradores) do
+        local quadradoGerador = gerador:getSquare()
+        if quadradoGerador then
+            local gx = quadradoGerador:getX()
+            local gy = quadradoGerador:getY()
+            local gz = quadradoGerador:getZ()
             
-            -- Check same floor level
-            if genZ == buildingZ then
-                -- Calculate distance
-                local distance = Math.Distance2D(buildingX, buildingY, genX, genY)
+            -- Verifica se está no mesmo andar
+            if gz == predioZ then
+                -- Calcula a distância
+                local distancia = Matematica.Distance2D(predioX, predioY, gx, gy)
                 
-                if distance <= radius then
-                    table.insert(nearbyGenerators, {
-                        generator = generator,
-                        distance = distance,
-                        x = genX,
-                        y = genY,
-                        z = genZ
+                if distancia <= raio then
+                    table.insert(geradoresProximos, {
+                        generator = gerador,
+                        distance = distancia,
+                        x = gx,
+                        y = gy,
+                        z = gz
                     })
                 end
             end
         end
     end
     
-    -- Sort by distance (closest first)
-    table.sort(nearbyGenerators, function(a, b)
+    -- Ordena pela distância (mais próximo primeiro)
+    table.sort(geradoresProximos, function(a, b)
         return a.distance < b.distance
     end)
     
-    Logger.Debug("Power.Manager", string.format(
-        "FindNearbyGenerators: Found %d generators within %d tiles of building %s",
-        #nearbyGenerators, radius, buildingData.id
+    Registrador.Debug("Power.Manager", string.format(
+        "FindNearbyGenerators: Encontrados %d geradores dentro de %d ladrilhos do prédio %s",
+        #geradoresProximos, raio, dadosPredio.id
     ))
     
-    return nearbyGenerators
+    return geradoresProximos
 end
 
 --------------------------------------------------------------------------------
--- CONNECTION MANAGEMENT
+-- GERENCIAMENTO DE CONEXÕES
 --------------------------------------------------------------------------------
 
---- Create a unique connection ID
--- @param generatorX number Generator X coordinate
--- @param generatorY number Generator Y coordinate
--- @param generatorZ number Generator Z coordinate
--- @param buildingId string Building ID
--- @return string Connection ID
-function Power.CreateConnectionId(generatorX, generatorY, generatorZ, buildingId)
-    return string.format("conn_%d_%d_%d_%s", generatorX, generatorY, generatorZ, buildingId)
+--- Cria um ID de conexão único
+-- @param geradorX number Coordenada X do gerador
+-- @param geradorY number Coordenada Y do gerador
+-- @param geradorZ number Coordenada Z do gerador
+-- @param idPredio string ID do Prédio
+-- @return string ID da Conexão
+function Gerenciador.CreateConnectionId(geradorX, geradorY, geradorZ, idPredio)
+    return string.format("conn_%d_%d_%d_%s", geradorX, geradorY, geradorZ, idPredio)
 end
 
-local function GeneratorBelongsToBuilding(generator, buildingData)
-    if not generator or not buildingData or not buildingData.id then
+local function geradorPertenceAoPredio(gerador, dadosPredio)
+    if not gerador or not dadosPredio or not dadosPredio.id then
         return false
     end
 
-    local square = generator:getSquare()
-    if not square then
+    local quadrado = gerador:getSquare()
+    if not quadrado then
         return false
     end
 
-    local md = generator:getModData()
-    if md and md.LKS_EletricidadeConstrucao_DisconnectSuppressed then
+    local dadosMod = gerador:getModData()
+    if dadosMod and dadosMod.LKS_EletricidadeConstrucao_DisconnectSuppressed then
         return false
     end
 
-    if md and md.Gen_BuildingPoolID == buildingData.id then
+    if dadosMod and dadosMod.Gen_BuildingPoolID == dadosPredio.id then
         return true
     end
 
-    local genId = LKS_EletricidadeConstrucao.Data.Generator.MakeId(square:getX(), square:getY(), square:getZ())
-    local genData = StateManager.GetGenerator(genId)
-    if genData and genData.connectedBuildings then
-        for _, buildingId in pairs(genData.connectedBuildings) do
-            if buildingId == buildingData.id then
+    local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(quadrado:getX(), quadrado:getY(), quadrado:getZ())
+    local dadosGerador = GerenciadorEstado.GetGenerator(idGerador)
+    if dadosGerador and dadosGerador.connectedBuildings then
+        for _, idPredioConectado in pairs(dadosGerador.connectedBuildings) do
+            if idPredioConectado == dadosPredio.id then
                 return true
             end
         end
@@ -214,168 +214,168 @@ local function GeneratorBelongsToBuilding(generator, buildingData)
     return false
 end
 
---- Connect a generator to a building
--- @param generator IsoGenerator object
--- @param buildingData BuildingData object
--- @param distance number Distance between generator and building
--- @return boolean Success
-function Power.ConnectGeneratorToBuilding(generator, buildingData, distance)
+--- Conecta um gerador a um prédio
+-- @param generator IsoGenerator objeto
+-- @param buildingData BuildingData objeto
+-- @param distance number Distância entre o gerador e o prédio
+-- @return boolean Sucesso
+function Gerenciador.ConnectGeneratorToBuilding(generator, buildingData, distance)
     if not generator or not buildingData then
-        Logger.Error("Power.Manager", "ConnectGeneratorToBuilding: Invalid parameters")
+        Registrador.Error("Power.Manager", "ConnectGeneratorToBuilding: Parâmetros inválidos")
         return false
     end
     
-    local square = generator:getSquare()
-    if not square then
-        Logger.Warn("Power.Manager", "ConnectGeneratorToBuilding: Generator has no square")
+    local quadrado = generator:getSquare()
+    if not quadrado then
+        Registrador.Warn("Power.Manager", "ConnectGeneratorToBuilding: Gerador não possui um quadrado associado")
         return false
     end
     
-    local genX = square:getX()
-    local genY = square:getY()
-    local genZ = square:getZ()
+    local gx = quadrado:getX()
+    local gy = quadrado:getY()
+    local gz = quadrado:getZ()
 
-    -- Prepare building connection list and enforce pool limit (max 10)
+    -- Prepara a lista de conexões do prédio e aplica limite do pool (máximo 10)
     if not buildingData.connectedGenerators then
         buildingData.connectedGenerators = {}
     end
-    local genKey = string.format("%d_%d_%d", genX, genY, genZ)
-    local alreadyConnected = false
-    -- connectedGenerators is Kahlua-deserialized (string numeric keys)
-    for _, genCoords in pairs(buildingData.connectedGenerators) do
-        if genCoords == genKey then
-            alreadyConnected = true
+    local chaveGerador = string.format("%d_%d_%d", gx, gy, gz)
+    local jaConectado = false
+    -- connectedGenerators é desserializado pelo Kahlua (chaves numéricas em string)
+    for _, coordsGerador in pairs(buildingData.connectedGenerators) do
+        if coordsGerador == chaveGerador then
+            jaConectado = true
             break
         end
     end
-    local _genPoolSize = 0
+    local tamanhoPoolGeradores = 0
     if buildingData.connectedGenerators then
-        for _ in pairs(buildingData.connectedGenerators) do _genPoolSize = _genPoolSize + 1 end
+        for _ in pairs(buildingData.connectedGenerators) do tamanhoPoolGeradores = tamanhoPoolGeradores + 1 end
     end
-    local maxGenerators = (LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeConstrucao.Constants.BUILDING 
-                          and LKS_EletricidadeConstrucao.Constants.BUILDING.MAX_GENERATORS_PER_BUILDING) or 10
-    if not alreadyConnected and _genPoolSize >= maxGenerators then
-        Logger.Warn("Power.Manager", string.format(
-            "ConnectGeneratorToBuilding: Pool limit reached (%d). Rejecting generator at (%d,%d,%d) for building %s",
-            maxGenerators, genX, genY, genZ, buildingData.id))
+    local geradoresMaximo = (LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeConstrucao.Constants.BUILDING 
+                            and LKS_EletricidadeConstrucao.Constants.BUILDING.MAX_GENERATORS_PER_BUILDING) or 10
+    if not jaConectado and tamanhoPoolGeradores >= geradoresMaximo then
+        Registrador.Warn("Power.Manager", string.format(
+            "ConnectGeneratorToBuilding: Limite de pool atingido (%d). Rejeitando gerador em (%d,%d,%d) para o prédio %s",
+            geradoresMaximo, gx, gy, gz, buildingData.id))
         return false
     end
 
-    -- Ensure generator is registered in StateManager with a back-link to this building
-    local genId = LKS_EletricidadeConstrucao.Data.Generator.MakeId(genX, genY, genZ)
-    local genData = StateManager.GetGenerator(genId)
-    if not genData then
-        genData = LKS_EletricidadeConstrucao.Data.Generator.New(generator)
+    -- Garante que o gerador está registrado no GerenciadorEstado com referência de volta a este prédio
+    local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(gx, gy, gz)
+    local dadosGerador = GerenciadorEstado.GetGenerator(idGerador)
+    if not dadosGerador then
+        dadosGerador = LKS_EletricidadeConstrucao.Data.Generator.New(generator)
     end
-    genData.connectedBuildings = genData.connectedBuildings or {}
-    local genHasBuilding = false
-    -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-    for _, bid in pairs(genData.connectedBuildings) do
-        if bid == buildingData.id then genHasBuilding = true; break end
+    dadosGerador.connectedBuildings = dadosGerador.connectedBuildings or {}
+    local geradorTemPredio = false
+    -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas em string)
+    for _, bid in pairs(dadosGerador.connectedBuildings) do
+        if bid == buildingData.id then geradorTemPredio = true; break end
     end
-    if not genHasBuilding then
-        table.insert(genData.connectedBuildings, buildingData.id)
+    if not geradorTemPredio then
+        table.insert(dadosGerador.connectedBuildings, buildingData.id)
     end
-    StateManager.AddGenerator(genData)
+    GerenciadorEstado.AddGenerator(dadosGerador)
 
-    -- Create connection ID
-    local connectionId = Power.CreateConnectionId(genX, genY, genZ, buildingData.id)
+    -- Cria o ID de conexão
+    local idConexao = Gerenciador.CreateConnectionId(gx, gy, gz, buildingData.id)
 
-    -- Check if connection already exists
-    if Power.connections[connectionId] then
-        Logger.Debug("Power.Manager", "ConnectGeneratorToBuilding: Connection already exists: " .. connectionId)
+    -- Verifica se a conexão já existe
+    if Gerenciador.connections[idConexao] then
+        Registrador.Debug("Power.Manager", "ConnectGeneratorToBuilding: Conexão já existe: " .. idConexao)
         return true
     end
 
-    -- Create connection data
-    local connectionData = {
-        id = connectionId,
-        generatorX = genX,
-        generatorY = genY,
-        generatorZ = genZ,
+    -- Cria os dados da conexão
+    local dadosConexao = {
+        id = idConexao,
+        generatorX = gx,
+        generatorY = gy,
+        generatorZ = gz,
         buildingId = buildingData.id,
         distance = distance,
         createdTime = os.time(),
         lastValidated = os.time()
     }
 
-    -- Store connection
-    Power.connections[connectionId] = connectionData
+    -- Armazena a conexão
+    Gerenciador.connections[idConexao] = dadosConexao
 
-    local md = generator:getModData()
-    if md then
-        md.LKS_EletricidadeConstrucao_DisconnectSuppressed = nil
+    local dadosMod = generator:getModData()
+    if dadosMod then
+        dadosMod.LKS_EletricidadeConstrucao_DisconnectSuppressed = nil
     end
 
-    -- Add generator coordinates to building (if not already there)
-    if not alreadyConnected then
-        table.insert(buildingData.connectedGenerators, genKey)
+    -- Adiciona coordenadas do gerador ao prédio (se ainda não estiver lá)
+    if not jaConectado then
+        table.insert(buildingData.connectedGenerators, chaveGerador)
     end
 
-    Logger.Info("Power.Manager", string.format(
-        "Connected generator at (%d,%d,%d) to building %s (distance: %.1f tiles)",
-        genX, genY, genZ, buildingData.id, distance
+    Registrador.Info("Power.Manager", string.format(
+        "Gerador conectado em (%d,%d,%d) ao prédio %s (distância: %.1f ladrilhos)",
+        gx, gy, gz, buildingData.id, distance
     ))
 
     return true
 end
 
---- Disconnect a generator from a building
--- @param connectionId string Connection ID
--- @return boolean Success
-function Power.DisconnectGeneratorFromBuilding(connectionId)
-    if not connectionId then
-        Logger.Error("Power.Manager", "DisconnectGeneratorFromBuilding: connectionId is nil")
+--- Desconecta um gerador de um prédio
+-- @param idConexao string ID da Conexão
+-- @return boolean Sucesso
+function Gerenciador.DisconnectGeneratorFromBuilding(idConexao)
+    if not idConexao then
+        Registrador.Error("Power.Manager", "DisconnectGeneratorFromBuilding: idConexao é nil")
         return false
     end
     
-    local connection = Power.connections[connectionId]
-    if not connection then
-        Logger.Warn("Power.Manager", "DisconnectGeneratorFromBuilding: Connection not found: " .. connectionId)
+    local conexao = Gerenciador.connections[idConexao]
+    if not conexao then
+        Registrador.Warn("Power.Manager", "DisconnectGeneratorFromBuilding: Conexão não encontrada: " .. idConexao)
         return false
     end
     
-    -- Get building data
-    local buildingData = StateManager.GetBuilding(connection.buildingId)
-    local genKey = string.format("%d_%d_%d", connection.generatorX, connection.generatorY, connection.generatorZ)
+    -- Obtém dados do prédio
+    local dadosPredio = GerenciadorEstado.GetBuilding(conexao.buildingId)
+    local chaveGerador = string.format("%d_%d_%d", conexao.generatorX, conexao.generatorY, conexao.generatorZ)
 
-    if buildingData and buildingData.connectedGenerators then
-        -- Remove generator from building's connected list (Kahlua string-key safe)
-        local _newGenList = {}
-        for _, v in pairs(buildingData.connectedGenerators) do
-            if v ~= genKey then table.insert(_newGenList, v) end
+    if dadosPredio and dadosPredio.connectedGenerators then
+        -- Remove o gerador da lista de conexões do prédio (seguro com chaves strings do Kahlua)
+        local novaListaGeradores = {}
+        for _, valor in pairs(dadosPredio.connectedGenerators) do
+            if valor ~= chaveGerador then table.insert(novaListaGeradores, valor) end
         end
-        buildingData.connectedGenerators = _newGenList
+        dadosPredio.connectedGenerators = novaListaGeradores
 
-        -- If no generators remain, drop the building from state
-        if LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(buildingData.connectedGenerators) then
-            StateManager.RemoveBuilding(connection.buildingId)
+        -- Se não sobrarem geradores conectados, remove o prédio do estado
+        if LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(dadosPredio.connectedGenerators) then
+            GerenciadorEstado.RemoveBuilding(conexao.buildingId)
         end
     end
 
-    -- Update generator state: clear pool link and remove building back-link
-    local genId = LKS_EletricidadeConstrucao.Data.Generator.MakeId(connection.generatorX, connection.generatorY, connection.generatorZ)
-    local genData = StateManager.GetGenerator(genId)
-    if genData and genData.connectedBuildings then
-        local _newBldList = {}
-        for _, v in pairs(genData.connectedBuildings) do
-            if v ~= connection.buildingId then table.insert(_newBldList, v) end
+    -- Atualiza o estado do gerador: limpa a ligação do pool e remove a referência do prédio
+    local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(conexao.generatorX, conexao.generatorY, conexao.generatorZ)
+    local dadosGerador = GerenciadorEstado.GetGenerator(idGerador)
+    if dadosGerador and dadosGerador.connectedBuildings then
+        local novaListaPredios = {}
+        for _, valor in pairs(dadosGerador.connectedBuildings) do
+            if valor ~= conexao.buildingId then table.insert(novaListaPredios, valor) end
         end
-        genData.connectedBuildings = _newBldList
-        if LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(genData.connectedBuildings) then
-            -- Clear pool marker in live IsoGenerator if loaded
-            local cell = getCell()
-            if cell then
-                local sq = cell:getGridSquare(connection.generatorX, connection.generatorY, connection.generatorZ)
-                if sq then
-                    local objs = sq:getObjects()
-                    for i = 0, objs:size() - 1 do
-                        local o = objs:get(i)
-                        if o and instanceof(o, "IsoGenerator") then
-                            local md = o:getModData()
+        dadosGerador.connectedBuildings = novaListaPredios
+        if LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(dadosGerador.connectedBuildings) then
+            -- Limpa o carimbo do pool no IsoGenerator do jogo se estiver carregado
+            local celula = getCell()
+            if celula then
+                local quadrado = celula:getGridSquare(conexao.generatorX, conexao.generatorY, conexao.generatorZ)
+                if quadrado then
+                    local objetos = quadrado:getObjects()
+                    for indice = 0, objetos:size() - 1 do
+                        local objeto = objetos:get(indice)
+                        if objeto and instanceof(objeto, "IsoGenerator") then
+                            local md = objeto:getModData()
                             md.Gen_BuildingPoolID = nil
                             if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                o:transmitModData()
+                                objeto:transmitModData()
                             end
                             break
                         end
@@ -385,274 +385,274 @@ function Power.DisconnectGeneratorFromBuilding(connectionId)
         end
     end
 
-    -- Remove connection
-    Power.connections[connectionId] = nil
-    StateManager.MarkDirty()
+    -- Remove a conexão
+    Gerenciador.connections[idConexao] = nil
+    GerenciadorEstado.MarkDirty()
 
-    Logger.Info("Power.Manager", string.format(
-        "Disconnected generator at (%d,%d,%d) from building %s",
-        connection.generatorX, connection.generatorY, connection.generatorZ, connection.buildingId
+    Registrador.Info("Power.Manager", string.format(
+        "Gerador desconectado em (%d,%d,%d) do prédio %s",
+        conexao.generatorX, conexao.generatorY, conexao.generatorZ, conexao.buildingId
     ))
     
     return true
 end
 
 --------------------------------------------------------------------------------
--- CONNECTION VALIDATION
+-- VALIDAÇÃO DE CONEXÕES
 --------------------------------------------------------------------------------
 
---- Check if a generator still exists at the specified coordinates
--- @param x number X coordinate
--- @param y number Y coordinate
--- @param z number Z coordinate
--- @return IsoGenerator|nil Generator object if found, nil otherwise
-function Power.GetGeneratorAt(x, y, z)
-    local square = getCell():getGridSquare(x, y, z)
-    if not square then
+--- Verifica se um gerador ainda existe nas coordenadas especificadas
+-- @param x number Coordenada X
+-- @param y number Coordenada Y
+-- @param z number Coordenada Z
+-- @return IsoGenerator|nil Objeto do Gerador se encontrado, senão nil
+function Gerenciador.GetGeneratorAt(x, y, z)
+    local quadrado = getCell():getGridSquare(x, y, z)
+    if not quadrado then
         return nil
     end
     
-    local objects = square:getObjects()
-    for i = 0, objects:size() - 1 do
-        local obj = objects:get(i)
-        if obj and instanceof(obj, "IsoGenerator") then
-            return obj
+    local objetos = quadrado:getObjects()
+    for indice = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indice)
+        if objeto and instanceof(objeto, "IsoGenerator") then
+            return objeto
         end
     end
     
     return nil
 end
 
---- Validate a connection (check if generator and building still exist)
--- @param connectionData table Connection data
--- @return boolean True if connection is valid
-function Power.ValidateConnection(connectionData)
-    if not connectionData then
+--- Valida uma conexão (verifica se o gerador e o prédio ainda existem)
+-- @param dadosConexao table Dados da conexão
+-- @return boolean True se a conexão for válida
+function Gerenciador.ValidateConnection(dadosConexao)
+    if not dadosConexao then
         return false
     end
     
-    -- Check if generator still exists.
-    -- IMPORTANT: If the generator's chunk is unloaded, getGridSquare returns nil.
-    -- We must NOT disconnect a connection just because the chunk isn't loaded —
-    -- that would wipe connectedBuildings from the state and cause the catch-up
-    -- calculation to treat the generator as solo (3× fuel burn bug, B-87).
-    -- Only disconnect if the chunk IS loaded but contains no IsoGenerator at that tile.
-    local genSquare = getCell():getGridSquare(
-        connectionData.generatorX, connectionData.generatorY, connectionData.generatorZ)
-    if not genSquare then
-        -- Chunk unloaded — cannot verify; leave connection intact.
+    -- Verifica se o gerador ainda existe.
+    -- IMPORTANTE: Se o chunk do gerador não estiver carregado, getGridSquare retorna nil.
+    -- NÃO devemos desligar uma conexão simplesmente porque o chunk não está carregado —
+    -- isso removeria connectedBuildings do estado e faria com que o cálculo de compensação
+    -- tratasse o gerador como solo (bug do consumo de combustível 3x maior, B-87).
+    -- Só desconsidere se o chunk ESTIVER carregado mas não houver IsoGenerator nesse ladrilho.
+    local quadradoGerador = getCell():getGridSquare(
+        dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ)
+    if not quadradoGerador then
+        -- Chunk não carregado — impossível verificar; mantém conexão intacta.
         return true
     end
-    local generator = nil
-    local _objs = genSquare:getObjects()
-    for _i = 0, _objs:size() - 1 do
-        local _o = _objs:get(_i)
-        if _o and instanceof(_o, "IsoGenerator") then generator = _o; break end
+    local gerador = nil
+    local objetos = quadradoGerador:getObjects()
+    for indice = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indice)
+        if objeto and instanceof(objeto, "IsoGenerator") then gerador = objeto; break end
     end
-    if not generator then
-        Logger.Debug("Power.Manager", "ValidateConnection: Generator no longer exists at " ..
-            string.format("(%d,%d,%d)", connectionData.generatorX, connectionData.generatorY, connectionData.generatorZ))
+    if not gerador then
+        Registrador.Debug("Power.Manager", "ValidateConnection: Gerador não existe mais em " ..
+            string.format("(%d,%d,%d)", dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ))
         return false
     end
     
-    -- Check if building still exists
-    local buildingData = StateManager.GetBuilding(connectionData.buildingId)
-    if not buildingData then
-        Logger.Debug("Power.Manager", "ValidateConnection: Building no longer exists: " .. connectionData.buildingId)
+    -- Verifica se o prédio ainda existe no estado
+    local dadosPredio = GerenciadorEstado.GetBuilding(dadosConexao.buildingId)
+    if not dadosPredio then
+        Registrador.Debug("Power.Manager", "ValidateConnection: Prédio não existe mais: " .. dadosConexao.buildingId)
         return false
     end
     
-    -- Check distance (in case building was modified)
-    local function toNum(v, fallback)
-        local n = tonumber(v)
-        if n == nil then return fallback end
-        return n
+    -- Verifica a distância (caso o prédio tenha sido modificado)
+    local function paraNumero(valor, fallback)
+        local num = tonumber(valor)
+        if num == nil then return fallback end
+        return num
     end
 
-    -- Derive building center with fallbacks for missing fields
-    local bx = toNum(buildingData.centerX, nil)
-    local by = toNum(buildingData.centerY, nil)
-    if not bx or not by then
-        bx = toNum(buildingData.x, 0)
-        by = toNum(buildingData.y, 0)
+    -- Obtém o centro do prédio com fallbacks para campos ausentes
+    local px = paraNumero(dadosPredio.centerX, nil)
+    local py = paraNumero(dadosPredio.centerY, nil)
+    if not px or not py then
+        px = paraNumero(dadosPredio.x, 0)
+        py = paraNumero(dadosPredio.y, 0)
     end
 
-    -- If still missing, try bounding box center
-    local bb = buildingData.boundingBox
-    if (not bx or not by) and type(bb) == "table" then
-        local minX = toNum(bb[1], toNum(bb.minX, bx))
-        local minY = toNum(bb[2], toNum(bb.minY, by))
-        local maxX = toNum(bb[3], toNum(bb.maxX, bx))
-        local maxY = toNum(bb[4], toNum(bb.maxY, by))
+    -- Se ainda faltar, tenta calcular pelo centro da caixa delimitadora
+    local bb = dadosPredio.boundingBox
+    if (not px or not py) and type(bb) == "table" then
+        local minX = paraNumero(bb[1], paraNumero(bb.minX, px))
+        local minY = paraNumero(bb[2], paraNumero(bb.minY, py))
+        local maxX = paraNumero(bb[3], paraNumero(bb.maxX, px))
+        local maxY = paraNumero(bb[4], paraNumero(bb.maxY, py))
         if minX and minY and maxX and maxY then
-            bx = (minX + maxX) / 2
-            by = (minY + maxY) / 2
+            px = (minX + maxX) / 2
+            py = (minY + maxY) / 2
         end
     end
 
-    -- Final guard: if still missing, deem connection invalid
-    if not bx or not by then
-        Logger.Debug("Power.Manager", "ValidateConnection: building center missing, dropping connection " .. tostring(connectionData.id))
+    -- Proteção final: se ainda assim não tiver, considera conexão inválida
+    if not px or not py then
+        Registrador.Debug("Power.Manager", "ValidateConnection: Centro do prédio ausente, descartando conexão " .. tostring(dadosConexao.id))
         return false
     end
 
-    local distance = Math.Distance2D(
-        bx, by,
-        connectionData.generatorX, connectionData.generatorY
+    local distancia = Matematica.Distance2D(
+        px, py,
+        dadosConexao.generatorX, dadosConexao.generatorY
     )
     
-    if distance > Power.MAX_POWER_RANGE then
-        Logger.Debug("Power.Manager", string.format(
-            "ValidateConnection: Distance too great (%.1f > %d) for connection %s",
-            distance, Power.MAX_POWER_RANGE, connectionData.id
+    if distancia > Gerenciador.MAX_POWER_RANGE then
+        Registrador.Debug("Power.Manager", string.format(
+            "ValidateConnection: Distância muito grande (%.1f > %d) para conexão %s",
+            distancia, Gerenciador.MAX_POWER_RANGE, dadosConexao.id
         ))
         return false
     end
     
-    -- Update distance if changed
-    if math.abs(distance - connectionData.distance) > 0.1 then
-        connectionData.distance = distance
+    -- Updates distance if changed
+    if math.abs(distancia - dadosConexao.distance) > 0.1 then
+        dadosConexao.distance = distance
     end
     
-    -- Update last validated timestamp
-    connectionData.lastValidated = os.time()
+    -- Updates last validated timestamp
+    dadosConexao.lastValidated = os.time()
     
     return true
 end
 
---- Clean invalid connections (generators/buildings that no longer exist)
--- @return number Number of connections removed
-function Power.CleanInvalidConnections()
-    local removedCount = 0
-    local toRemove = {}
+--- Remove conexões inválidas (geradores/prédios que não existem mais)
+-- @return number Quantidade de conexões removidas
+function Gerenciador.CleanInvalidConnections()
+    local quantidadeRemovidos = 0
+    local paraRemover = {}
     
-    for connectionId, connectionData in pairs(Power.connections) do
-        if not Power.ValidateConnection(connectionData) then
-            table.insert(toRemove, connectionId)
+    for idConexao, dadosConexao in pairs(Gerenciador.connections) do
+        if not Gerenciador.ValidateConnection(dadosConexao) then
+            table.insert(paraRemover, idConexao)
         end
     end
     
-    for _, connectionId in ipairs(toRemove) do
-        Power.DisconnectGeneratorFromBuilding(connectionId)
-        removedCount = removedCount + 1
+    for _, idConexao in ipairs(paraRemover) do
+        Gerenciador.DisconnectGeneratorFromBuilding(idConexao)
+        quantidadeRemovidos = quantidadeRemovidos + 1
     end
     
-    if removedCount > 0 then
-        Logger.Info("Power.Manager", "CleanInvalidConnections: Removed " .. removedCount .. " invalid connections")
+    if quantidadeRemovidos > 0 then
+        Registrador.Info("Power.Manager", "CleanInvalidConnections: Removidas " .. quantidadeRemovidos .. " conexões inválidas")
     end
     
-    return removedCount
+    return quantidadeRemovidos
 end
 
 --------------------------------------------------------------------------------
--- CONNECTION UPDATES
+-- ATUALIZAÇÃO DE CONEXÕES
 --------------------------------------------------------------------------------
 
---- Update all connections (find new generators, validate existing)
-function Power.UpdateConnections()
-    Logger.Debug("Power.Manager", "UpdateConnections: Scanning for generators...")
+--- Atualiza todas as conexões (procura novos geradores, valida existentes)
+function Gerenciador.UpdateConnections()
+    Registrador.Debug("Power.Manager", "UpdateConnections: Escaneando geradores...")
     
-    -- Clean invalid connections first
-    Power.CleanInvalidConnections()
+    -- Limpa as conexões inválidas primeiro
+    Gerenciador.CleanInvalidConnections()
     
-    -- Get all buildings (returns a map: buildingId -> buildingData)
-    local buildings = StateManager.GetAllBuildings()
-    if not buildings then
-        Logger.Debug("Power.Manager", "UpdateConnections: No buildings found")
+    -- Obtém todos os prédios (retorna um mapa: buildingId -> buildingData)
+    local predios = GerenciadorEstado.GetAllBuildings()
+    if not predios then
+        Registrador.Debug("Power.Manager", "UpdateConnections: Nenhum prédio encontrado")
         return
     end
-    -- Check if map has any entries (Kahlua does not support next())
-    local hasBuildings = false
-    for _ in pairs(buildings) do hasBuildings = true; break end
-    if not hasBuildings then
-        Logger.Debug("Power.Manager", "UpdateConnections: No buildings found")
+    -- Verifica se o mapa possui entradas (Kahlua não suporta next())
+    local possuiPredios = false
+    for _ in pairs(predios) do possuiPredios = true; break end
+    if not possuiPredios then
+        Registrador.Debug("Power.Manager", "UpdateConnections: Nenhum prédio encontrado")
         return
     end
 
-    local newConnectionsCount = 0
+    local novasConexoesContagem = 0
     
-    -- For each building, find nearby generators
-    -- NOTE: buildings is a MAP (string keys) – must use pairs(), not ipairs()
-    for _, buildingData in pairs(buildings) do
-        local nearbyGenerators = Power.FindNearbyGenerators(buildingData)
+    -- Para cada prédio, encontra geradores próximos
+    -- NOTA: predios é um MAPA (chaves do tipo string) – deve usar pairs(), não ipairs()
+    for _, dadosPredio in pairs(predios) do
+        local geradoresProximos = Gerenciador.FindNearbyGenerators(dadosPredio)
         
-        -- Connect each nearby generator
-        for _, genInfo in ipairs(nearbyGenerators) do
-            local success = false
-            if GeneratorBelongsToBuilding(genInfo.generator, buildingData) then
-                success = Power.ConnectGeneratorToBuilding(genInfo.generator, buildingData, genInfo.distance)
+        -- Conecta cada gerador próximo
+        for _, infoGerador in ipairs(geradoresProximos) do
+            local sucesso = false
+            if geradorPertenceAoPredio(infoGerador.generator, dadosPredio) then
+                sucesso = Gerenciador.ConnectGeneratorToBuilding(infoGerador.generator, dadosPredio, infoGerador.distance)
             end
-            if success then
-                -- Check if this is actually a new connection
-                local connectionId = Power.CreateConnectionId(genInfo.x, genInfo.y, genInfo.z, buildingData.id)
-                if Power.connections[connectionId] and Power.connections[connectionId].createdTime == os.time() then
-                    newConnectionsCount = newConnectionsCount + 1
+            if sucesso then
+                -- Verifica se esta é uma nova conexão de fato
+                local idConexao = Gerenciador.CreateConnectionId(infoGerador.x, infoGerador.y, infoGerador.z, dadosPredio.id)
+                if Gerenciador.connections[idConexao] and Gerenciador.connections[idConexao].createdTime == os.time() then
+                    novasConexoesContagem = novasConexoesContagem + 1
                 end
             end
         end
     end
     
-    Power.lastUpdate = os.time()
+    Gerenciador.lastUpdate = os.time()
     
-    Logger.Info("Power.Manager", string.format(
-        "UpdateConnections: Scan complete. Total connections: %d (new: %d)",
-        Power.GetConnectionCount(), newConnectionsCount
+    Registrador.Info("Power.Manager", string.format(
+        "UpdateConnections: Varredura concluída. Total de conexões: %d (novas: %d)",
+        Gerenciador.GetConnectionCount(), novasConexoesContagem
     ))
 end
 
 --- Periodic update (called from server tick)
--- @param currentTime number Current timestamp
-function Power.Update(currentTime)
-    currentTime = currentTime or os.time()
+-- @param tempoAtual number Timestamp atual
+function Gerenciador.Update(tempoAtual)
+    tempoAtual = tempoAtual or os.time()
     
     -- Check if update interval has passed
-    if currentTime - Power.lastUpdate >= Power.CONNECTION_UPDATE_INTERVAL then
-        Power.UpdateConnections()
+    if tempoAtual - Gerenciador.lastUpdate >= Gerenciador.CONNECTION_UPDATE_INTERVAL then
+        Gerenciador.UpdateConnections()
     end
 end
 
 --------------------------------------------------------------------------------
--- QUERY FUNCTIONS
+-- FUNÇÕES DE CONSULTA
 --------------------------------------------------------------------------------
 
---- Get all connections
--- @return table Connection data table
-function Power.GetAllConnections()
-    return Power.connections
+--- Obtém todas as conexões ativas
+-- @return table Tabela com os dados das conexões
+function Gerenciador.GetAllConnections()
+    return Gerenciador.connections
 end
 
---- Get connections for a specific building
--- @param buildingId string Building ID
--- @return table List of connection data
-function Power.GetBuildingConnections(buildingId)
-    if not buildingId then
+--- Obtém as conexões de um prédio específico
+-- @param idPredio string ID do Prédio
+-- @return table Lista com os dados de conexões do prédio
+function Gerenciador.GetBuildingConnections(idPredio)
+    if not idPredio then
         return {}
     end
     
-    local buildingConnections = {}
+    local conexoesPredio = {}
     
-    for _, connectionData in pairs(Power.connections) do
-        if connectionData.buildingId == buildingId then
-            table.insert(buildingConnections, connectionData)
+    for _, dadosConexao in pairs(Gerenciador.connections) do
+        if dadosConexao.buildingId == idPredio then
+            table.insert(conexoesPredio, dadosConexao)
         end
     end
     
-    return buildingConnections
+    return conexoesPredio
 end
 
---- Check if a building has any active (powered) generators
--- @param buildingId string Building ID
--- @return boolean True if building has at least one active generator
-function Power.IsBuildingPowered(buildingId)
-    if not buildingId then
+--- Verifica se um prédio tem geradores ativos (ligados)
+-- @param idPredio string ID do Prédio
+-- @return boolean True se o prédio tiver pelo menos um gerador ativo
+function Gerenciador.IsBuildingPowered(idPredio)
+    if not idPredio then
         return false
     end
     
-    local connections = Power.GetBuildingConnections(buildingId)
+    local conexoes = Gerenciador.GetBuildingConnections(idPredio)
     
-    for _, connectionData in ipairs(connections) do
-        local generator = Power.GetGeneratorAt(connectionData.generatorX, connectionData.generatorY, connectionData.generatorZ)
-        if generator and generator:isActivated() then
+    for _, dadosConexao in ipairs(conexoes) do
+        local gerador = Gerenciador.GetGeneratorAt(dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ)
+        if gerador and gerador:isActivated() then
             return true
         end
     end
@@ -660,51 +660,51 @@ function Power.IsBuildingPowered(buildingId)
     return false
 end
 
---- Get connection count
--- @return number Total number of connections
-function Power.GetConnectionCount()
-    local count = 0
-    for _ in pairs(Power.connections) do
-        count = count + 1
+--- Obtém o total de conexões registradas
+-- @return number Quantidade de conexões
+function Gerenciador.GetConnectionCount()
+    local contagem = 0
+    for _ in pairs(Gerenciador.connections) do
+        contagem = contagem + 1
     end
-    return count
+    return contagem
 end
 
 --------------------------------------------------------------------------------
--- DEBUG FUNCTIONS
+-- FUNÇÕES DE DEPURAÇÃO (DEBUG)
 --------------------------------------------------------------------------------
 
---- Print all connections (debug)
-function Power.PrintConnections()
-    Logger.Info("Power.Manager", "=== ALL CONNECTIONS ===")
-    Logger.Info("Power.Manager", string.format("Total connections: %d", Power.GetConnectionCount()))
+--- Imprime todas as conexões ativas no log (debug)
+function Gerenciador.PrintConnections()
+    Registrador.Info("Power.Manager", "=== TODAS AS CONEXÕES EM EXECUÇÃO ===")
+    Registrador.Info("Power.Manager", string.format("Total de conexões: %d", Gerenciador.GetConnectionCount()))
     
-    for connectionId, connectionData in pairs(Power.connections) do
-        local generator = Power.GetGeneratorAt(connectionData.generatorX, connectionData.generatorY, connectionData.generatorZ)
-        local isActive = generator and generator:isActivated() or false
+    for idConexao, dadosConexao in pairs(Gerenciador.connections) do
+        local gerador = Gerenciador.GetGeneratorAt(dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ)
+        local ativo = gerador and gerador:isActivated() or false
         
-        Logger.Info("Power.Manager", string.format(
-            "  %s: Gen(%d,%d,%d) -> Building %s (%.1f tiles) [%s]",
-            connectionId,
-            connectionData.generatorX, connectionData.generatorY, connectionData.generatorZ,
-            connectionData.buildingId,
-            connectionData.distance,
-            isActive and "POWERED" or "OFF"
+        Registrador.Info("Power.Manager", string.format(
+            "  %s: Gerador(%d,%d,%d) -> Prédio %s (%.1f ladrilhos) [%s]",
+            idConexao,
+            dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ,
+            dadosConexao.buildingId,
+            dadosConexao.distance,
+            ativo and "ENERGIZADO" or "DESLIGADO"
         ))
     end
     
-    Logger.Info("Power.Manager", "======================")
+    Registrador.Info("Power.Manager", "=====================================")
 end
 
---- Manual scan for connections (debug/admin command)
-function Power.ManualScan()
-    Logger.Info("Power.Manager", "ManualScan: Forcing connection update...")
-    Power.UpdateConnections()
-    Power.PrintConnections()
+--- Varredura manual de conexões (função de depuração/comando admin)
+function Gerenciador.ManualScan()
+    Registrador.Info("Power.Manager", "ManualScan: Forçando atualização de conexões...")
+    Gerenciador.UpdateConnections()
+    Gerenciador.PrintConnections()
 end
 
 --------------------------------------------------------------------------------
--- EXPORTS
+-- EXPORTAÇÕES
 --------------------------------------------------------------------------------
 
 LKS_EletricidadeConstrucao.RegisterModule("Power.Manager", "2.0.0")

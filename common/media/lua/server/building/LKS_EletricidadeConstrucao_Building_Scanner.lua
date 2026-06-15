@@ -1,117 +1,111 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Building_Scanner.lua
--- LKS_EletricidadeConstrucao V2 - Building Scanner
--- Scans buildings from light switches to detect powered areas
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Building_Scanner.lua
+-- OBJETIVO: Escaneia construções a partir de interruptores de luz para mapear áreas de alimentação.
+-- LOCALIZAÇÃO: server/building
 
--- Ensure namespace exists
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Building_Scanner] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_Building_Scanner.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
--- Initialize sub-namespace
 LKS_EletricidadeConstrucao.Building = LKS_EletricidadeConstrucao.Building or {}
 LKS_EletricidadeConstrucao.Building.Scanner = LKS_EletricidadeConstrucao.Building.Scanner or {}
 
 -- ============================================================================
--- LOCAL STATE
+-- ESTADO LOCAL
 -- ============================================================================
 
-local _isInitialized = false
-local _scanQueue = {}  -- Queue of pending scans
-local _activeScan = nil  -- Currently active scan
+local _inicializado = false
+local _filaEscaneamento = {}
+local _escaneamentoAtivo = nil
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO
 -- ============================================================================
 
---- Initialize building scanner
+--- Inicializa o escaneador de construções.
 function LKS_EletricidadeConstrucao.Building.Scanner.Initialize()
-    if _isInitialized then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Building Scanner already initialized", "Building")
+    if _inicializado then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Escaneador de Construção já inicializado", "Building")
         return
     end
     
-    -- Register event handlers for light switch detection
     LKS_EletricidadeConstrucao.Core.EventManager.RegisterGameEvent("OnObjectAdded", LKS_EletricidadeConstrucao.Building.Scanner.OnObjectAdded)
     
-    _isInitialized = true
+    _inicializado = true
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Building Scanner initialized", "Building")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Escaneador de Construção inicializado com sucesso", "Building")
 end
 
---- Check if building scanner is initialized
---- @return boolean True if initialized
+--- Verifica se o escaneador de construções está inicializado.
+--- @return boolean Retorna true se estiver inicializado.
 function LKS_EletricidadeConstrucao.Building.Scanner.IsInitialized()
-    return _isInitialized
+    return _inicializado
 end
 
 -- ============================================================================
--- OBJECT DETECTION
+-- DETECÇÃO DE OBJETOS
 -- ============================================================================
 
---- Handle object added event (detects new light switches)
---- @param object IsoObject Object that was added
+--- Manipula o evento de adição de objetos físicos para capturar novos interruptores.
+--- @param object any O objeto físico adicionado.
 function LKS_EletricidadeConstrucao.Building.Scanner.OnObjectAdded(object)
     if not object then
         return
     end
     
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
-    
-    -- Check if object is a light switch
     if not Validation.IsLightSwitch(object) then
         return
     end
     
-    -- Get coordinates
     local x = object:getX()
     local y = object:getY()
     local z = object:getZ()
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Light switch detected at (%d,%d,%d)", x, y, z),
+        string.format("Interruptor de luz detectado em (%d,%d,%d)", x, y, z),
         "Building"
     )
     
-    -- Queue scan for this building
     LKS_EletricidadeConstrucao.Building.Scanner.QueueScan(x, y, z)
 end
 
 -- ============================================================================
--- SCAN QUEUE MANAGEMENT
+-- GERENCIAMENTO DA FILA DE ESCANEAMENTO
 -- ============================================================================
 
---- Queue a building scan
---- @param x number X coordinate of light switch
---- @param y number Y coordinate of light switch
---- @param z number Z coordinate of light switch
---- @param buildingIdOverride string|nil Optional canonical building ID (overrides coord-derived ID)
+--- Enfileira uma requisição de varredura para a construção.
+--- @param x number Coordenada X do interruptor.
+--- @param y number Coordenada Y do interruptor.
+--- @param z number Coordenada Z do interruptor.
+--- @param buildingIdOverride string|nil ID opcional para sobrescrever o ID automático.
 function LKS_EletricidadeConstrucao.Building.Scanner.QueueScan(x, y, z, buildingIdOverride)
-    local buildingId = buildingIdOverride or LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, z)
+    local idConstrucao = buildingIdOverride or LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, z)
     
-    -- Check if already queued
-    for _, scan in ipairs(_scanQueue) do
-        if scan.buildingId == buildingId then
+    for _, escaneamento in ipairs(_filaEscaneamento) do
+        if escaneamento.buildingId == idConstrucao then
             LKS_EletricidadeConstrucao.Core.Logger.Trace(
-                string.format("Scan already queued for %s", buildingId),
+                string.format("Escaneamento já enfileirado para %s", idConstrucao),
                 "Building"
             )
             return
         end
     end
     
-    -- Add to queue
-    table.insert(_scanQueue, {
-        buildingId = buildingId,
+    table.insert(_filaEscaneamento, {
+        buildingId = idConstrucao,
         x = x,
         y = y,
         z = z,
@@ -119,68 +113,58 @@ function LKS_EletricidadeConstrucao.Building.Scanner.QueueScan(x, y, z, building
     })
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Queued scan for building %s (%d in queue)", buildingId, #_scanQueue),
+        string.format("Escaneamento enfileirado para a construção %s (%d na fila)", idConstrucao, #_filaEscaneamento),
         "Building"
     )
 end
 
---- Process scan queue (called periodically)
+--- Processa os itens pendentes na fila de escaneamento.
 function LKS_EletricidadeConstrucao.Building.Scanner.ProcessQueue()
-    if not _isInitialized then
+    if not _inicializado then
         return
     end
     
-    -- Check if scan is already active
-    if _activeScan then
+    if _escaneamentoAtivo then
         return
     end
     
-    -- Check if queue is empty
-    if #_scanQueue == 0 then
+    if #_filaEscaneamento == 0 then
         return
     end
     
-    -- Get next scan
-    local scan = table.remove(_scanQueue, 1)
+    local escaneamento = table.remove(_filaEscaneamento, 1)
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Starting scan for building %s", scan.buildingId),
+        string.format("Iniciando escaneamento para a construção %s", escaneamento.buildingId),
         "Building"
     )
     
-    -- Execute scan (pass stored buildingId as override so the ID survives the queue)
-    LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(scan.x, scan.y, scan.z, scan.buildingId)
+    LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(escaneamento.x, escaneamento.y, escaneamento.z, escaneamento.buildingId)
 end
 
 -- ============================================================================
--- CHUNK-LOAD SAFETY HELPERS
+-- VERIFICAÇÃO DE CHUNKS CARREGADOS
 -- ============================================================================
 
---- Return true if every chunk covered by the building's bounding box is currently
---- loaded (i.e. getSquare() returns non-nil for every corner and the center).
---- Used as a pre-flight guard before ClearConsumers + rescan so that consumers
---- in unloaded adjacent chunks are not permanently lost.
---- @param buildingData BuildingData Building to check
---- @return boolean True if the whole area is accessible
+--- Verifica se todos os chunks contidos na área da construção estão devidamente carregados no mapa.
+--- @param buildingData table Os dados da construção.
+--- @return boolean Retorna true se todos os pontos chave estiverem carregados.
 function LKS_EletricidadeConstrucao.Building.Scanner.IsBuildingAreaLoaded(buildingData)
     if not buildingData then return false end
     local bb = buildingData.boundingBox
     if not bb then
-        -- No bounding box recorded yet (first scan). We cannot check, so allow scan.
         return true
     end
     local z = buildingData.z or 0
-    -- Sample all four corners plus centre. Each corner belongs to a potentially
-    -- distinct 10×10 chunk, so five samples cover the entire bounding box reliably.
-    local pts = {
+    local pontos = {
         {x = bb.minX,                                y = bb.minY},
         {x = bb.maxX,                                y = bb.minY},
         {x = bb.minX,                                y = bb.maxY},
         {x = bb.maxX,                                y = bb.maxY},
         {x = math.floor((bb.minX + bb.maxX) * 0.5), y = math.floor((bb.minY + bb.maxY) * 0.5)},
     }
-    for _, p in ipairs(pts) do
-        if not getSquare(p.x, p.y, z) then
+    for _, ponto in ipairs(pontos) do
+        if not getSquare(ponto.x, ponto.y, z) then
             return false
         end
     end
@@ -188,39 +172,35 @@ function LKS_EletricidadeConstrucao.Building.Scanner.IsBuildingAreaLoaded(buildi
 end
 
 -- ============================================================================
--- BUILDING SCANNING
+-- EXECUÇÃO DO ESCANEAMENTO DA CONSTRUÇÃO
 -- ============================================================================
 
---- Scan building from light switch
---- @param x number Light switch X coordinate
---- @param y number Light switch Y coordinate
---- @param z number Light switch Z coordinate
---- @param buildingIdOverride string|nil Optional canonical building ID (overrides coord-derived ID)
---- @return BuildingData|nil Building data or nil if failed
+--- Escaneia a construção física a partir das coordenadas do interruptor de luz.
+--- @param x number Coordenada X.
+--- @param y number Coordenada Y.
+--- @param z number Coordenada Z.
+--- @param buildingIdOverride string|nil ID opcional para sobrescrever o ID automático.
+--- @return table|nil O estado da construção mapeado ou nil.
 function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, buildingIdOverride)
     local Config = LKS_EletricidadeConstrucao.Config
     local Constants = LKS_EletricidadeConstrucao.Constants
     
     LKS_EletricidadeConstrucao.Core.Logger.StartTimer("BuildingScan")
     
-    -- Get light switch object
-    local square = getSquare(x, y, z)
-    
-    if not square then
+    local quadrado = getSquare(x, y, z)
+    if not quadrado then
         LKS_EletricidadeConstrucao.Core.Logger.Error(
-            string.format("Square not found at (%d,%d,%d)", x, y, z),
+            string.format("Quadrado não encontrado em (%d,%d,%d)", x, y, z),
             "Building"
         )
         return nil
     end
     
-    -- Find light switch object
     local lightSwitch = nil
-    local objects = square:getObjects()
-    
-    if objects then
-        for i = 0, objects:size() - 1 do
-            local obj = objects:get(i)
+    local objetos = quadrado:getObjects()
+    if objetos then
+        for i = 0, objetos:size() - 1 do
+            local obj = objetos:get(i)
             if obj and instanceof(obj, "IsoLightSwitch") then
                 lightSwitch = obj
                 break
@@ -230,100 +210,80 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     
     if not lightSwitch then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("Light switch not found at (%d,%d,%d)", x, y, z),
+            string.format("Interruptor de luz não encontrado em (%d,%d,%d)", x, y, z),
             "Building"
         )
         return nil
     end
     
-    -- Create or get building data
     local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local buildingId = buildingIdOverride or LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, z)
-    local buildingData = StateManager.GetBuilding(buildingId)
+    local idConstrucao = buildingIdOverride or LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, z)
+    local buildingData = StateManager.GetBuilding(idConstrucao)
     
-    local isRescan = (buildingData ~= nil)
-    print(string.format("[LKS_EletricidadeConstrucao_SCAN] %s building %s from light switch (%d,%d,%d)",
-        isRescan and "RE-SCANNING" or "NEW SCAN", buildingId, x, y, z))
+    local eReescaneamento = (buildingData ~= nil)
+    print(string.format("[LKS PATCH - SCAN] %s construção %s a partir do interruptor (%d,%d,%d)",
+        eReescaneamento and "REESCANEANDO" or "NOVO ESCANEAMENTO", idConstrucao, x, y, z))
     
     if not buildingData then
-        -- Create new building data
-        local radius = Config.BorderRadius or Constants.BUILDING.DEFAULT_BORDER_RADIUS or 10
-        buildingData = LKS_EletricidadeConstrucao.Data.Building.New(lightSwitch, radius)
-        -- Apply the canonical override ID before registering so StateManager,
-        -- connectedGenerators, and ForceUpdateBuilding all use the same key.
+        local raio = Config.BorderRadius or Constants.BUILDING.DEFAULT_BORDER_RADIUS or 10
+        buildingData = LKS_EletricidadeConstrucao.Data.Building.New(lightSwitch, raio)
         if buildingIdOverride then
             buildingData.id = buildingIdOverride
         end
         StateManager.AddBuilding(buildingData)
     else
-        print(string.format("[LKS_EletricidadeConstrucao_SCAN] Building already exists - current consumers: %d, current power: %.1f",
+        print(string.format("[LKS PATCH - SCAN] Construção já registrada - consumidores atuais: %d, consumo atual: %.1f",
             buildingData.totalConsumers or 0, buildingData.totalPowerDraw or 0))
     end
     
-    -- For player-built buildings, derive a proper scan radius from bounding box (if known)
-    -- so RadiusFallback covers the entire footprint even when borderRadius is tiny (2).
     local scanRadius = buildingData.borderRadius
-    local isPlayerBuilt = buildingId and string.match(buildingId, "^bld_%-?%d+_%-?%d+_%-?%d+$") ~= nil
-    if isPlayerBuilt and buildingData.boundingBox then
+    local construidoPeloJogador = idConstrucao and string.match(idConstrucao, "^bld_%-?%d+_%-?%d+_%-?%d+$") ~= nil
+    if construidoPeloJogador and buildingData.boundingBox then
         local bb = buildingData.boundingBox
-        local halfW = math.ceil((bb.maxX - bb.minX) / 2) + 3
-        local halfH = math.ceil((bb.maxY - bb.minY) / 2) + 3
-        scanRadius = math.max(halfW, halfH, scanRadius or 2)
-        print(string.format("[LKS_EletricidadeConstrucao_SCAN] Player-built %s: bbox-derived scan radius %d", buildingId, scanRadius))
-    elseif isPlayerBuilt then
-        -- No bounding box yet (fresh connection) – use a generous default
+        local metadeLargura = math.ceil((bb.maxX - bb.minX) / 2) + 3
+        local metadeAltura = math.ceil((bb.maxY - bb.minY) / 2) + 3
+        scanRadius = math.max(metadeLargura, metadeAltura, scanRadius or 2)
+        print(string.format("[LKS PATCH - SCAN] Construída pelo jogador %s: raio de varredura derivado da caixa %d", idConstrucao, scanRadius))
+    elseif construidoPeloJogador then
         scanRadius = math.max(scanRadius or 2, 30)
     end
 
-    -- Detect building borders (pass buildingId so player-built structures skip nearby-building search)
-    local borderTiles = LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(x, y, z, scanRadius, buildingId)
-    
-    if #borderTiles == 0 then
+    local quadradosBorda = LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(x, y, z, scanRadius, idConstrucao)
+    if #quadradosBorda == 0 then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("No border tiles found for building %s", buildingId),
+            string.format("Nenhum quadrado de borda para a construção %s", idConstrucao),
             "Building"
         )
         return buildingData
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Found %d border tiles for building %s", #borderTiles, buildingId),
+        string.format("Encontrados %d quadrados de borda para a construção %s", #quadradosBorda, idConstrucao),
         "Building"
     )
-    print(string.format("[LKS_EletricidadeConstrucao_SCAN] Found %d border tiles", #borderTiles))
+    print(string.format("[LKS PATCH - SCAN] Encontrados %d quadrados de borda", #quadradosBorda))
     
-    -- Calculate bounding box
-    local minX, minY, maxX, maxY = 999999, 999999, -999999, -999999
-    
-    for _, tile in ipairs(borderTiles) do
-        if tile.x < minX then minX = tile.x end
-        if tile.y < minY then minY = tile.y end
-        if tile.x > maxX then maxX = tile.x end
-        if tile.y > maxY then maxY = tile.y end
+    local minimoX, minimoY, maximoX, maximoY = 999999, 999999, -999999, -999999
+    for _, tile in ipairs(quadradosBorda) do
+        if tile.x < minimoX then minimoX = tile.x end
+        if tile.y < minimoY then minimoY = tile.y end
+        if tile.x > maximoX then maximoX = tile.x end
+        if tile.y > maximoY then maximoY = tile.y end
     end
     
-    LKS_EletricidadeConstrucao.Data.Building.SetBoundingBox(buildingData, minX, minY, maxX, maxY)
+    LKS_EletricidadeConstrucao.Data.Building.SetBoundingBox(buildingData, minimoX, minimoY, maximoX, maximoY)
     
-    -- Clear existing consumers before scanning to prevent duplicates
-    -- (can happen when multiple generators scan the same building)
-    local oldConsumerCount = buildingData.totalConsumers or 0
-    local oldPowerDraw = buildingData.totalPowerDraw or 0
-    print(string.format("[LKS_EletricidadeConstrucao_SCAN] BEFORE scan: %d consumers, %.1f power draw", oldConsumerCount, oldPowerDraw))
+    local totalConsumidoresAntigo = buildingData.totalConsumers or 0
+    local consumoEnergiaAntigo = buildingData.totalPowerDraw or 0
+    print(string.format("[LKS PATCH - SCAN] ANTES da varredura: %d consumidores, consumo de %.1f", totalConsumidoresAntigo, consumoEnergiaAntigo))
 
-    -- B-83: Guard against partial chunk loads.
-    -- For rescans (building already exists with consumer data), verify every chunk
-    -- covering the bounding box is loaded before clearing the consumer list.
-    -- If any chunk is unloaded, getSquare() returns nil for its tiles and the
-    -- (correct, GlobalModData-saved) consumers would be permanently lost.
-    if isRescan and (buildingData.totalConsumers or 0) > 0 then
+    if eReescaneamento and (buildingData.totalConsumers or 0) > 0 then
         local Scanner = LKS_EletricidadeConstrucao.Building.Scanner
         if not Scanner.IsBuildingAreaLoaded(buildingData) then
             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                string.format("ScanBuilding: partial chunk load detected for %s " ..
-                    "(%d consumers at risk) – skipping rescan, keeping GlobalModData data",
-                    buildingId, buildingData.totalConsumers),
+                string.format("EscanearConstrucao: carregamento parcial de chunk detectado para %s – pulando reescaneamento e mantendo dados salvos",
+                    idConstrucao),
                 "Building")
-            -- Still call MarkScanned / MarkDirty so the caller gets a consistent return value.
             LKS_EletricidadeConstrucao.Data.Building.MarkScanned(buildingData)
             LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
             LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BuildingScan", 50)
@@ -332,33 +292,28 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     end
 
     LKS_EletricidadeConstrucao.Data.Building.ClearConsumers(buildingData)
-    print("[LKS_EletricidadeConstrucao_SCAN] Consumers cleared, now rescanning...")
+    print("[LKS PATCH - SCAN] Consumidores limpos, reescaneando...")
     
-    -- Scan for consumers within border tiles
-    LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(buildingData, borderTiles)
+    LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(buildingData, quadradosBorda)
     
-    -- Recalculate total power draw
     LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(buildingData)
     
-    print(string.format("[LKS_EletricidadeConstrucao_SCAN] AFTER scan: %d consumers, %.1f power draw (delta: %+d consumers, %+.1f power)",
+    print(string.format("[LKS PATCH - SCAN] DEPOIS da varredura: %d consumidores, consumo de %.1f (diferença: %+d consumidores, %+.1f consumo)",
         buildingData.totalConsumers or 0, buildingData.totalPowerDraw or 0,
-        (buildingData.totalConsumers or 0) - oldConsumerCount,
-        (buildingData.totalPowerDraw or 0) - oldPowerDraw))
+        (buildingData.totalConsumers or 0) - totalConsumidoresAntigo,
+        (buildingData.totalPowerDraw or 0) - consumoEnergiaAntigo))
     
-    -- Mark as scanned
     LKS_EletricidadeConstrucao.Data.Building.MarkScanned(buildingData)
     
-    -- Trigger event
     LKS_EletricidadeConstrucao.Core.EventManager.OnBuildingScanned(buildingData)
     
-    -- Mark state as dirty
     StateManager.MarkDirty()
     
-    LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BuildingScan", 50)  -- Warn if > 50ms
+    LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BuildingScan", 50)
     
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Scanned building %s: %d consumers, %.1f power draw",
-            buildingId, #buildingData.powerConsumers, buildingData.totalPowerDraw),
+        string.format("Construção %s escaneada: %d consumidores, consumo de %.1f",
+            idConstrucao, #buildingData.powerConsumers, buildingData.totalPowerDraw),
         "Building"
     )
     
@@ -366,102 +321,95 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
 end
 
 -- ============================================================================
--- RESCAN OPERATIONS
+-- OPERAÇÕES DE REESCANEAMENTO
 -- ============================================================================
 
---- Rescan existing building
---- @param buildingId string Building ID
---- @return BuildingData|nil Updated building data
-function LKS_EletricidadeConstrucao.Building.Scanner.RescanBuilding(buildingId)
+--- Reescreve e rescaneia cômodos elétricos de uma construção existente.
+--- @param idConstrucao string O ID da construção.
+--- @return table|nil O estado da construção atualizado ou nil.
+function LKS_EletricidadeConstrucao.Building.Scanner.RescanBuilding(idConstrucao)
     local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local buildingData = StateManager.GetBuilding(buildingId)
+    local buildingData = StateManager.GetBuilding(idConstrucao)
     
     if not buildingData then
         LKS_EletricidadeConstrucao.Core.Logger.Error(
-            string.format("Building %s not found for rescan", buildingId),
+            string.format("Construção %s não encontrada para reescaneamento", idConstrucao),
             "Building"
         )
         return nil
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Rescanning building %s", buildingId),
+        string.format("Reescaneando a construção %s", idConstrucao),
         "Building"
     )
     
-    -- Clear existing consumers
     LKS_EletricidadeConstrucao.Data.Building.ClearConsumers(buildingData)
     
-    -- Rescan
     return LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(buildingData.x, buildingData.y, buildingData.z)
 end
 
---- Rescan all buildings
+--- Rescaneia completamente todas as construções registradas em memória.
 function LKS_EletricidadeConstrucao.Building.Scanner.RescanAllBuildings()
     local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local buildings = StateManager.GetAllBuildings()
+    local construcoes = StateManager.GetAllBuildings()
     
-    local count = 0
-    for buildingId, _ in pairs(buildings) do
-        LKS_EletricidadeConstrucao.Building.Scanner.RescanBuilding(buildingId)
-        count = count + 1
+    local total = 0
+    for idConstrucao, _ in pairs(construcoes) do
+        LKS_EletricidadeConstrucao.Building.Scanner.RescanBuilding(idConstrucao)
+        total = total + 1
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Rescanned %d buildings", count),
+        string.format("Reescaneadas %d construções", total),
         "Building"
     )
 end
 
 -- ============================================================================
--- MANUAL SCAN OPERATIONS
+-- OPERAÇÕES DE ESCANEAMENTO MANUAL
 -- ============================================================================
 
---- Manually scan building at coordinates
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate
---- @return BuildingData|nil Building data
+--- Realiza o escaneamento manual em coordenadas específicas.
+--- @param x number Coordenada X.
+--- @param y number Coordenada Y.
+--- @param z number Coordenada Z.
+--- @return table|nil Os dados da construção.
 function LKS_EletricidadeConstrucao.Building.Scanner.ManualScan(x, y, z)
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Manual scan requested at (%d,%d,%d)", x, y, z),
+        string.format("Escaneamento manual solicitado em (%d,%d,%d)", x, y, z),
         "Building"
     )
     
     return LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z)
 end
 
---- Scan all light switches in loaded chunks
+--- Varre o mapa carregado em busca de todos os interruptores de luz e os enfileira para escaneamento.
 function LKS_EletricidadeConstrucao.Building.Scanner.ScanAllLightSwitches()
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Scanning all light switches in loaded chunks...", "Building")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Escaneando todos os interruptores de luz nos chunks carregados...", "Building")
     
-    local scannedCount = 0
-    local loadedChunks = LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetLoadedChunks()
+    local total = 0
+    local chunksCarregados = LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetLoadedChunks()
     
-    for _, chunkKey in ipairs(loadedChunks) do
-        -- Parse chunk coordinates
-        local chunkX, chunkY = chunkKey:match("chunk_(-?%d+)_(-?%d+)")
+    for _, chaveChunk in ipairs(chunksCarregados) do
+        local chunkX, chunkY = chaveChunk:match("chunk_(-?%d+)_(-?%d+)")
         
         if chunkX and chunkY then
             chunkX = tonumber(chunkX)
             chunkY = tonumber(chunkY)
             
-            -- Scan chunk for light switches
-            -- Each chunk is 10x10 tiles
             for x = chunkX * 10, (chunkX * 10) + 9 do
                 for y = chunkY * 10, (chunkY * 10) + 9 do
-                    for z = 0, 7 do  -- Check all levels
-                        local square = getSquare(x, y, z)
-                        
-                        if square then
-                            local objects = square:getObjects()
-                            
-                            if objects then
-                                for i = 0, objects:size() - 1 do
-                                    local obj = objects:get(i)
+                    for z = 0, 7 do
+                        local quadrado = getSquare(x, y, z)
+                        if quadrado then
+                            local objetos = quadrado:getObjects()
+                            if objetos then
+                                for i = 0, objetos:size() - 1 do
+                                    local obj = objetos:get(i)
                                     if obj and instanceof(obj, "IsoLightSwitch") then
                                         LKS_EletricidadeConstrucao.Building.Scanner.QueueScan(x, y, z)
-                                        scannedCount = scannedCount + 1
+                                        total = total + 1
                                     end
                                 end
                             end
@@ -473,35 +421,35 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanAllLightSwitches()
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Found %d light switches, queued for scanning", scannedCount),
+        string.format("Encontrados %d interruptores de luz, enfileirados para escaneamento", total),
         "Building"
     )
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAÇÃO
 -- ============================================================================
 
---- Print scanner status
+--- Imprime estatísticas de estado do escaneador no console de depuração.
 function LKS_EletricidadeConstrucao.Building.Scanner.PrintStatus()
-    LKS_EletricidadeConstrucao.Print("=== Building Scanner Status ===")
-    LKS_EletricidadeConstrucao.Print("Initialized: " .. tostring(_isInitialized))
-    LKS_EletricidadeConstrucao.Print("Queued Scans: " .. #_scanQueue)
-    LKS_EletricidadeConstrucao.Print("Active Scan: " .. tostring(_activeScan ~= nil))
+    LKS_EletricidadeConstrucao.Print("=== Estado do Escaneador de Construção ===")
+    LKS_EletricidadeConstrucao.Print("Inicializado: " .. tostring(_inicializado))
+    LKS_EletricidadeConstrucao.Print("Escaneamentos na Fila: " .. #_filaEscaneamento)
+    LKS_EletricidadeConstrucao.Print("Escaneamento Ativo: " .. tostring(_escaneamentoAtivo ~= nil))
     
     local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local buildings = StateManager.GetAllBuildings()
-    local count = 0
+    local construcoes = StateManager.GetAllBuildings()
+    local total = 0
     
-    for _, _ in pairs(buildings) do
-        count = count + 1
+    for _, _ in pairs(construcoes) do
+        total = total + 1
     end
     
-    LKS_EletricidadeConstrucao.Print("Total Buildings: " .. count)
+    LKS_EletricidadeConstrucao.Print("Total de Construções: " .. total)
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Building.Scanner", "2.0.0")

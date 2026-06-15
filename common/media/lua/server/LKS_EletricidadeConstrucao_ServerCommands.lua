@@ -1,109 +1,146 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_ServerCommands.lua
--- LKS_EletricidadeConstrucao V2 - Server-side command handler
--- Receives commands sent via sendClientCommand(...) from clients.
+-- ARQUIVO: LKS_EletricidadeConstrucao_ServerCommands.lua
+-- OBJETIVO: Manipulador de comandos no lado do servidor.
+-- LOCALIZAÇÃO: server
 
-if not LKS_EletricidadeConstrucao then return end
+if not LKS_EletricidadeConstrucao then
+    return
+end
 
-local function FindGeneratorAt(x, y, z)
-    local cell = getCell and getCell()
-    if not cell then return nil end
+--- Localiza o objeto IsoGenerator nas coordenadas especificadas.
+--- @param coordenadaX number Coordenada X.
+--- @param coordenadaY number Coordenada Y.
+--- @param coordenadaZ number Coordenada Z.
+--- @return any|nil O objeto IsoGenerator encontrado ou nil.
+local function LocalizarGeradorEm(coordenadaX, coordenadaY, coordenadaZ)
+    local celula = getCell and getCell()
+    if not celula then return nil end
 
-    local sq = cell:getGridSquare(x, y, z)
-    if not sq then return nil end
+    local quadrado = celula:getGridSquare(coordenadaX, coordenadaY, coordenadaZ)
+    if not quadrado then return nil end
 
-    local objs = sq:getObjects()
-    if not objs then return nil end
+    local objetos = quadrado:getObjects()
+    if not objetos then return nil end
 
-    for i = 0, objs:size() - 1 do
-        local obj = objs:get(i)
-        if obj and instanceof(obj, "IsoGenerator") then
-            return obj
+    for indiceObjeto = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indiceObjeto)
+        if objeto and instanceof(objeto, "IsoGenerator") then
+            return objeto
         end
     end
 
     return nil
 end
 
-local function IsPlayerNearSquare(player, square, maxDistance)
-    if not player or not square then return false end
-    maxDistance = maxDistance or 2
+--- Verifica se o jogador está a uma distância aceitável de um GridSquare específico.
+--- @param jogador any O objeto IsoPlayer.
+--- @param quadrado any O GridSquare correspondente.
+--- @param distanciaMaxima number|nil Distância máxima aceitável (padrão: 2).
+--- @return boolean Retorna true se estiver próximo.
+local function IsJogadorProximoAoQuadrado(jogador, quadrado, distanciaMaxima)
+    if not jogador or not quadrado then return false end
+    distanciaMaxima = distanciaMaxima or 2
 
-    local playerSq = player:getSquare()
-    if not playerSq then return false end
-    if playerSq:getZ() ~= square:getZ() then return false end
+    local quadradoJogador = jogador:getSquare()
+    if not quadradoJogador then return false end
+    if quadradoJogador:getZ() ~= quadrado:getZ() then return false end
 
-    local dx = math.abs(playerSq:getX() - square:getX())
-    local dy = math.abs(playerSq:getY() - square:getY())
-    return dx <= maxDistance and dy <= maxDistance
+    local diferencaX = math.abs(quadradoJogador:getX() - quadrado:getX())
+    local diferencaY = math.abs(quadradoJogador:getY() - quadrado:getY())
+    return diferencaX <= distanciaMaxima and diferencaY <= distanciaMaxima
 end
 
-local function IsPlayerNearGenerator(player, generator)
-    if not player or not generator then return false end
-
-    return IsPlayerNearSquare(player, generator:getSquare(), 2)
+--- Verifica se o jogador está próximo a um gerador.
+--- @param jogador any O objeto IsoPlayer.
+--- @param gerador any O objeto IsoGenerator.
+--- @return boolean Retorna true se estiver próximo.
+local function IsJogadorProximoAoGerador(jogador, gerador)
+    if not jogador or not gerador then return false end
+    return IsJogadorProximoAoQuadrado(jogador, gerador:getSquare(), 2)
 end
 
-local function IsPlayerNearHeatingAnchor(player, args)
-    if not player or not args then return false end
-    if args.anchorX == nil or args.anchorY == nil or args.anchorZ == nil then
+--- Verifica se o jogador está próximo a uma âncora de aquecimento especificada no payload.
+--- @param jogador any O objeto IsoPlayer.
+--- @param argumentos table Os argumentos contendo as coordenadas da âncora.
+--- @return boolean Retorna true se estiver próximo.
+local function IsJogadorProximoAncoraAquecimento(jogador, argumentos)
+    if not jogador or not argumentos then return false end
+    if argumentos.anchorX == nil or argumentos.anchorY == nil or argumentos.anchorZ == nil then
         return false
     end
 
-    local cell = getCell and getCell()
-    if not cell then return false end
+    local celula = getCell and getCell()
+    if not celula then return false end
 
-    local sq = cell:getGridSquare(args.anchorX, args.anchorY, args.anchorZ)
-    if not sq then return false end
+    local quadrado = celula:getGridSquare(argumentos.anchorX, argumentos.anchorY, argumentos.anchorZ)
+    if not quadrado then return false end
 
-    return IsPlayerNearSquare(player, sq, 2)
+    return IsJogadorProximoAoQuadrado(jogador, quadrado, 2)
 end
 
-local function TableHasEntries(t)
-    if type(t) ~= "table" then return false end
-    for _ in pairs(t) do
+--- Verifica se uma tabela Lua possui entradas.
+--- @param tabela table A tabela a ser verificada.
+--- @return boolean Retorna true se possuir chaves.
+local function TabelaPossuiEntradas(tabela)
+    if type(tabela) ~= "table" then return false end
+    for _ in pairs(tabela) do
         return true
     end
     return false
 end
 
-local function IsInsideBoundingBox(buildingData, x, y)
-    local bb = buildingData and buildingData.boundingBox
-    if type(bb) ~= "table" then return false end
+--- Verifica se as coordenadas estão dentro da caixa delimitadora da construção.
+--- @param dadosConstrucao table Os dados da construção no StateManager.
+--- @param coordenadaX number Coordenada X.
+--- @param coordenadaY number Coordenada Y.
+--- @return boolean Retorna true se as coordenadas estiverem dentro da área da construção.
+local function EstaDentroDaCaixaDelimitadora(dadosConstrucao, coordenadaX, coordenadaY)
+    local caixaDelimitadora = dadosConstrucao and dadosConstrucao.boundingBox
+    if type(caixaDelimitadora) ~= "table" then return false end
 
-    local minX = tonumber(bb.minX or bb[1])
-    local minY = tonumber(bb.minY or bb[2])
-    local maxX = tonumber(bb.maxX or bb[3])
-    local maxY = tonumber(bb.maxY or bb[4])
+    local minX = tonumber(caixaDelimitadora.minX or caixaDelimitadora[1])
+    local minY = tonumber(caixaDelimitadora.minY or caixaDelimitadora[2])
+    local maxX = tonumber(caixaDelimitadora.maxX or caixaDelimitadora[3])
+    local maxY = tonumber(caixaDelimitadora.maxY or caixaDelimitadora[4])
     if not (minX and minY and maxX and maxY) then
         return false
     end
 
-    return x >= (minX - 1) and x <= (maxX + 1)
-       and y >= (minY - 1) and y <= (maxY + 1)
+    return coordenadaX >= (minX - 1) and coordenadaX <= (maxX + 1)
+       and coordenadaY >= (minY - 1) and coordenadaY <= (maxY + 1)
 end
 
-local function FindNearbyIsoBuilding(cell, square, radius)
-    local isoBuilding = square and square:getBuilding() or nil
-    if isoBuilding then return isoBuilding end
-    if not cell or not square then return nil end
+--- Busca uma estrutura de construção física nas imediações de um quadrado.
+--- @param celula any A célula ativa.
+--- @param quadrado any O GridSquare central.
+--- @param raio number O raio de busca em blocos.
+--- @return any|nil O objeto IsoBuilding correspondente ou nil.
+local function LocalizarConstrucaoIsoProxima(celula, quadrado, raio)
+    local construcaoIso = quadrado and quadrado:getBuilding() or nil
+    if construcaoIso then return construcaoIso end
+    if not celula or not quadrado then return nil end
 
-    local bx, by, bz = square:getX(), square:getY(), square:getZ()
-    for r = 1, radius do
+    local bx, by, bz = quadrado:getX(), quadrado:getY(), quadrado:getZ()
+    for r = 1, raio do
         for dx = -r, r do
             for dy = -r, r do
                 if math.abs(dx) == r or math.abs(dy) == r then
-                    local sq2 = cell:getGridSquare(bx + dx, by + dy, bz)
-                    if sq2 then
-                        isoBuilding = sq2:getBuilding()
-                        if isoBuilding then
-                            return isoBuilding
+                    local gsq = celula:getGridSquare(bx + dx, by + dy, bz)
+                    if gsq then
+                        construcaoIso = gsq:getBuilding()
+                        if construcaoIso then
+                            return construcaoIso
                         end
                     end
                 end
@@ -114,155 +151,192 @@ local function FindNearbyIsoBuilding(cell, square, radius)
     return nil
 end
 
-local function BuildingMatchesIso(buildingData, isoBuilding, cell, fallbackZ)
-    if not buildingData or not isoBuilding or not cell then return false end
-    if buildingData.x == nil or buildingData.y == nil then return false end
+--- Verifica se os dados lógicos correspondem à construção física.
+--- @param dadosConstrucao table Os dados lógicos da construção.
+--- @param construcaoIso any A estrutura física IsoBuilding.
+--- @param celula any A célula ativa.
+--- @param fallbackZ number Coordenada Z de fallback.
+--- @return boolean Retorna true se corresponderem.
+local function ConstrucaoCorrespondeAIso(dadosConstrucao, construcaoIso, celula, fallbackZ)
+    if not dadosConstrucao or not construcaoIso or not celula then return false end
+    if dadosConstrucao.x == nil or dadosConstrucao.y == nil then return false end
 
-    local lsSq = cell:getGridSquare(buildingData.x, buildingData.y, buildingData.z or fallbackZ or 0)
-    return lsSq and lsSq:getBuilding() == isoBuilding or false
+    local gsq = celula:getGridSquare(dadosConstrucao.x, dadosConstrucao.y, dadosConstrucao.z or fallbackZ or 0)
+    return gsq and gsq:getBuilding() == construcaoIso or false
 end
 
-local function IsGeneratorRunning(generatorData)
+--- Verifica se o gerador lógico ou físico está ativo e com combustível.
+--- @param dadosGerador table Os dados do gerador.
+--- @return boolean Retorna true se estiver funcionando.
+local function IsGeradorFuncionando(dadosGerador)
     local GeneratorData = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
     if GeneratorData and GeneratorData.IsRunning then
-        return GeneratorData.IsRunning(generatorData)
+        return GeneratorData.IsRunning(dadosGerador)
     end
 
-    return generatorData and (generatorData.fuelAmount or 0) > 0 and generatorData.activated ~= false
+    return dadosGerador and (dadosGerador.fuelAmount or 0) > 0 and dadosGerador.activated ~= false
 end
 
-local function GetGeneratorBuildingMatchStrength(generatorData, buildingData, square, stateManager, livePoolId)
-    if not generatorData or not buildingData then return 0 end
+--- Retorna um score de acoplamento entre um gerador e uma construção.
+--- @param dadosGerador table Os dados do gerador.
+--- @param dadosConstrucao table Os dados da construção.
+--- @param quadrado any O GridSquare do gerador.
+--- @param gerenciadorEstado table O StateManager do mod.
+--- @param idPoolAtiva string|nil O ID do pool ativo.
+--- @return number O peso ou força da correspondência.
+local function ObterForcaCorrespondenciaGeradorConstrucao(dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado, idPoolAtiva)
+    if not dadosGerador or not dadosConstrucao then return 0 end
 
-    local best = 0
-    local targetX, targetY = buildingData.x, buildingData.y
-    local squareX = square and square:getX() or nil
-    local squareY = square and square:getY() or nil
+    local melhorScore = 0
+    local alvoX, alvoY = dadosConstrucao.x, dadosConstrucao.y
+    local quadradoX = quadrado and quadrado:getX() or nil
+    local quadradoY = quadrado and quadrado:getY() or nil
 
-    if livePoolId and livePoolId == buildingData.id then
-        best = 4
+    if idPoolAtiva and idPoolAtiva == dadosConstrucao.id then
+        melhorScore = 4
     end
 
-    for _, connectedId in pairs(generatorData.connectedBuildings or {}) do
-        if connectedId == buildingData.id then
-            if best < 3 then best = 3 end
+    for _, idConectado in pairs(dadosGerador.connectedBuildings or {}) do
+        if idConectado == dadosConstrucao.id then
+            if melhorScore < 3 then melhorScore = 3 end
         end
 
-        local refBld = stateManager and stateManager.GetBuilding and stateManager.GetBuilding(connectedId) or nil
+        local refBld = gerenciadorEstado and gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(idConectado) or nil
         if refBld then
-            if targetX and targetY and refBld.x == targetX and refBld.y == targetY then
-                if best < 2 then best = 2 end
-            elseif refBld.x and refBld.y and IsInsideBoundingBox(buildingData, refBld.x, refBld.y) then
-                if best < 1 then best = 1 end
-            elseif targetX and targetY and IsInsideBoundingBox(refBld, targetX, targetY) then
-                if best < 1 then best = 1 end
-            elseif squareX and squareY and IsInsideBoundingBox(buildingData, squareX, squareY)
-                    and IsInsideBoundingBox(refBld, squareX, squareY) then
-                if best < 1 then best = 1 end
+            if alvoX and alvoY and refBld.x == alvoX and refBld.y == alvoY then
+                if melhorScore < 2 then melhorScore = 2 end
+            elseif refBld.x and refBld.y and EstaDentroDaCaixaDelimitadora(dadosConstrucao, refBld.x, refBld.y) then
+                if melhorScore < 1 then melhorScore = 1 end
+            elseif alvoX and alvoY and EstaDentroDaCaixaDelimitadora(refBld, alvoX, alvoY) then
+                if melhorScore < 1 then melhorScore = 1 end
+            elseif quadradoX and quadradoY and EstaDentroDaCaixaDelimitadora(dadosConstrucao, quadradoX, quadradoY)
+                    and EstaDentroDaCaixaDelimitadora(refBld, quadradoX, quadradoY) then
+                if melhorScore < 1 then melhorScore = 1 end
             end
         else
-            local cx, cy = string.match(connectedId, "^bld_(%-?%d+)_(%-?%d+)_")
+            local cx, cy = string.match(idConectado, "^bld_(%-?%d+)_(%-?%d+)_")
             cx = tonumber(cx)
             cy = tonumber(cy)
             if cx and cy then
-                if targetX and targetY and cx == targetX and cy == targetY then
-                    if best < 2 then best = 2 end
-                elseif IsInsideBoundingBox(buildingData, cx, cy) then
-                    if best < 1 then best = 1 end
+                if alvoX and alvoY and cx == alvoX and cy == alvoY then
+                    if melhorScore < 2 then melhorScore = 2 end
+                elseif EstaDentroDaCaixaDelimitadora(dadosConstrucao, cx, cy) then
+                    if melhorScore < 1 then melhorScore = 1 end
                 end
             end
         end
     end
 
-    return best
+    return melhorScore
 end
 
-local function GeneratorReferencesBuilding(generatorData, buildingData, square, stateManager)
-    return GetGeneratorBuildingMatchStrength(generatorData, buildingData, square, stateManager, nil) > 0
+--- Verifica se o gerador possui referência direta à construção.
+--- @param dadosGerador table Os dados do gerador.
+--- @param dadosConstrucao table Os dados da construção.
+--- @param quadrado any O GridSquare do gerador.
+--- @param gerenciadorEstado table O StateManager do mod.
+--- @return boolean Retorna true se houver conexão/referência.
+local function GeradorReferenciaConstrucao(dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado)
+    return ObterForcaCorrespondenciaGeradorConstrucao(dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado, nil) > 0
 end
 
-local function GetBuildingGeneratorScore(buildingData, square, stateManager)
-    if not buildingData or not stateManager then return 0 end
+--- Calcula um score de relevância do gerador para a construção.
+--- @param dadosConstrucao table Os dados da construção.
+--- @param quadrado any O GridSquare do gerador.
+--- @param gerenciadorEstado table O StateManager do mod.
+--- @return number A pontuação de relevância calculada.
+local function ObterPontuacaoGeradorConstrucao(dadosConstrucao, quadrado, gerenciadorEstado)
+    if not dadosConstrucao or not gerenciadorEstado then return 0 end
 
-    local bestScore = 0
+    local melhorScore = 0
     local GeneratorData = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
 
-    local function ConsiderGenerator(genData, livePoolId)
-        local matchStrength = GetGeneratorBuildingMatchStrength(
-            genData, buildingData, square, stateManager, livePoolId)
-        if matchStrength <= 0 then
+    local function ConsiderarGerador(dadosGerador, idPoolAtiva)
+        local forcaCorrespondencia = ObterForcaCorrespondenciaGeradorConstrucao(
+            dadosGerador, dadosConstrucao, quadrado, gerenciadorEstado, idPoolAtiva)
+        if forcaCorrespondencia <= 0 then
             return
         end
 
-        local score = matchStrength * 100
-        if IsGeneratorRunning(genData) then
+        local score = forcaCorrespondencia * 100
+        if IsGeradorFuncionando(dadosGerador) then
             score = score + 40
         else
             score = score + 5
         end
-        if livePoolId and livePoolId == buildingData.id then
+        if idPoolAtiva and idPoolAtiva == dadosConstrucao.id then
             score = score + 20
         end
 
-        if score > bestScore then
-            bestScore = score
+        if score > melhorScore then
+            melhorScore = score
         end
     end
 
-    if buildingData.connectedGenerators and GeneratorData and GeneratorData.MakeId and stateManager.GetGenerator then
-        for _, genKey in pairs(buildingData.connectedGenerators) do
-            local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+    if dadosConstrucao.connectedGenerators and GeneratorData and GeneratorData.MakeId and gerenciadorEstado.GetGenerator then
+        for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+            local gx, gy, gz = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
             if gx then
-                local gxi, gyi, gzi = tonumber(gx), tonumber(gy), tonumber(gz)
-                local genId = (gxi and gyi and gzi) and GeneratorData.MakeId(gxi, gyi, gzi) or nil
-                local genData = genId and stateManager.GetGenerator(genId) or nil
-                local genObj = (gxi and gyi and gzi) and FindGeneratorAt(gxi, gyi, gzi) or nil
-                local livePoolId = genObj and genObj:getModData() and genObj:getModData().Gen_BuildingPoolID or nil
-                if genData then
-                    ConsiderGenerator(genData, livePoolId)
-                elseif livePoolId and livePoolId == buildingData.id then
+                local geradorX, geradorY, geradorZ = tonumber(gx), tonumber(gy), tonumber(gz)
+                local idGerador = (geradorX and geradorY and geradorZ) and GeneratorData.MakeId(geradorX, geradorY, geradorZ) or nil
+                local dadosGerador = idGerador and gerenciadorEstado.GetGenerator(idGerador) or nil
+                local objetoGerador = (geradorX and geradorY and geradorZ) and LocalizarGeradorEm(geradorX, geradorY, geradorZ) or nil
+                local idPoolAtiva = objetoGerador and objetoGerador:getModData() and objetoGerador:getModData().Gen_BuildingPoolID or nil
+                
+                if dadosGerador then
+                    ConsiderarGerador(dadosGerador, idPoolAtiva)
+                elseif idPoolAtiva and idPoolAtiva == dadosConstrucao.id then
                     local score = 420
-                    if genObj and genObj:isActivated() then score = score + 40 end
-                    if score > bestScore then
-                        bestScore = score
+                    if objetoGerador and objetoGerador:isActivated() then score = score + 40 end
+                    if score > melhorScore then
+                        melhorScore = score
                     end
                 end
             end
         end
     end
 
-    if stateManager.GetAllGenerators then
-        for _, genData in pairs(stateManager.GetAllGenerators() or {}) do
-            local genObj = (genData.x ~= nil and genData.y ~= nil and genData.z ~= nil)
-                and FindGeneratorAt(genData.x, genData.y, genData.z) or nil
-            local livePoolId = genObj and genObj:getModData() and genObj:getModData().Gen_BuildingPoolID or nil
-            ConsiderGenerator(genData, livePoolId)
-            if bestScore >= 440 then
-                return bestScore
+    if gerenciadorEstado.GetAllGenerators then
+        for _, dadosGerador in pairs(gerenciadorEstado.GetAllGenerators() or {}) do
+            local objetoGerador = (dadosGerador.x ~= nil and dadosGerador.y ~= nil and dadosGerador.z ~= nil)
+                and LocalizarGeradorEm(dadosGerador.x, dadosGerador.y, dadosGerador.z) or nil
+            local idPoolAtiva = objetoGerador and objetoGerador:getModData() and objetoGerador:getModData().Gen_BuildingPoolID or nil
+            ConsiderarGerador(dadosGerador, idPoolAtiva)
+            if melhorScore >= 440 then
+                return melhorScore
             end
         end
     end
 
-    return bestScore
+    return melhorScore
 end
 
-local function ScoreBuildingCandidate(buildingData, square, isoBuilding, radius, cell, stateManager, preferredBuildingID)
-    if not buildingData or not buildingData.id then return nil end
+--- Pontua um candidato de construção a receber energia física com base no posicionamento e rede.
+--- @param dadosConstrucao table Os dados da construção.
+--- @param quadrado any O GridSquare avaliado.
+--- @param construcaoIso any A estrutura física IsoBuilding próxima.
+--- @param raio number O raio máximo.
+--- @param celula any A célula ativa.
+--- @param gerenciadorEstado table O StateManager do mod.
+--- @param idConstrucaoPreferencial string|nil O ID da construção que tem preferência de acoplamento.
+--- @return number|nil O score calculado ou nil se inválido.
+local function PontuarCandidatoConstrucao(dadosConstrucao, quadrado, construcaoIso, raio, celula, gerenciadorEstado, idConstrucaoPreferencial)
+    if not dadosConstrucao or not dadosConstrucao.id then return nil end
 
-    local bx, by = square:getX(), square:getY()
-    local dx = buildingData.x ~= nil and (buildingData.x - bx) or nil
-    local dy = buildingData.y ~= nil and (buildingData.y - by) or nil
+    local bx, by = quadrado:getX(), quadrado:getY()
+    local dx = dadosConstrucao.x ~= nil and (dadosConstrucao.x - bx) or nil
+    local dy = dadosConstrucao.y ~= nil and (dadosConstrucao.y - by) or nil
     local d2 = (dx and dy) and (dx * dx + dy * dy) or nil
-    local radiusSq = radius * radius
-    local inside = IsInsideBoundingBox(buildingData, bx, by)
-    local isoMatch = BuildingMatchesIso(buildingData, isoBuilding, cell, square:getZ())
-    local withinRadius = d2 and d2 <= radiusSq or false
+    local raioSq = raio * raio
+    local inside = EstaDentroDaCaixaDelimitadora(dadosConstrucao, bx, by)
+    local isoMatch = ConstrucaoCorrespondeAIso(dadosConstrucao, construcaoIso, celula, quadrado:getZ())
+    local withinRadius = d2 and d2 <= raioSq or false
 
     if not inside and not isoMatch and not withinRadius then
         return nil
     end
 
-    local generatorScore = GetBuildingGeneratorScore(buildingData, square, stateManager)
+    local generatorScore = ObterPontuacaoGeradorConstrucao(dadosConstrucao, quadrado, gerenciadorEstado)
     if generatorScore == 0 then
         return nil
     end
@@ -271,58 +345,69 @@ local function ScoreBuildingCandidate(buildingData, square, isoBuilding, radius,
     if inside then score = score + 200 end
     if isoMatch then score = score + 120 end
     if withinRadius and d2 then
-        score = score + math.floor((radiusSq - d2) / math.max(radius, 1))
+        score = score + math.floor((raioSq - d2) / math.max(raio, 1))
     end
     score = score + generatorScore
-    if buildingData.isPowered then score = score + 40 end
-    if preferredBuildingID and buildingData.id == preferredBuildingID then
+    if dadosConstrucao.isPowered then score = score + 40 end
+    if idConstrucaoPreferencial and dadosConstrucao.id == idConstrucaoPreferencial then
         score = score + 5
     end
 
     return score
 end
 
-local function ResolveBarrelBuilding(square, preferredBuildingID, radius)
-    radius = radius or 20
+--- Resolve a qual ID de construção lógica do StateManager um barril deve ser vinculado.
+--- @param quadrado any O GridSquare do barril.
+--- @param idConstrucaoPreferencial string|nil O ID da construção de preferência.
+--- @param raio number|nil O raio de busca (padrão: 20).
+--- @return table|nil O registro da construção correspondente ou nil.
+local function ResolverConstrucaoDoBarril(quadrado, idConstrucaoPreferencial, raio)
+    raio = raio or 20
 
-    local stateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not stateManager or not stateManager.GetAllBuildings then return nil end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado or not gerenciadorEstado.GetAllBuildings then return nil end
 
-    local buildings = stateManager.GetAllBuildings()
-    if not TableHasEntries(buildings) then return nil end
+    local construcoes = gerenciadorEstado.GetAllBuildings()
+    if not TabelaPossuiEntradas(construcoes) then return nil end
 
-    local cell = getCell and getCell()
-    if not cell or not square then return nil end
+    local celula = getCell and getCell()
+    if not celula or not quadrado then return nil end
 
-    local isoBuilding = FindNearbyIsoBuilding(cell, square, radius)
-    local bestBuilding, bestScore = nil, nil
+    local construcaoIso = LocalizarConstrucaoIsoProxima(celula, quadrado, raio)
+    local melhorConstrucao, melhorScore = nil, nil
 
-    for _, buildingData in pairs(buildings) do
-        local score = ScoreBuildingCandidate(
-            buildingData, square, isoBuilding, radius, cell, stateManager, preferredBuildingID)
+    for _, dadosConstrucao in pairs(construcoes) do
+        local score = PontuarCandidatoConstrucao(
+            dadosConstrucao, quadrado, construcaoIso, raio, celula, gerenciadorEstado, idConstrucaoPreferencial)
         if score and (
-                not bestScore
-                or score > bestScore
-                or (score == bestScore and bestBuilding and buildingData.id and bestBuilding.id
-                    and tostring(buildingData.id) < tostring(bestBuilding.id))) then
-            bestScore = score
-            bestBuilding = buildingData
+                not melhorScore
+                or score > melhorScore
+                or (score == melhorScore and melhorConstrucao and dadosConstrucao.id and melhorConstrucao.id
+                    and tostring(dadosConstrucao.id) < tostring(melhorConstrucao.id))) then
+            melhorScore = score
+            melhorConstrucao = dadosConstrucao
         end
     end
 
-    return bestBuilding
+    return melhorConstrucao
 end
 
-local function CountMapEntries(t)
-    local count = 0
-    if type(t) ~= "table" then return count end
-    for _ in pairs(t) do
-        count = count + 1
+--- Conta a quantidade de entradas em um dicionário/tabela Lua.
+--- @param tabela table A tabela a ser contada.
+--- @return number A quantidade de chaves.
+local function ContarEntradasMapa(tabela)
+    local contagem = 0
+    if type(tabela) ~= "table" then return contagem end
+    for _ in pairs(tabela) do
+        contagem = contagem + 1
     end
-    return count
+    return contagem
 end
 
-local function CopyBoundingBox(source)
+--- Cria uma cópia profunda dos dados de Bounding Box de uma construção.
+--- @param source table A tabela original.
+--- @return table|nil A cópia gerada ou nil.
+local function CopiarCaixaDelimitadora(source)
     if type(source) ~= "table" then return nil end
 
     local minX = tonumber(source.minX or source[1])
@@ -341,18 +426,26 @@ local function CopyBoundingBox(source)
     }
 end
 
-local function TableContainsValue(t, value)
-    if type(t) ~= "table" then return false end
-    for _, entry in pairs(t) do
-        if entry == value then return true end
+--- Verifica se uma tabela contém um valor específico.
+--- @param tabela table A tabela para busca.
+--- @param valor any O valor procurado.
+--- @return boolean Retorna true se o valor for encontrado.
+local function TabelaContemValor(tabela, valor)
+    if type(tabela) ~= "table" then return false end
+    for _, item in pairs(tabela) do
+        if item == valor then return true end
     end
     return false
 end
 
-local function ResolvePoolDataForBuilding(buildingID, generator)
-    local currentMD = generator and generator.getModData and generator:getModData() or nil
-    if currentMD and currentMD.LKS_EletricidadeConstrucao_PoolData then
-        return currentMD.LKS_EletricidadeConstrucao_PoolData
+--- Busca os dados de rede de energia salvos no ModData do gerador ou em geradores vizinhos vinculados.
+--- @param idConstrucao string O ID da construção.
+--- @param gerador any O objeto IsoGenerator físico.
+--- @return table|nil Os dados salvos de LKS_EletricidadeConstrucao_PoolData ou nil.
+local function ResolverDadosPoolParaConstrucao(idConstrucao, gerador)
+    local dadosModAtual = gerador and gerador.getModData and gerador:getModData() or nil
+    if dadosModAtual and dadosModAtual.LKS_EletricidadeConstrucao_PoolData then
+        return dadosModAtual.LKS_EletricidadeConstrucao_PoolData
     end
 
     local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
@@ -360,21 +453,21 @@ local function ResolvePoolDataForBuilding(buildingID, generator)
         return nil
     end
 
-    local currentX = generator and generator.getX and generator:getX() or nil
-    local currentY = generator and generator.getY and generator:getY() or nil
-    local currentZ = generator and generator.getZ and generator:getZ() or nil
+    local generatorX = gerador and gerador.getX and gerador:getX() or nil
+    local generatorY = gerador and gerador.getY and gerador:getY() or nil
+    local generatorZ = gerador and gerador.getZ and gerador:getZ() or nil
 
-    for _, genData in pairs(StateManager.GetAllGenerators() or {}) do
-        if genData and TableContainsValue(genData.connectedBuildings, buildingID) then
-            local gx = tonumber(genData.x)
-            local gy = tonumber(genData.y)
-            local gz = tonumber(genData.z) or 0
-            if not (gx == currentX and gy == currentY and gz == currentZ) then
-                local obj = FindGeneratorAt(gx, gy, gz)
-                if obj then
-                    local objMD = obj:getModData()
-                    if objMD and objMD.LKS_EletricidadeConstrucao_PoolData then
-                        return objMD.LKS_EletricidadeConstrucao_PoolData
+    for _, dadosGerador in pairs(StateManager.GetAllGenerators() or {}) do
+        if dadosGerador and TabelaContemValor(dadosGerador.connectedBuildings, idConstrucao) then
+            local gx = tonumber(dadosGerador.x)
+            local gy = tonumber(dadosGerador.y)
+            local gz = tonumber(dadosGerador.z) or 0
+            if not (gx == generatorX and gy == generatorY and gz == generatorZ) then
+                local objeto = LocalizarGeradorEm(gx, gy, gz)
+                if objeto then
+                    local dadosModObjeto = objeto:getModData()
+                    if dadosModObjeto and dadosModObjeto.LKS_EletricidadeConstrucao_PoolData then
+                        return dadosModObjeto.LKS_EletricidadeConstrucao_PoolData
                     end
                 end
             end
@@ -384,19 +477,28 @@ local function ResolvePoolDataForBuilding(buildingID, generator)
     return nil
 end
 
-local function RestoreBuildingFromPoolData(buildingID, stateManager, poolData, anchorX, anchorY, anchorZ, reason)
-    if not poolData then return nil end
+--- Reconstrói o estado lógico de uma construção no StateManager a partir dos metadados de Pool salvos no gerador.
+--- @param idConstrucao string O ID da construção.
+--- @param stateManager table O StateManager do mod.
+--- @param dadosPool table Os dados recuperados do gerador.
+--- @param anchorX number Coordenada X da âncora.
+--- @param anchorY number Coordenada Y da âncora.
+--- @param anchorZ number Coordenada Z da âncora.
+--- @param motivo string Identificador do motivo de restauração.
+--- @return table|nil A tabela do estado reconstruído ou nil.
+local function RestaurarConstrucaoDosDadosPool(idConstrucao, stateManager, dadosPool, anchorX, anchorY, anchorZ, motivo)
+    if not dadosPool then return nil end
 
-    local buildingX = poolData.x
-    local buildingY = poolData.y
-    local buildingZ = poolData.z
+    local buildingX = dadosPool.x
+    local buildingY = dadosPool.y
+    local buildingZ = dadosPool.z
     if buildingX == nil then buildingX = anchorX end
     if buildingY == nil then buildingY = anchorY end
     if buildingZ == nil then buildingZ = anchorZ or 0 end
     if buildingX == nil or buildingY == nil then return nil end
 
-    local buildingData = {
-        id = buildingID,
+    local dadosConstrucao = {
+        id = idConstrucao,
         x = buildingX,
         y = buildingY,
         z = buildingZ,
@@ -405,88 +507,93 @@ local function RestoreBuildingFromPoolData(buildingID, stateManager, poolData, a
         totalPowerDraw = 0,
         heatingPowerDraw = 0,
         isPowered = false,
-        borderRadius = tonumber(poolData.borderRadius) or 30,
+        borderRadius = tonumber(dadosPool.borderRadius) or 30,
         lastScanTime = getTimestampMs(),
-        boundingBox = CopyBoundingBox(poolData.boundingBox),
-        isRVInterior = poolData.isRVInterior == true,
+        boundingBox = CopiarCaixaDelimitadora(dadosPool.boundingBox),
+        isRVInterior = dadosPool.isRVInterior == true,
         heatingEnabled = false,
         heatingSourceCount = 0,
         heatingTargetTemp = 22,
         connectedGenerators = {},
     }
-    stateManager.AddBuilding(buildingData)
+    stateManager.AddBuilding(dadosConstrucao)
 
     LKS_EletricidadeConstrucao.Core.Logger.Warn(
-        string.format("[StateRepair] %s: restored building %s from LKS_EletricidadeConstrucao_PoolData%s",
-            tostring(reason or "unknown"), tostring(buildingID),
-            buildingData.boundingBox and " with bounding box" or ""),
+        string.format("[StateRepair] %s: restaurada construção %s a partir de LKS_EletricidadeConstrucao_PoolData%s",
+            tostring(motivo or "desconhecido"), tostring(idConstrucao),
+            dadosConstrucao.boundingBox and " com caixa delimitadora" or ""),
         "ServerCommands")
 
-    return stateManager.GetBuilding and stateManager.GetBuilding(buildingID) or buildingData
+    return stateManager.GetBuilding and stateManager.GetBuilding(idConstrucao) or dadosConstrucao
 end
 
-local function EnsureBuildingState(buildingID, generator, reason)
+--- Garante que a construção referenciada exista no StateManager do servidor (restaura se deletada ou corrompida).
+--- @param idConstrucao string O ID da construção.
+--- @param gerador any O objeto IsoGenerator associado.
+--- @param motivo string Identificador do motivo.
+--- @return table|nil O estado da construção garantido ou nil.
+local function GarantirEstadoConstrucao(idConstrucao, gerador, motivo)
     local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not StateManager or not buildingID then return nil end
+    if not StateManager or not idConstrucao then return nil end
 
-    local existing = StateManager.GetBuilding and StateManager.GetBuilding(buildingID) or nil
-    local poolData = ResolvePoolDataForBuilding(buildingID, generator)
-    local restoredBoundingBox = CopyBoundingBox(poolData and poolData.boundingBox)
+    local existente = StateManager.GetBuilding and StateManager.GetBuilding(idConstrucao) or nil
+    local dadosPool = ResolverDadosPoolParaConstrucao(idConstrucao, gerador)
+    local caixaDelimitadoraRestaurada = CopiarCaixaDelimitadora(dadosPool and dadosPool.boundingBox)
 
-    if existing then
-        local repaired = false
-        if restoredBoundingBox and not existing.boundingBox then
-            existing.boundingBox = restoredBoundingBox
-            repaired = true
+    if existente then
+        local reparado = false
+        if caixaDelimitadoraRestaurada and not existente.boundingBox then
+            existente.boundingBox = caixaDelimitadoraRestaurada
+            reparado = true
         end
-        if poolData then
-            if existing.x == nil and poolData.x ~= nil then existing.x = poolData.x; repaired = true end
-            if existing.y == nil and poolData.y ~= nil then existing.y = poolData.y; repaired = true end
-            if existing.z == nil and poolData.z ~= nil then existing.z = poolData.z; repaired = true end
-            if (not existing.borderRadius or existing.borderRadius <= 0) and poolData.borderRadius ~= nil then
-                existing.borderRadius = tonumber(poolData.borderRadius) or existing.borderRadius
-                repaired = true
+        if dadosPool then
+            if existente.x == nil and dadosPool.x ~= nil then existente.x = dadosPool.x; reparado = true end
+            if existente.y == nil and dadosPool.y ~= nil then existente.y = dadosPool.y; reparado = true end
+            if existente.z == nil and dadosPool.z ~= nil then existente.z = dadosPool.z; reparado = true end
+            if (not existente.borderRadius or existente.borderRadius <= 0) and dadosPool.borderRadius ~= nil then
+                existente.borderRadius = tonumber(dadosPool.borderRadius) or existente.borderRadius
+                reparado = true
             end
         end
-        if repaired and StateManager.MarkDirty then
+        if reparado and StateManager.MarkDirty then
             StateManager.MarkDirty()
         end
-        return existing
+        return existente
     end
 
-    local bx, by, bz = string.match(tostring(buildingID), "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+    local bx, by, bz = string.match(tostring(idConstrucao), "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
     bx, by, bz = tonumber(bx), tonumber(by), tonumber(bz)
 
-    if not (bx and by) and poolData and poolData.x ~= nil and poolData.y ~= nil then
-        bx = poolData.x
-        by = poolData.y
-        bz = poolData.z or bz or (generator and generator:getZ()) or 0
+    if not (bx and by) and dadosPool and dadosPool.x ~= nil and dadosPool.y ~= nil then
+        bx = dadosPool.x
+        by = dadosPool.y
+        bz = dadosPool.z or bz or (gerador and gerador:getZ()) or 0
     end
 
-    if poolData then
-        existing = RestoreBuildingFromPoolData(buildingID, StateManager, poolData, bx, by, bz, reason)
+    if dadosPool then
+        existente = RestaurarConstrucaoDosDadosPool(idConstrucao, StateManager, dadosPool, bx, by, bz, motivo)
     end
 
     local Scanner = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
     if bx and by and bz and Scanner and Scanner.ScanBuilding then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("[StateRepair] %s: verifying building %s from anchor (%d,%d,%d)",
-                tostring(reason or "unknown"), tostring(buildingID), bx, by, bz),
+            string.format("[StateRepair] %s: verificando construção %s a partir da âncora (%d,%d,%d)",
+                tostring(motivo or "desconhecido"), tostring(idConstrucao), bx, by, bz),
             "ServerCommands")
-        local ok, scanned = pcall(Scanner.ScanBuilding, bx, by, bz, buildingID)
-        if ok and scanned then
-            existing = scanned
+        local ok, escaneado = pcall(Scanner.ScanBuilding, bx, by, bz, idConstrucao)
+        if ok and escaneado then
+            existente = escaneado
         else
-            existing = StateManager.GetBuilding and StateManager.GetBuilding(buildingID) or existing
+            existente = StateManager.GetBuilding and StateManager.GetBuilding(idConstrucao) or existente
         end
-        if existing then
-            return existing
+        if existente then
+            return existente
         end
     end
 
     if bx and by and bz and LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Building then
-        local placeholder = {
-            id = buildingID,
+        local dadosProvisorios = {
+            id = idConstrucao,
             x = bx,
             y = by,
             z = bz,
@@ -504,25 +611,25 @@ local function EnsureBuildingState(buildingID, generator, reason)
             heatingTargetTemp = 22,
             connectedGenerators = {},
         }
-        StateManager.AddBuilding(placeholder)
+        StateManager.AddBuilding(dadosProvisorios)
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("[StateRepair] %s: created placeholder building state for %s",
-                tostring(reason or "unknown"), tostring(buildingID)),
+            string.format("[StateRepair] %s: criado estado provisório de construção para %s",
+                tostring(motivo or "desconhecido"), tostring(idConstrucao)),
             "ServerCommands")
-        existing = StateManager.GetBuilding and StateManager.GetBuilding(buildingID) or placeholder
+        existente = StateManager.GetBuilding and StateManager.GetBuilding(idConstrucao) or dadosProvisorios
     end
 
-    if existing and generator and generator.getSquare then
-        local sq = generator:getSquare()
-        if sq then
-            local genKey = string.format("%d_%d_%d", sq:getX(), sq:getY(), sq:getZ())
-            existing.connectedGenerators = existing.connectedGenerators or {}
+    if existente and gerador and gerador.getSquare then
+        local quadrado = gerador:getSquare()
+        if quadrado then
+            local genKey = string.format("%d_%d_%d", quadrado:getX(), quadrado:getY(), quadrado:getZ())
+            existente.connectedGenerators = existente.connectedGenerators or {}
             local hasGen = false
-            for _, gk in pairs(existing.connectedGenerators) do
+            for _, gk in pairs(existente.connectedGenerators) do
                 if gk == genKey then hasGen = true; break end
             end
             if not hasGen then
-                table.insert(existing.connectedGenerators, genKey)
+                table.insert(existente.connectedGenerators, genKey)
                 if StateManager.MarkDirty then
                     StateManager.MarkDirty()
                 end
@@ -530,16 +637,24 @@ local function EnsureBuildingState(buildingID, generator, reason)
         end
     end
 
-    return existing
+    return existente
 end
 
-local function WarnInvalidRequest(command, reason)
+--- Imprime um aviso de requisição rejeitada no logger do servidor.
+--- @param command string O nome do comando.
+--- @param reason string O motivo de rejeição.
+local function AvisarRequisicaoInvalida(command, reason)
     LKS_EletricidadeConstrucao.Core.Logger.Warn(
-        string.format("%s rejected: %s", tostring(command), tostring(reason)),
+        string.format("Comando %s rejeitado: %s", tostring(command), tostring(reason)),
         "ServerCommands")
 end
 
-local function SendActionResult(player, kind, success, args)
+--- Envia uma notificação de resultado de ação (ActionResult) ao cliente.
+--- @param player any O jogador destinatário.
+--- @param kind string O tipo de comando.
+--- @param success boolean Status de sucesso.
+--- @param args table|nil Dados adicionais do payload.
+local function EnviarResultadoAcao(player, kind, success, args)
     if not player or not sendServerCommand then return end
 
     local payload = args or {}
@@ -549,134 +664,148 @@ local function SendActionResult(player, kind, success, args)
     sendServerCommand(player, "LKS_EletricidadeConstrucao", "ActionResult", payload)
 end
 
-local function RejectRequest(player, command, reason, args)
-    WarnInvalidRequest(command, reason)
+--- Rejeita a requisição e envia uma resposta com falha e mensagem legível ao jogador.
+--- @param player any O jogador destinatário.
+--- @param command string O nome do comando.
+--- @param reason string O motivo técnico interno.
+--- @param args table|nil O payload com dados do comando.
+local function RejeitarRequisicao(player, command, reason, args)
+    AvisarRequisicaoInvalida(command, reason)
     args = args or {}
     args.message = args.message or tostring(reason)
-    SendActionResult(player, command, false, args)
+    EnviarResultadoAcao(player, command, false, args)
 end
 
-local function OnClientCommand(module, command, player, args)
+-- ============================================================================
+-- PROCESSAMENTO DE COMANDOS DE REDE (MULTIPLAYER)
+-- ============================================================================
+
+--- Manipula e processa os comandos enviados pelos clientes.
+--- @param module string O módulo identificador.
+--- @param command string O comando recebido.
+--- @param player any O jogador que solicitou o comando.
+--- @param args table Argumentos contidos na requisição.
+local function AoReceberComandoCliente(module, command, player, args)
     if module ~= "LKS_EletricidadeConstrucao" then return end
 
     if command == "ActivateGenerator" then
         if not args or args.genX == nil or args.genY == nil or args.genZ == nil then
-            RejectRequest(player, command, "missing generator coordinates", {
-                message = "Invalid generator request",
+            RejeitarRequisicao(player, command, "coordenadas do gerador ausentes", {
+                message = "Requisição de gerador inválida",
             })
             return
         end
 
-        local generator = FindGeneratorAt(args.genX, args.genY, args.genZ)
-        if not generator then
-            RejectRequest(player, command, "generator not found", {
+        local gerador = LocalizarGeradorEm(args.genX, args.genY, args.genZ)
+        if not gerador then
+            RejeitarRequisicao(player, command, "gerador não encontrado", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator not available",
+                message = "Gerador não disponível",
             })
             return
         end
-        if not IsPlayerNearGenerator(player, generator) then
-            RejectRequest(player, command, "player not near generator", {
+        if not IsJogadorProximoAoGerador(player, gerador) then
+            RejeitarRequisicao(player, command, "jogador não está próximo ao gerador", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Move closer to the generator",
+                message = "Aproxime-se do gerador",
             })
             return
         end
 
         local actionClass = LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.ActivateGenerator
         if not actionClass or not actionClass.Execute or not actionClass.new then
-            RejectRequest(player, command, "activate action not loaded", {
+            RejeitarRequisicao(player, command, "ação de ativação não carregada", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator action is unavailable",
+                message = "Ação do gerador indisponível",
             })
             return
         end
 
         local activate = args.activate == true
-        local action = actionClass:new(player, generator, activate)
+        local action = actionClass:new(player, gerador, activate)
         if action.isValid and not action:isValid() then
-            RejectRequest(player, command, "generator action is not valid", {
+            RejeitarRequisicao(player, command, "ação do gerador inválida", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = activate and "Generator cannot be turned on" or "Generator cannot be turned off",
+                message = activate and "O gerador não pode ser ligado" or "O gerador não pode ser desligado",
             })
             return
         end
 
         local ok, err = pcall(function()
-            actionClass.Execute(generator, activate)
+            actionClass.Execute(gerador, activate)
         end)
         if not ok then
-            RejectRequest(player, command, err, {
+            RejeitarRequisicao(player, command, err, {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator action failed",
+                message = "Ação do gerador falhou",
             })
             return
         end
 
-        local success = generator:isActivated() == activate
-        SendActionResult(player, command, success, {
+        local sucesso = gerador:isActivated() == activate
+        EnviarResultadoAcao(player, command, sucesso, {
             genX = args.genX,
             genY = args.genY,
             genZ = args.genZ,
             activate = activate,
-            message = success and nil or "Generator state did not change",
+            message = sucesso and nil or "O estado do gerador não foi alterado",
         })
     elseif command == "ConnectBuilding" then
         if not args or args.genX == nil or args.genY == nil or args.genZ == nil then
-            RejectRequest(player, command, "missing generator coordinates", {
-                message = "Invalid generator request",
+            RejeitarRequisicao(player, command, "coordenadas do gerador ausentes", {
+                message = "Requisição de gerador inválida",
             })
             return
         end
 
-        local generator = FindGeneratorAt(args.genX, args.genY, args.genZ)
-        if not generator then
-            RejectRequest(player, command, "generator not found", {
+        local gerador = LocalizarGeradorEm(args.genX, args.genY, args.genZ)
+        if not gerador then
+            RejeitarRequisicao(player, command, "gerador não encontrado", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator not available",
+                message = "Gerador não disponível",
             })
             return
         end
-        if not IsPlayerNearGenerator(player, generator) then
-            RejectRequest(player, command, "player not near generator", {
+        if not IsJogadorProximoAoGerador(player, gerador) then
+            RejeitarRequisicao(player, command, "jogador não está próximo ao gerador", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Move closer to the generator",
+                message = "Aproxime-se do gerador",
             })
             return
         end
 
         local actionClass = LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.ConnectBuilding
         if not actionClass or not actionClass.new then
-            RejectRequest(player, command, "connect action not loaded", {
+            RejeitarRequisicao(player, command, "ação de conexão não carregada", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Connect action is unavailable",
+                message = "Ação de conexão indisponível",
             })
             return
         end
 
-        local action = actionClass:new(player, generator)
+        local action = actionClass:new(player, gerador)
         if action.isValid and not action:isValid() then
-            RejectRequest(player, command, "connect action is not valid", {
+            RejeitarRequisicao(player, command, "ação de conexão inválida", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator is already connected",
+                message = "O gerador já está conectado",
             })
             return
         end
@@ -685,18 +814,18 @@ local function OnClientCommand(module, command, player, args)
             action:complete()
         end)
         if not ok then
-            RejectRequest(player, command, err, {
+            RejeitarRequisicao(player, command, err, {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Could not connect generator",
+                message = "Não foi possível conectar o gerador",
             })
             return
         end
 
-        local buildingID = generator:getModData().Gen_BuildingPoolID
-        local repairedBuilding = buildingID and EnsureBuildingState(buildingID, generator, "ConnectBuilding") or nil
-        local genSquare = generator:getSquare()
+        local buildingID = gerador:getModData().Gen_BuildingPoolID
+        local repairedBuilding = buildingID and GarantirEstadoConstrucao(buildingID, gerador, "ConnectBuilding") or nil
+        local genSquare = gerador:getSquare()
         if genSquare and buildingID then
             local genKey = string.format("%d_%d_%d", genSquare:getX(), genSquare:getY(), genSquare:getZ())
             local genId = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
@@ -704,67 +833,67 @@ local function OnClientCommand(module, command, player, args)
                 and LKS_EletricidadeConstrucao.Data.Generator.MakeId(genSquare:getX(), genSquare:getY(), genSquare:getZ())
             local genData = genId and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
                 and LKS_EletricidadeConstrucao.Core.StateManager.GetGenerator and LKS_EletricidadeConstrucao.Core.StateManager.GetGenerator(genId) or nil
-            local bldGenCount = CountMapEntries(repairedBuilding and repairedBuilding.connectedGenerators)
-            local genBldCount = CountMapEntries(genData and genData.connectedBuildings)
+            local bldGenCount = ContarEntradasMapa(repairedBuilding and repairedBuilding.connectedGenerators)
+            local genBldCount = ContarEntradasMapa(genData and genData.connectedBuildings)
             LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                string.format("[ConnectDebug] gen=%s pool=%s stateBuilding=%s building.connectedGenerators=%d gen.connectedBuildings=%d",
+                string.format("[ConnectDebug] gerador=%s pool=%s estadoConstrucaoValido=%s building.connectedGenerators=%d gen.connectedBuildings=%d",
                     tostring(genId or genKey), tostring(buildingID), tostring(repairedBuilding ~= nil), bldGenCount, genBldCount),
                 "ServerCommands")
         end
-        SendActionResult(player, command, buildingID ~= nil, {
+        EnviarResultadoAcao(player, command, buildingID ~= nil, {
             genX = args.genX,
             genY = args.genY,
             genZ = args.genZ,
             buildingID = buildingID,
-            message = buildingID and nil or "Could not connect generator to a building",
+            message = buildingID and nil or "Não foi possível conectar o gerador a uma construção",
             messageKey = buildingID and "IGUI_ConnectedToBuilding" or nil,
         })
     elseif command == "DisconnectBuilding" then
         if not args or args.genX == nil or args.genY == nil or args.genZ == nil then
-            RejectRequest(player, command, "missing generator coordinates", {
-                message = "Invalid generator request",
+            RejeitarRequisicao(player, command, "coordenadas do gerador ausentes", {
+                message = "Requisição de gerador inválida",
             })
             return
         end
 
-        local generator = FindGeneratorAt(args.genX, args.genY, args.genZ)
-        if not generator then
-            RejectRequest(player, command, "generator not found", {
+        local gerador = LocalizarGeradorEm(args.genX, args.genY, args.genZ)
+        if not gerador then
+            RejeitarRequisicao(player, command, "gerador não encontrado", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator not available",
+                message = "Gerador não disponível",
             })
             return
         end
-        if not IsPlayerNearGenerator(player, generator) then
-            RejectRequest(player, command, "player not near generator", {
+        if not IsJogadorProximoAoGerador(player, gerador) then
+            RejeitarRequisicao(player, command, "jogador não está próximo ao gerador", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Move closer to the generator",
+                message = "Aproxime-se do gerador",
             })
             return
         end
 
         local actionClass = LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.DisconnectBuilding
         if not actionClass or not actionClass.new then
-            RejectRequest(player, command, "disconnect action not loaded", {
+            RejeitarRequisicao(player, command, "ação de desconexão não carregada", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Disconnect action is unavailable",
+                message = "Ação de desconexão indisponível",
             })
             return
         end
 
-        local action = actionClass:new(player, generator)
+        local action = actionClass:new(player, gerador)
         if action.isValid and not action:isValid() then
-            RejectRequest(player, command, "disconnect action is not valid", {
+            RejeitarRequisicao(player, command, "ação de desconexão inválida", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator is not connected to a building",
+                message = "O gerador não está conectado a uma construção",
             })
             return
         end
@@ -773,92 +902,91 @@ local function OnClientCommand(module, command, player, args)
             action:complete()
         end)
         if not ok then
-            RejectRequest(player, command, err, {
+            RejeitarRequisicao(player, command, err, {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Could not disconnect generator",
+                message = "Não foi possível desconectar o gerador",
             })
             return
         end
 
-        local buildingID = generator:getModData().Gen_BuildingPoolID
-        SendActionResult(player, command, buildingID == nil, {
+        local buildingID = gerador:getModData().Gen_BuildingPoolID
+        EnviarResultadoAcao(player, command, buildingID == nil, {
             genX = args.genX,
             genY = args.genY,
             genZ = args.genZ,
-            message = (buildingID == nil) and nil or "Generator is still connected",
+            message = (buildingID == nil) and nil or "O gerador ainda está conectado",
             messageKey = (buildingID == nil) and "IGUI_DisconnectedFromBuilding" or nil,
         })
     elseif command == "BarrelLink" then
-        print(string.format("[LKS_EletricidadeConstrucao_BarrelLink] request bx=%s by=%s bz=%s buildingID=%s linking=%s",
+        print(string.format("[LKS_EletricidadeConstrucao_BarrelLink] requisicao bx=%s by=%s bz=%s buildingID=%s vinculando=%s",
             tostring(args and args.bx), tostring(args and args.by), tostring(args and args.bz),
             tostring(args and args.buildingID), tostring(args and args.linking == true)))
         if not args or not args.bx then
-            RejectRequest(player, command, "missing barrel coordinates", {
-                message = "Invalid barrel request",
+            RejeitarRequisicao(player, command, "coordenadas do barril ausentes", {
+                message = "Requisição de barril inválida",
             })
             return
         end
-        local Barrels = LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels
-        if not Barrels then
-            RejectRequest(player, command, "barrel system not loaded", {
-                message = "Fuel barrel system is unavailable",
-            })
-            return
-        end
-
-        local sq = getCell():getGridSquare(args.bx, args.by, args.bz)
-        if not sq then
-            RejectRequest(player, command, "barrel square not found", {
-                bx = args.bx,
-                by = args.by,
-                bz = args.bz,
-                message = "Barrel is not loaded",
-            })
-            return
-        end
-        if not IsPlayerNearSquare(player, sq, 2) then
-            RejectRequest(player, command, "player not near barrel", {
-                bx = args.bx,
-                by = args.by,
-                bz = args.bz,
-                message = "Move closer to the barrel",
+        local Barris = LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels
+        if not Barris then
+            RejeitarRequisicao(player, command, "sistema de barris não carregado", {
+                message = "O sistema de barris de combustível está indisponível",
             })
             return
         end
 
-        -- Find barrel on square
-        local barrel = nil
-        local objs   = sq:getObjects()
-        for i = 0, objs:size() - 1 do
-            local obj = objs:get(i)
-            if obj and Barrels.IsLinkable(obj) then
-                barrel = obj
+        local quadrado = getCell():getGridSquare(args.bx, args.by, args.bz)
+        if not quadrado then
+            RejeitarRequisicao(player, command, "quadrado do barril não encontrado", {
+                bx = args.bx,
+                by = args.by,
+                bz = args.bz,
+                message = "O barril não está carregado",
+            })
+            return
+        end
+        if not IsJogadorProximoAoQuadrado(player, quadrado, 2) then
+            RejeitarRequisicao(player, command, "jogador não está próximo ao barril", {
+                bx = args.bx,
+                by = args.by,
+                bz = args.bz,
+                message = "Aproxime-se do barril",
+            })
+            return
+        end
+
+        local barril = nil
+        local objetos = quadrado:getObjects()
+        for i = 0, objetos:size() - 1 do
+            local objeto = objetos:get(i)
+            if objeto and Barris.IsLinkable(objeto) then
+                barril = objeto
                 break
             end
         end
 
-        if not barrel then
-            RejectRequest(player, command, "no linkable barrel on square", {
+        if not barril then
+            RejeitarRequisicao(player, command, "nenhum barril conectável no quadrado", {
                 bx = args.bx,
                 by = args.by,
                 bz = args.bz,
-                message = "No linkable barrel found",
+                message = "Nenhum barril conectável encontrado",
             })
             return
         end
 
-        local resolvedBuildingID = nil
+        local idConstrucaoResolvida = nil
         if args.linking then
-            local buildingData = ResolveBarrelBuilding(sq, nil, 20)
-            if not buildingData then
-                local repaired = nil
-                local cell = getCell and getCell()
-                if cell then
+            local dadosConstrucao = ResolverConstrucaoDoBarril(quadrado, nil, 20)
+            if not dadosConstrucao then
+                local reparado = nil
+                local celula = getCell and getCell()
+                if celula then
                     for dx = -20, 20 do
                         for dy = -20, 20 do
-                            local gsq = cell:getGridSquare(args.bx + dx, args.by + dy, args.bz)
+                            local gsq = celula:getGridSquare(args.bx + dx, args.by + dy, args.bz)
                             if gsq then
                                 local objs = gsq:getObjects()
                                 if objs then
@@ -867,101 +995,95 @@ local function OnClientCommand(module, command, player, args)
                                         if obj and instanceof(obj, "IsoGenerator") then
                                             local poolId = obj:getModData() and obj:getModData().Gen_BuildingPoolID or nil
                                             if poolId then
-                                                repaired = EnsureBuildingState(poolId, obj, "BarrelLink")
-                                                if repaired then break end
+                                                reparado = GarantirEstadoConstrucao(poolId, obj, "BarrelLink")
+                                                if reparado then break end
                                             end
                                         end
                                     end
                                 end
                             end
-                            if repaired then break end
+                            if reparado then break end
                         end
-                        if repaired then break end
+                        if reparado then break end
                     end
                 end
-                if repaired then
-                    buildingData = ResolveBarrelBuilding(sq, repaired.id, 20)
+                if reparado then
+                    dadosConstrucao = ResolverConstrucaoDoBarril(quadrado, reparado.id, 20)
                 end
             end
-            if not buildingData then
+            if not dadosConstrucao then
                 local stateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-                local buildingCount = stateManager and stateManager.GetAllBuildings and CountMapEntries(stateManager.GetAllBuildings() or {}) or 0
+                local totalConstrucoes = stateManager and stateManager.GetAllBuildings and ContarEntradasMapa(stateManager.GetAllBuildings() or {}) or 0
                 LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                    string.format("No building resolved for barrel (%d,%d,%d); buildingsInState=%d",
-                        args.bx, args.by, args.bz, buildingCount),
+                    string.format("Nenhuma construção associada para o barril (%d,%d,%d); construcoesNoEstado=%d",
+                        args.bx, args.by, args.bz, totalConstrucoes),
                     "ServerCommands")
-                RejectRequest(player, command, "building not found for barrel link", {
+                RejeitarRequisicao(player, command, "construção não encontrada para o link do barril", {
                     bx = args.bx,
                     by = args.by,
                     bz = args.bz,
-                    message = "No valid generator pool found for this barrel",
+                    message = "Nenhuma rede de gerador válida encontrada para este barril",
                 })
                 return
             end
-            resolvedBuildingID = buildingData.id
+            idConstrucaoResolvida = dadosConstrucao.id
         else
-            resolvedBuildingID = (Barrels.GetLinkedBuilding and Barrels.GetLinkedBuilding(barrel)) or args.buildingID
+            idConstrucaoResolvida = (Barris.GetLinkedBuilding and Barris.GetLinkedBuilding(barril)) or args.buildingID
         end
 
         if args.linking then
-            local ok, err = Barrels.Link(barrel, resolvedBuildingID)
+            local ok, err = Barris.Link(barril, idConstrucaoResolvida)
             if not ok then
-                RejectRequest(player, command, err, {
+                RejeitarRequisicao(player, command, err, {
                     bx = args.bx,
                     by = args.by,
                     bz = args.bz,
-                    message = "Could not link barrel",
+                    message = "Não foi possível conectar o barril",
                 })
                 return
             end
         else
-            Barrels.Unlink(barrel, resolvedBuildingID)
+            Barris.Unlink(barril, idConstrucaoResolvida)
         end
 
-        local Dist = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-        if Dist and resolvedBuildingID then
+        local Distribuidor = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+        if Distribuidor and idConstrucaoResolvida then
             pcall(function()
-                if Dist.RefreshBuildingStats then
-                    Dist.RefreshBuildingStats(resolvedBuildingID)
-                elseif Dist.ForceUpdateBuilding then
-                    Dist.ForceUpdateBuilding(resolvedBuildingID)
-                elseif Dist.ForceUpdate then
-                    Dist.ForceUpdate()
+                if Distribuidor.RefreshBuildingStats then
+                    Distribuidor.RefreshBuildingStats(idConstrucaoResolvida)
+                elseif Distribuidor.ForceUpdateBuilding then
+                    Distribuidor.ForceUpdateBuilding(idConstrucaoResolvida)
+                elseif Distribuidor.ForceUpdate then
+                    Distribuidor.ForceUpdate()
                 end
             end)
         end
 
-        SendActionResult(player, command, true, {
+        EnviarResultadoAcao(player, command, true, {
             bx = args.bx,
             by = args.by,
             bz = args.bz,
-            buildingID = resolvedBuildingID,
+            buildingID = idConstrucaoResolvida,
             linking = args.linking == true,
             messageKey = args.linking and "IGUI_LKS_EletricidadeConstrucao_BarrelLinked" or "IGUI_LKS_EletricidadeConstrucao_BarrelUnlinked",
         })
     elseif command == "ForceDist" then
-        -- Force a one-shot distributor pass to refresh Gen_Stats_* and active consumers
-        local Dist = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-        if not Dist or not args then return end
+        local Distribuidor = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+        if not Distribuidor or not args then return end
         if args.buildingID then
-            EnsureBuildingState(args.buildingID, nil, "ForceDist")
+            GarantirEstadoConstrucao(args.buildingID, nil, "ForceDist")
         end
-        if args.buildingID and Dist.RefreshBuildingStats then
-            Dist.RefreshBuildingStats(args.buildingID)
-        elseif args.buildingID and Dist.ForceUpdateBuilding then
-            Dist.ForceUpdateBuilding(args.buildingID)
-        elseif Dist.ForceUpdate then
-            Dist.ForceUpdate()
+        if args.buildingID and Distribuidor.RefreshBuildingStats then
+            Distribuidor.RefreshBuildingStats(args.buildingID)
+        elseif args.buildingID and Distribuidor.ForceUpdateBuilding then
+            Distribuidor.ForceUpdateBuilding(args.buildingID)
+        elseif Distribuidor.ForceUpdate then
+            Distribuidor.ForceUpdate()
         end
     elseif command == "HeatingToggle" then
-        -- Sync HeatingEnabled to GeneratorData (GlobalModData) and BuildingData immediately
-        -- when toggled in UI.  Both must be updated together so CalculateFuelConsumption
-        -- (which reads buildingData.heatingEnabled) and the FuelManager fallback path
-        -- (which reads genData.heatingEnabled) both reflect the change without waiting
-        -- for the next EveryOneMinute Heating.SyncToGenerators pass.
         if not args or not args.genX then
-            RejectRequest(player, command, "missing generator coordinates", {
-                message = "Invalid heating request",
+            RejeitarRequisicao(player, command, "coordenadas do gerador ausentes", {
+                message = "Requisição de aquecimento inválida",
             })
             return
         end
@@ -969,23 +1091,23 @@ local function OnClientCommand(module, command, player, args)
         local GenData      = LKS_EletricidadeConstrucao.Data.Generator
         if not StateManager or not GenData then return end
 
-        local generator = FindGeneratorAt(args.genX, args.genY, args.genZ)
-        if not generator then
-            RejectRequest(player, command, "generator not found", {
+        local gerador = LocalizarGeradorEm(args.genX, args.genY, args.genZ)
+        if not gerador then
+            RejeitarRequisicao(player, command, "gerador não encontrado", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Generator not available",
+                message = "Gerador não disponível",
             })
             return
         end
-        if not IsPlayerNearHeatingAnchor(player, args)
-                and not IsPlayerNearGenerator(player, generator) then
-            RejectRequest(player, command, "player not near generator", {
+        if not IsJogadorProximoAncoraAquecimento(player, args)
+                and not IsJogadorProximoAoGerador(player, gerador) then
+            RejeitarRequisicao(player, command, "jogador não está próximo ao gerador", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Move closer to the building switch or generator",
+                message = "Aproxime-se do interruptor do prédio ou do gerador",
             })
             return
         end
@@ -993,11 +1115,11 @@ local function OnClientCommand(module, command, player, args)
         local genId   = GenData.MakeId(args.genX, args.genY, args.genZ)
         local genData = StateManager.GetGenerator(genId)
         if not genData then
-            RejectRequest(player, command, "generator not found in state", {
+            RejeitarRequisicao(player, command, "gerador não encontrado no estado", {
                 genX = args.genX,
                 genY = args.genY,
                 genZ = args.genZ,
-                message = "Heating data is unavailable",
+                message = "Os dados de aquecimento estão indisponíveis",
             })
             return
         end
@@ -1006,17 +1128,15 @@ local function OnClientCommand(module, command, player, args)
         local srcCount   = math.max(0, tonumber(args.sourceCount) or 0)
         local targetTemp = math.max(15, math.min(30, tonumber(args.targetTemp) or 22))
 
-        -- 1. Update GeneratorData (used by FuelManager off-chunk fallback)
+        -- 1. Atualiza dados lógicos do gerador
         genData.heatingEnabled    = enabled
         genData.heatingSourceCount = srcCount
         genData.heatingTargetTemp  = targetTemp
 
-        -- 2. Update every BuildingData connected to this generator so
-        --    CalculateFuelConsumption picks up the change immediately.
-        --    connectedBuildings is a Kahlua-deserialized table → use pairs.
+        -- 2. Atualiza todas as construções vinculadas a este gerador
         if genData.connectedBuildings then
-            for _, buildingId in pairs(genData.connectedBuildings) do
-                local bd = StateManager.GetBuilding(buildingId)
+            for _, idConstrucao in pairs(genData.connectedBuildings) do
+                local bd = StateManager.GetBuilding(idConstrucao)
                 if bd then
                     bd.heatingEnabled    = enabled
                     bd.heatingSourceCount = math.max(bd.heatingSourceCount or 0, srcCount)
@@ -1027,27 +1147,22 @@ local function OnClientCommand(module, command, player, args)
 
         StateManager.MarkDirty()
 
-        -- 3. Write HeatingEnabled + HeatingTargetTemp directly to the IsoObject.
-        --    The info window reads md.HeatingEnabled directly (singleplayer: same Lua
-        --    state, multiplayer: client reads its local copy from transmitModData).
-        --    Without this write, the IsoObject carries the stale value from the
-        --    previous session and the UI shows wrong heating state after a restart
-        --    (even when GlobalModData is correct).
-        local _md = generator:getModData()
-        _md.HeatingEnabled    = enabled
-        _md.HeatingTargetTemp = targetTemp
+        -- 3. Aplica o estado físico diretamente no IsoGenerator
+        local dadosModGerador = gerador:getModData()
+        dadosModGerador.HeatingEnabled    = enabled
+        dadosModGerador.HeatingTargetTemp = targetTemp
         if LKS_EletricidadeConstrucao.Core.Runtime and LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync
                 and LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-            generator:transmitModData()
+            gerador:transmitModData()
         end
 
         LKS_EletricidadeConstrucao.Core.Logger.Info(
-            string.format("[HeatingToggle] Generator %s: enabled=%s sources=%d temp=%.1f",
+            string.format("[HeatingToggle] Gerador %s: enabled=%s fontes=%d temp=%.1f",
                 genId, tostring(enabled), srcCount, targetTemp),
             "Heating"
         )
 
-        SendActionResult(player, command, true, {
+        EnviarResultadoAcao(player, command, true, {
             genX = args.genX,
             genY = args.genY,
             genZ = args.genZ,
@@ -1058,10 +1173,10 @@ local function OnClientCommand(module, command, player, args)
 end
 
 if Events.OnClientCommand then
-    Events.OnClientCommand.Add(OnClientCommand)
-    print("[LKS_EletricidadeConstrucao_ServerCommands] Loaded")
+    Events.OnClientCommand.Add(AoReceberComandoCliente)
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerCommands.lua] Módulo de comandos de rede carregado com sucesso!")
 else
-    print("[LKS_EletricidadeConstrucao_ServerCommands] WARNING: OnClientCommand event not available")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerCommands.lua] AVISO: Evento OnClientCommand não disponível")
 end
 
 return true

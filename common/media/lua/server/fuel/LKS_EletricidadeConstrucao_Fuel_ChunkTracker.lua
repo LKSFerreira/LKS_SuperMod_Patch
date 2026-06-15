@@ -6,278 +6,280 @@
 -- ============================================================================
 
 -- LKS_EletricidadeConstrucao_Fuel_ChunkTracker.lua
--- LKS_EletricidadeConstrucao V2 - Chunk Load/Unload Tracker
--- Tracks fuel consumption across chunk loads/unloads
--- Fixes: Bug where generators consumed fuel while chunk was unloaded
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- LKS_EletricidadeConstrucao V2 - Rastreamento de Carregamento/Descarregamento de Chunks
+-- Rastreia o consumo de combustível ao longo do carregamento/descarregamento de chunks
+-- Correções: Bug onde geradores consumiam combustível enquanto o chunk estava descarregado
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Fuel_ChunkTracker] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Fuel_ChunkTracker] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- LOCAL STATE
+-- ESTADO LOCAL
 -- ============================================================================
 
-local _chunkLoadTimes = {}  -- chunkKey -> timestamp
-local _isInitialized = false
-local _scheduledBuildingUpdates = {}  -- buildingID -> true (dedup building updates)
-local _processedChunks = {}  -- chunkKey -> true (dedup chunk processing)
-local _pendingBuildingUpdates = {}  -- buildingID -> true (global batch timer)
-local _pendingGenRescans = {}  -- genId -> {x, y, z} (generators whose own square needs rescanning)
-local _batchTimerActive = false
+local _temposCarregamentoChunk = {}       -- chaveChunk -> timestamp
+local _inicializado = false
+local _atualizacoesPredioAgendadas = {}   -- idPredio -> true (evita duplicar atualizações de prédios)
+local _chunksProcessados = {}             -- chaveChunk -> true (evita duplicar processamento de chunks)
+local _atualizacoesPredioPendentes = {}   -- idPredio -> true (temporizador global de lote)
+local _reescaneamentosGeradorPendentes = {} -- idGerador -> {x, y, z} (geradores cujo próprio quadrado precisa de reescaneamento)
+local _timerLoteAtivo = false
 
--- B-106: Kahlua's GETGLOBAL for `next` can return nil inside nested closures.
--- Use a module-scoped helper that uses `pairs` directly (always available).
-local function TableHasEntries(t)
-    if not t then return false end
-    for _ in pairs(t) do return true end
+-- B-106: O GETGLOBAL do Kahlua para `next` pode retornar nil dentro de fechamentos (closures) aninhados.
+-- Usamos um auxiliar com escopo de módulo que usa `pairs` diretamente (sempre disponível).
+local function tabelaPossuiEntradas(tabela)
+    if not tabela then return false end
+    for _ in pairs(tabela) do return true end
     return false
 end
 
--- Helper: total world minutes elapsed in game time (mirrors LKS_EletricidadeConstrucao_Fuel_Manager definition)
-local function GetWorldMinutes()
-    local gt = getGameTime and getGameTime()
-    if gt then
-        local worldHours = gt:getWorldAgeHours() or 0
-        return worldHours * 60
+-- Auxiliar: total de minutos do mundo decorridos no tempo do jogo (espelha a definição em LKS_EletricidadeConstrucao_Fuel_Manager)
+local function obterMinutosDoMundo()
+    local tempoJogo = getGameTime and getGameTime()
+    if tempoJogo then
+        local horasMundo = tempoJogo:getWorldAgeHours() or 0
+        return horasMundo * 60
     end
-    return getTimestampMs() / 60000  -- fallback to real time if GameTime unavailable
+    return getTimestampMs() / 60000 -- fallback para tempo real se GameTime não estiver disponível
 end
 
--- Forward declaration so HandleStartupGeneratorRefresh (defined below) can call it.
--- The actual body is assigned in the V1-STYLE ISO MODDATA RESTORE section.
-local TryRestoreFromIsoModData
+-- Declaração antecipada para que HandleStartupGeneratorRefresh possa chamá-la.
+-- O corpo real é atribuído na seção de RESTAURAÇÃO DE DADOS MOD ISO ESTILO V1.
+local tentarRestaurarDadosModIso
 
---- Return true only when a generator square needs a full IsoModData restore.
---- A square does NOT need restore when its building is already established in state
---- (building entry exists AND has at least one powerConsumer recorded).
---- This prevents TryRestoreFromIsoModData from running redundantly on every
---- chunk-return when Load() already hydrated everything correctly. (B-71)
-local function NeedsIsoRestore(square)
-    if not square then return false end
-    local SM = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not SM then return true end
-    local objs = square:getObjects()
-    if not objs then return false end
-    for i = 0, objs:size() - 1 do
-        local obj = objs:get(i)
-        if obj and instanceof(obj, "IsoGenerator") then
-            local genMD = obj:getModData()
-            local bid   = genMD and genMD.Gen_BuildingPoolID
-            if not bid then return true end  -- no pool stamp → needs restore
-            local bld = SM.GetBuilding(bid)
-            if not bld then return true end  -- building missing from state → needs restore
-            -- Check powerConsumers via pairs (safe on Kahlua string-keyed arrays)
-            local hasConsumers = false
-            if bld.powerConsumers then
-                for _ in pairs(bld.powerConsumers) do hasConsumers = true; break end
+--- Retorna true apenas quando um quadrado de gerador precisa de uma restauração completa de IsoModData.
+--- Um quadrado NÃO precisa de restauração quando seu prédio já está estabelecido no estado
+--- (a entrada do prédio existe E possui pelo menos um powerConsumer registrado).
+--- Isso evita que tentarRestaurarDadosModIso seja executada de forma redundante em cada
+--- retorno de chunk quando Load() já hidratou tudo corretamente. (B-71)
+--- @param quadrado IsoGridSquare O quadrado a ser verificado.
+--- @return boolean
+local function precisaRestaurarIso(quadrado)
+    if not quadrado then return false end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado then return true end
+    local objetos = quadrado:getObjects()
+    if not objetos then return false end
+    for indice = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indice)
+        if objeto and instanceof(objeto, "IsoGenerator") then
+            local dadosModGerador = objeto:getModData()
+            local idPredio = dadosModGerador and dadosModGerador.Gen_BuildingPoolID
+            if not idPredio then return true end -- sem carimbo do pool → precisa de restauração
+            local predio = gerenciadorEstado.GetBuilding(idPredio)
+            if not predio then return true end -- prédio ausente do estado → precisa de restauração
+            -- Verifica powerConsumers via pairs (seguro para arrays com chaves string do Kahlua)
+            local possuiConsumidores = false
+            if predio.powerConsumers then
+                for _ in pairs(predio.powerConsumers) do possuiConsumidores = true; break end
             end
-            return not hasConsumers  -- needs restore only if consumers not yet scanned
+            return not possuiConsumidores -- só precisa de restauração se os consumidores ainda não foram escaneados
         end
     end
-    return false  -- no IsoGenerator on this square
+    return false -- sem IsoGenerator neste quadrado
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO
 -- ============================================================================
 
---- Initialize chunk tracker
+--- Inicializa o rastreador de chunks
 function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize()
-    if _isInitialized then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Chunk Tracker already initialized", "Fuel")
+    if _inicializado then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Rastreador de Chunks já inicializado", "Fuel")
         return
     end
     
-    -- Register event handlers for grid square load/unload.
-    -- Event names confirmed from PZ 42 Lua API docs:
-    --   LoadGridsquare  - fired after a new square loads  (param: IsoGridSquare)
-    --   ReuseGridsquare - fired before a square unloads   (param: IsoGridSquare)
-    local loadEvents   = { "LoadGridsquare" }
-    local unloadEvents = { "ReuseGridsquare" }
-    local loadRegistered, unloadRegistered = false, false
-    for _, evName in ipairs(loadEvents) do
-        if Events[evName] then
-            Events[evName].Add(LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnLoadGridsquare)
-            LKS_EletricidadeConstrucao.Core.Logger.Info("ChunkTracker: registered '" .. evName .. "'", "Fuel")
-            loadRegistered = true
+    -- Registra os manipuladores de eventos para carregamento/descarregamento de quadrados da grade.
+    -- Nomes dos eventos confirmados a partir da documentação da API Lua do PZ 42:
+    --   LoadGridsquare  - disparado após um novo quadrado ser carregado (parâmetro: IsoGridSquare)
+    --   ReuseGridsquare - disparado antes de um quadrado ser descarregado  (parâmetro: IsoGridSquare)
+    local eventosCarregamento = { "LoadGridsquare" }
+    local eventosDescarregamento = { "ReuseGridsquare" }
+    local carregamentoRegistrado, descarregamentoRegistrado = false, false
+    for _, nomeEvento in ipairs(eventosCarregamento) do
+        if Events[nomeEvento] then
+            Events[nomeEvento].Add(LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnLoadGridsquare)
+            LKS_EletricidadeConstrucao.Core.Logger.Info("ChunkTracker: registrado '" .. nomeEvento .. "'", "Fuel")
+            carregamentoRegistrado = true
             break
         end
     end
-    for _, evName in ipairs(unloadEvents) do
-        if Events[evName] then
-            Events[evName].Add(LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnUnloadGridsquare)
-            LKS_EletricidadeConstrucao.Core.Logger.Info("ChunkTracker: registered '" .. evName .. "'", "Fuel")
-            unloadRegistered = true
+    for _, nomeEvento in ipairs(eventosDescarregamento) do
+        if Events[nomeEvento] then
+            Events[nomeEvento].Add(LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnUnloadGridsquare)
+            LKS_EletricidadeConstrucao.Core.Logger.Info("ChunkTracker: registrado '" .. nomeEvento .. "'", "Fuel")
+            descarregamentoRegistrado = true
             break
         end
     end
-    if not loadRegistered then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: LoadGridsquare event not found - chunk-based fuel tracking disabled", "Fuel")
+    if not carregamentoRegistrado then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: evento LoadGridsquare não encontrado - rastreamento de combustível baseado em chunk desativado", "Fuel")
     end
-    if not unloadRegistered then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: ReuseGridsquare event not found - chunk-based fuel tracking disabled", "Fuel")
+    if not descarregamentoRegistrado then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: evento ReuseGridsquare não encontrado - rastreamento de combustível baseado em chunk desativado", "Fuel")
     end
     
-    _isInitialized = true
+    _inicializado = true
 
-    -- On game-start/reload, nearby chunks load during the loading screen BEFORE
-    -- OnGameStart fires and this handler gets registered.  Those LoadGridsquare
-    -- events are therefore never received.  Walk all known generators now and
-    -- schedule a ForceUpdateBuilding for every one whose square is already in
-    -- memory, using the same V1-style self-removing closure pattern.
+    -- No início/recarregamento do jogo, os chunks próximos são carregados durante a tela de carregamento ANTES
+    -- do OnGameStart disparar e este manipulador ser registrado. Esse evento LoadGridsquare
+    -- nunca são recebidos. Percorremos todos os geradores conhecidos agora e agendamos um
+    -- ForceUpdateBuilding para cada um cujo quadrado já está na memória, usando o mesmo
+    -- padrão de fechamento autolimpante no estilo V1.
     LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefresh()
 
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Chunk Tracker initialized", "Fuel")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Rastreador de Chunks inicializado", "Fuel")
 end
 
---- Check if chunk tracker is initialized
---- @return boolean True if initialized
+--- Verifica se o rastreador de chunks está inicializado
+--- @return boolean True se estiver inicializado
 function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.IsInitialized()
-    return _isInitialized
+    return _inicializado
 end
 
 -- ============================================================================
--- B-104: STALE-BUILDING DUPLICATE PURGE
--- Extracted from HandleStartupGeneratorRefresh to avoid exceeding Kahlua's
--- 200-local-variable-per-function limit (B-105 side-effect fix).
+-- B-104: PURGA DE DUPLICATAS DE PRÉDIOS OBSOLETOS
+-- Extraído de HandleStartupGeneratorRefresh para evitar exceder o limite de
+-- 200 variáveis locais por função do Kahlua (correção do efeito colateral de B-105).
 -- ============================================================================
 
---- Fix canonical building coordinates and merge stale bld_def_… duplicates.
---- Pass 1: correct bld_X_Y_Z entries whose stored x/y/z differs from the ID.
---- Pass 2: detect stale+canonical pairs via shared connectedGenerators key,
----          merge generator links, update IsoObject ModData, remove stale.
---- @param SM table StateManager reference
---- @param buildingIds table   [id]=true map updated in-place (stale removed, canonical added)
---- @param pendingUpdates table [id]=true map of buildings needing UI refresh
-local function PurgeStaleBuildingDuplicates(SM, buildingIds, pendingUpdates)
-    -- Pass 1: fix canonical building coords from ID.
-    pendingUpdates = pendingUpdates or {}
-    local allBlds = SM.GetAllBuildings() or {}
-    for bid, bld in pairs(allBlds) do
-        local bxF, byF, bzFs = string.match(bid, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if bxF then
-            local bxN, byN, bzN = tonumber(bxF), tonumber(byF), tonumber(bzFs or "0")
-            if bld.x ~= bxN or bld.y ~= byN then
+--- Corrige coordenadas canônicas de prédios e mescla duplicatas obsoletas do tipo bld_def_...
+--- Passo 1: corrige entradas bld_X_Y_Z cujas coordenadas x/y/z armazenadas diferem do ID.
+--- Passo 2: detecta pares obsoletos+canônicos através da chave connectedGenerators compartilhada,
+---          mescla conexões de geradores, atualiza o ModData do IsoObject, remove o obsoleto.
+--- @param gerenciadorEstado table Referência ao StateManager
+--- @param mapeamentoIds table Tabela [id]=true atualizada in-place (obsoletos removidos, canônicos adicionados)
+--- @param atualizacoesPendentes table Tabela [id]=true de prédios que precisam de atualização de interface
+local function expurgarDuplicatasPredioObsoletas(gerenciadorEstado, mapeamentoIds, atualizacoesPendentes)
+    -- Passo 1: corrige coordenadas de prédios canônicos a partir do ID.
+    atualizacoesPendentes = atualizacoesPendentes or {}
+    local todosPredios = gerenciadorEstado.GetAllBuildings() or {}
+    for idPredio, predio in pairs(todosPredios) do
+        local coordX, coordY, coordZStr = string.match(idPredio, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if coordX then
+            local coordXNum, coordYNum, coordZNum = tonumber(coordX), tonumber(coordY), tonumber(coordZStr or "0")
+            if predio.x ~= coordXNum or predio.y ~= coordYNum then
                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                    "[ChunkTracker] B-104: fixing %s coords (%s,%s) -> (%d,%d)",
-                    bid, tostring(bld.x), tostring(bld.y), bxN, byN), "Fuel")
-                bld.x, bld.y, bld.z = bxN, byN, bzN
-                SM.MarkDirty()
+                    "[ChunkTracker] B-104: corrigindo coordenadas de %s (%s,%s) -> (%d,%d)",
+                    idPredio, tostring(predio.x), tostring(predio.y), coordXNum, coordYNum), "Fuel")
+                predio.x, predio.y, predio.z = coordXNum, coordYNum, coordZNum
+                gerenciadorEstado.MarkDirty()
             end
         end
     end
 
-    -- Pass 2: index canonical buildings by each gen-key they reference.
-    local canonByGen = {}  -- genKey -> canonical building ID
-    allBlds = SM.GetAllBuildings() or {}
-    for bid, bld in pairs(allBlds) do
-        if string.match(bid, "^bld_%-?%d+_%-?%d+_%-?%d+$") and bld.connectedGenerators then
-            for _, gk in pairs(bld.connectedGenerators) do
-                canonByGen[gk] = bid
+    -- Passo 2: indexa prédios canônicos por cada chave de gerador que eles referenciam.
+    local canonicoPorGerador = {} -- chaveGerador -> idPredioCanonico
+    todosPredios = gerenciadorEstado.GetAllBuildings() or {}
+    for idPredio, predio in pairs(todosPredios) do
+        if string.match(idPredio, "^bld_%-?%d+_%-?%d+_%-?%d+$") and predio.connectedGenerators then
+            for _, chaveGerador in pairs(predio.connectedGenerators) do
+                canonicoPorGerador[chaveGerador] = idPredio
             end
         end
     end
 
-    -- Pass 2 (cont): for each stale building, find its canonical partner.
-    for bid, bld in pairs(allBlds) do
-        if not string.match(bid, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
-            local matched = nil
-            if bld.connectedGenerators then
-                for _, gk in pairs(bld.connectedGenerators) do
-                    if canonByGen[gk] then matched = canonByGen[gk]; break end
+    -- Passo 2 (continuação): para cada prédio obsoleto, encontra seu parceiro canônico.
+    for idPredio, predio in pairs(todosPredios) do
+        if not string.match(idPredio, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
+            local correspondente = nil
+            if predio.connectedGenerators then
+                for _, chaveGerador in pairs(predio.connectedGenerators) do
+                    if canonicoPorGerador[chaveGerador] then correspondente = canonicoPorGerador[chaveGerador]; break end
                 end
             end
-            if matched then
-                -- Merge connectedGenerators from stale into canonical.
-                local canonBld = SM.GetBuilding(matched)
-                if canonBld and bld.connectedGenerators then
-                    canonBld.connectedGenerators = canonBld.connectedGenerators or {}
-                    local cgSet = {}
-                    for _, gk in pairs(canonBld.connectedGenerators) do cgSet[gk] = true end
-                    for _, gk in pairs(bld.connectedGenerators) do
-                        if not cgSet[gk] then
-                            table.insert(canonBld.connectedGenerators, gk)
-                            cgSet[gk] = true
+            if correspondente then
+                -- Mescla connectedGenerators do obsoleto para o canônico.
+                local predioCanonico = gerenciadorEstado.GetBuilding(correspondente)
+                if predioCanonico and predio.connectedGenerators then
+                    predioCanonico.connectedGenerators = predioCanonico.connectedGenerators or {}
+                    local conjuntoChaves = {}
+                    for _, chaveGerador in pairs(predioCanonico.connectedGenerators) do conjuntoChaves[chaveGerador] = true end
+                    for _, chaveGerador in pairs(predio.connectedGenerators) do
+                        if not conjuntoChaves[chaveGerador] then
+                            table.insert(predioCanonico.connectedGenerators, chaveGerador)
+                            conjuntoChaves[chaveGerador] = true
                         end
                     end
                 end
                 
-                -- B-111-consumer-fix: Merge powerConsumers from stale into canonical.
-                -- B-111 stale fallback uses stale building data temporarily, but when
-                -- Purge removes the stale building, consumers are lost if not merged.
-                if canonBld and bld.powerConsumers then
-                    canonBld.powerConsumers = canonBld.powerConsumers or {}
-                    for consKey, consData in pairs(bld.powerConsumers) do
-                        if not canonBld.powerConsumers[consKey] then
-                            canonBld.powerConsumers[consKey] = consData
+                -- B-111-consumer-fix: Mescla powerConsumers do obsoleto para o canônico.
+                -- O fallback de prédio obsoleto B-111 usa dados temporários do prédio obsoleto, mas quando
+                -- Expurgar remove o prédio obsoleto, os consumidores são perdidos se não forem mesclados.
+                if predioCanonico and predio.powerConsumers then
+                    predioCanonico.powerConsumers = predioCanonico.powerConsumers or {}
+                    for chaveConsumidor, dadosConsumidor in pairs(predio.powerConsumers) do
+                        if not predioCanonico.powerConsumers[chaveConsumidor] then
+                            predioCanonico.powerConsumers[chaveConsumidor] = dadosConsumidor
                         end
                     end
-                    -- Recalculate power draw totals after merge
-                    local totalDraw = 0
-                    local heatingDraw = 0
-                    for _, cons in pairs(canonBld.powerConsumers) do
-                        if cons.powerDraw then
-                            totalDraw = totalDraw + cons.powerDraw
-                            if cons.isHeater then
-                                heatingDraw = heatingDraw + cons.powerDraw
+                    -- Recalcula os totais de carga elétrica após a mesclagem
+                    local cargaTotal = 0
+                    local cargaAquecimento = 0
+                    for _, consumidor in pairs(predioCanonico.powerConsumers) do
+                        if consumidor.powerDraw then
+                            cargaTotal = cargaTotal + consumidor.powerDraw
+                            if consumidor.isHeater then
+                                cargaAquecimento = cargaAquecimento + consumidor.powerDraw
                             end
                         end
                     end
-                    canonBld.totalPowerDraw = totalDraw
-                    canonBld.heatingPowerDraw = heatingDraw
-                    -- Queue for UI update so info window shows merged consumers
-                    if pendingUpdates then
-                        pendingUpdates[matched] = true
+                    predioCanonico.totalPowerDraw = cargaTotal
+                    predioCanonico.heatingPowerDraw = cargaAquecimento
+                    -- Fila para atualização de interface para que a janela de informações mostre os consumidores mesclados
+                    if atualizacoesPendentes then
+                        atualizacoesPendentes[correspondente] = true
                     end
                 end
                 
-                -- B-108: inherit heating config from stale entry when canonical has none.
-                -- B-111-heating-fix: Check heatingSourceCount instead of heatingEnabled,
-                -- because canonical might have heatingEnabled=false (IsoObject default)
-                -- while stale has heatingEnabled=true + heatingSourceCount>0 (GlobalModData).
-                -- Prioritize actual heating sources over IsoObject defaults.
-                if canonBld and bld.heatingSourceCount and bld.heatingSourceCount > 0 then
-                    local canonHasNoSources = not canonBld.heatingSourceCount or canonBld.heatingSourceCount == 0
-                    if canonHasNoSources then
-                        canonBld.heatingEnabled     = bld.heatingEnabled
-                        canonBld.heatingSourceCount = bld.heatingSourceCount
-                        canonBld.heatingTargetTemp  = bld.heatingTargetTemp
+                -- B-108: herda as configurações de aquecimento da entrada obsoleta quando o canônico não possui nenhuma.
+                -- B-111-heating-fix: Verifica heatingSourceCount em vez de heatingEnabled,
+                -- porque o canônico pode ter heatingEnabled=false (padrão do IsoObject)
+                -- enquanto o obsoleto tem heatingEnabled=true + heatingSourceCount>0 (GlobalModData).
+                -- Prioriza fontes de aquecimento reais sobre os padrões do IsoObject.
+                if predioCanonico and predio.heatingSourceCount and predio.heatingSourceCount > 0 then
+                    local canonicoSemFontes = not predioCanonico.heatingSourceCount or predioCanonico.heatingSourceCount == 0
+                    if canonicoSemFontes then
+                        predioCanonico.heatingEnabled = predio.heatingEnabled
+                        predioCanonico.heatingSourceCount = predio.heatingSourceCount
+                        predioCanonico.heatingTargetTemp = predio.heatingTargetTemp
                     end
                 end
-                -- Update all generators: rewrite stale ID -> canonical.
-                local cell = getCell and getCell()
-                for _, gd in pairs(SM.GetAllGenerators() or {}) do
-                    if gd.connectedBuildings then
-                        local changed = false
-                        for k, b in pairs(gd.connectedBuildings) do
-                            if b == bid then gd.connectedBuildings[k] = matched; changed = true end
+                -- Atualiza todos os geradores: reescreve ID obsoleto -> canônico.
+                local celula = getCell and getCell()
+                for _, dadosGerador in pairs(gerenciadorEstado.GetAllGenerators() or {}) do
+                    if dadosGerador.connectedBuildings then
+                        local alterado = false
+                        for chave, predioId in pairs(dadosGerador.connectedBuildings) do
+                            if predioId == idPredio then dadosGerador.connectedBuildings[chave] = correspondente; alterado = true end
                         end
-                        if changed then
-                            -- Dedup connectedBuildings after replacement.
-                            local seen, rebuilt = {}, {}
-                            for _, b in pairs(gd.connectedBuildings) do
-                                if not seen[b] then seen[b] = true; table.insert(rebuilt, b) end
+                        if alterado then
+                            -- Remove duplicatas de connectedBuildings após substituição.
+                            local visualizados, reconstruido = {}, {}
+                            for _, predioId in pairs(dadosGerador.connectedBuildings) do
+                                if not visualizados[predioId] then visualizados[predioId] = true; table.insert(reconstruido, predioId) end
                             end
-                            gd.connectedBuildings = rebuilt
-                            SM.AddGenerator(gd)
-                            -- Stamp new ID on IsoObject if square is loaded.
-                            if cell and gd.x and gd.y and gd.z then
-                                local sq = cell:getGridSquare(gd.x, gd.y, gd.z)
-                                if sq then
-                                    local objs = sq:getObjects()
-                                    for oi = 0, objs:size() - 1 do
-                                        local go = objs:get(oi)
-                                        if go and instanceof(go, "IsoGenerator") then
-                                            local gmd = go:getModData()
-                                            if gmd and gmd.Gen_BuildingPoolID == bid then
-                                                gmd.Gen_BuildingPoolID = matched
+                            dadosGerador.connectedBuildings = reconstruido
+                            gerenciadorEstado.AddGenerator(dadosGerador)
+                            -- Grava o novo ID no IsoObject se o quadrado estiver carregado na memória.
+                            if celula and dadosGerador.x and dadosGerador.y and dadosGerador.z then
+                                local quadrado = celula:getGridSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+                                if quadrado then
+                                    local objetos = quadrado:getObjects()
+                                    for oi = 0, objetos:size() - 1 do
+                                        local objetoGerador = objetos:get(oi)
+                                        if objetoGerador and instanceof(objetoGerador, "IsoGenerator") then
+                                            local modDataGerador = objetoGerador:getModData()
+                                            if modDataGerador and modDataGerador.Gen_BuildingPoolID == idPredio then
+                                                modDataGerador.Gen_BuildingPoolID = correspondente
                                                 if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                                    go:transmitModData()
+                                                    objetoGerador:transmitModData()
                                                 end
                                             end
                                             break
@@ -286,207 +288,207 @@ local function PurgeStaleBuildingDuplicates(SM, buildingIds, pendingUpdates)
                                 end
                             end
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] B-104: gen=%s %s -> %s",
-                                gd.id or "?", bid, matched), "Fuel")
+                                "[ChunkTracker] B-104: gerador=%s %s -> %s",
+                                dadosGerador.id or "?", idPredio, correspondente), "Fuel")
                         end
                     end
                 end
-                SM.RemoveBuilding(bid)
-                SM.MarkDirty()
-                if buildingIds then buildingIds[bid] = nil; buildingIds[matched] = true end
+                gerenciadorEstado.RemoveBuilding(idPredio)
+                gerenciadorEstado.MarkDirty()
+                if mapeamentoIds then mapeamentoIds[idPredio] = nil; mapeamentoIds[correspondente] = true end
                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                    "[ChunkTracker] B-104: removed stale building %s (merged into %s)",
-                    bid, matched), "Fuel")
+                    "[ChunkTracker] B-104: removido prédio obsoleto %s (mesclado em %s)",
+                    idPredio, correspondente), "Fuel")
             end
         end
     end
 end
 
---- Scan StateManager generators at game-start and queue ForceUpdateBuilding
---- for any whose map square is already loaded into memory.
---- Called once from Initialize() to cover the gap where LoadGridsquare fires
---- during the loading screen before our event handler was registered.
+--- Escaneia os geradores do StateManager no início do jogo e enfileira ForceUpdateBuilding
+--- para qualquer um cujo quadrado no mapa já esteja carregado na memória.
+--- Chamado uma vez a partir de Initialize() para cobrir a lacuna onde LoadGridsquare dispara
+--- durante a tela de carregamento antes do nosso manipulador de eventos ser registrado.
 function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefresh()
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local allGenerators = StateManager.GetAllGenerators()
-    if not allGenerators then return end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local todosGeradores = gerenciadorEstado.GetAllGenerators()
+    if not todosGeradores then return end
 
-    -- Fallback: if no generators were persisted (e.g. save missed), rebuild
-    -- generator entries first from the global ModData index, then from any
-    -- known buildings' connectedGenerators.
-    local empty = true
-    for _ in pairs(allGenerators) do empty = false; break end
-    if empty then
-        -- Try to hydrate from the ModData generator index (V1-style resilience)
-        local restoredFromIndex = 0
-        if StateManager.HydrateGeneratorsFromIndex then
-            restoredFromIndex = StateManager.HydrateGeneratorsFromIndex()
+    -- Fallback: se nenhum gerador foi persistido (ex: salvamento falhou), reconstrói
+    -- as entradas de geradores primeiro a partir do índice global de ModData, e depois
+    -- a partir do connectedGenerators de quaisquer prédios conhecidos.
+    local vazio = true
+    for _ in pairs(todosGeradores) do vazio = false; break end
+    if vazio then
+        -- Tenta hidratar a partir do índice de geradores do ModData (resiliência estilo V1)
+        local restauradoDoIndice = 0
+        if gerenciadorEstado.HydrateGeneratorsFromIndex then
+            restauradoDoIndice = gerenciadorEstado.HydrateGeneratorsFromIndex()
         end
 
-        -- Refresh local reference in case hydration populated state
-        allGenerators = StateManager.GetAllGenerators()
-        empty = true
-        for _ in pairs(allGenerators) do empty = false; break end
+        -- Atualiza a referência local caso a hidratação tenha populado o estado
+        todosGeradores = gerenciadorEstado.GetAllGenerators()
+        vazio = true
+        for _ in pairs(todosGeradores) do vazio = false; break end
 
-        -- If still empty, rebuild generator entries from buildings
-        local buildings = StateManager.GetAllBuildings() or {}
-        for bid, bld in pairs(buildings) do
-            if bld.connectedGenerators then
+        -- Se ainda estiver vazio, reconstrói as entradas de geradores a partir dos prédios
+        local predios = gerenciadorEstado.GetAllBuildings() or {}
+        for idPredio, predio in pairs(predios) do
+            if predio.connectedGenerators then
                 -- connectedGenerators is Kahlua-deserialized (string numeric keys)
-                for _, gk in pairs(bld.connectedGenerators) do
-                    local gx, gy, gz = string.match(gk, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                    if gx then
-                        gx, gy, gz = tonumber(gx), tonumber(gy), tonumber(gz)
-                        local genId = LKS_EletricidadeConstrucao.Data.Generator.MakeId(gx, gy, gz)
-                        local genData = StateManager.GetGenerator(genId)
-                        if not genData then
-                            genData = LKS_EletricidadeConstrucao.Data.Generator.New(getGeneratorFromSquare(gx, gy, gz) or {})
-                            genData.x, genData.y, genData.z = gx, gy, gz
-                            genData.connectedBuildings = { bid }
-                            StateManager.AddGenerator(genData)
+                for _, chaveGerador in pairs(predio.connectedGenerators) do
+                    local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                    if coordX then
+                        coordX, coordY, coordZ = tonumber(coordX), tonumber(coordY), tonumber(coordZ)
+                        local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(coordX, coordY, coordZ)
+                        local dadosGerador = gerenciadorEstado.GetGenerator(idGerador)
+                        if not dadosGerador then
+                            dadosGerador = LKS_EletricidadeConstrucao.Data.Generator.New(getSquare(coordX, coordY, coordZ) or {})
+                            dadosGerador.x, dadosGerador.y, dadosGerador.z = coordX, coordY, coordZ
+                            dadosGerador.connectedBuildings = { idPredio }
+                            gerenciadorEstado.AddGenerator(dadosGerador)
                         else
-                            genData.connectedBuildings = genData.connectedBuildings or {}
-                            local seen = false
-                            -- connectedBuildings may also have Kahlua string numeric keys
-                            for _, existing in pairs(genData.connectedBuildings) do
-                                if existing == bid then seen = true; break end
+                            dadosGerador.connectedBuildings = dadosGerador.connectedBuildings or {}
+                            local visto = false
+                            -- connectedBuildings também pode ter chaves numéricas string do Kahlua
+                            for _, existente in pairs(dadosGerador.connectedBuildings) do
+                                if existente == idPredio then visto = true; break end
                             end
-                            if not seen then table.insert(genData.connectedBuildings, bid) end
-                            StateManager.AddGenerator(genData)
+                            if not visto then table.insert(dadosGerador.connectedBuildings, idPredio) end
+                            gerenciadorEstado.AddGenerator(dadosGerador)
                         end
                     end
                 end
             end
         end
-        allGenerators = StateManager.GetAllGenerators()
+        todosGeradores = gerenciadorEstado.GetAllGenerators()
 
-        -- V1-style final fallback: if ALL GlobalModData paths exhausted and state
-        -- is still empty, do a spatial scan of already-loaded squares near the player.
-        -- TryRestoreFromIsoModData reads Gen_BuildingPoolID directly from each
-        -- IsoGenerator object, so it works even when every ModData blob is gone.
-        empty = true
-        for _ in pairs(allGenerators) do empty = false; break end
-        if empty then
+        -- Fallback final estilo V1: se TODOS os caminhos de GlobalModData se esgotarem e o estado
+        -- ainda estiver vazio, realiza uma varredura espacial dos quadrados já carregados próximos ao jogador.
+        -- tentarRestaurarDadosModIso lê Gen_BuildingPoolID diretamente de cada
+        -- objeto IsoGenerator, por isso funciona mesmo quando todos os dados de ModData sumiram.
+        vazio = true
+        for _ in pairs(todosGeradores) do vazio = false; break end
+        if vazio then
             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                "StartupGeneratorRefresh: all ModData paths empty – running V1-style IsoObject spatial scan",
+                "StartupGeneratorRefresh: todos os caminhos do ModData vazios – executando varredura espacial estilo V1 no objeto Iso",
                 "Fuel")
-            local player = getSpecificPlayer and getSpecificPlayer(0) or (getPlayer and getPlayer())
-            if player then
-                local px, py, pz = math.floor(player:getX()), math.floor(player:getY()), math.floor(player:getZ())
-                local cell = getCell()
-                if cell then
-                    for dx = -40, 40 do
-                        for dy = -40, 40 do
-                            local sq = cell:getGridSquare(px + dx, py + dy, pz)
-                            if sq then pcall(TryRestoreFromIsoModData, sq) end
+            local jogador = getSpecificPlayer and getSpecificPlayer(0) or (getPlayer and getPlayer())
+            if jogador then
+                local jogadorX, jogadorY, jogadorZ = math.floor(jogador:getX()), math.floor(jogador:getY()), math.floor(jogador:getZ())
+                local celula = getCell()
+                if celula then
+                    for diferencaX = -40, 40 do
+                        for diferencaY = -40, 40 do
+                            local quadrado = celula:getGridSquare(jogadorX + diferencaX, jogadorY + diferencaY, jogadorZ)
+                            if quadrado then pcall(tentarRestaurarDadosModIso, quadrado) end
                         end
                     end
                 end
             end
-            allGenerators = StateManager.GetAllGenerators()
+            todosGeradores = gerenciadorEstado.GetAllGenerators()
         end
     end
 
-    local buildingIds = {}
-    local foundCount  = 0
-    local restoredCount = 0
+    local idsPredios = {}
+    local totalEncontrados = 0
+    local totalRestaurados = 0
 
-    for _, genData in pairs(allGenerators) do
-        -- Only process generators whose square is already in memory
-        local sq = getSquare(genData.x, genData.y, genData.z)
-        if sq then
-            foundCount = foundCount + 1
+    for _, dadosGerador in pairs(todosGeradores) do
+        -- Apenas processa geradores cujo quadrado já está na memória
+        local quadrado = getSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+        if quadrado then
+            totalEncontrados = totalEncontrados + 1
             
-            -- CRITICAL FIX: Run TryRestoreFromIsoModData for already-loaded generators
-            -- to create building entries. On initial startup, player spawns in chunk
-            -- so LoadGridsquare never fires and buildings are never restored.
-            -- This ensures buildings exist before ForceUpdateBuilding is called.
-            local beforeCount = 0
-            local buildings = StateManager.GetAllBuildings() or {}
-            for _ in pairs(buildings) do beforeCount = beforeCount + 1 end
+            -- CORREÇÃO CRÍTICA: Executa tentarRestaurarDadosModIso para geradores já carregados
+            -- para criar entradas de prédios. Na inicialização inicial, o jogador surge no chunk
+            -- de modo que LoadGridsquare nunca dispara e os prédios nunca são restaurados.
+            -- Isso garante que os prédios existam antes de ForceUpdateBuilding ser chamado.
+            local totalAntes = 0
+            local predios = gerenciadorEstado.GetAllBuildings() or {}
+            for _ in pairs(predios) do totalAntes = totalAntes + 1 end
             
-            pcall(TryRestoreFromIsoModData, sq)
+            pcall(tentarRestaurarDadosModIso, quadrado)
             
-            local afterCount = 0
-            buildings = StateManager.GetAllBuildings() or {}
-            for _ in pairs(buildings) do afterCount = afterCount + 1 end
+            local totalDepois = 0
+            predios = gerenciadorEstado.GetAllBuildings() or {}
+            for _ in pairs(predios) do totalDepois = totalDepois + 1 end
             
-            if afterCount > beforeCount then
-                restoredCount = restoredCount + 1
+            if totalDepois > totalAntes then
+                totalRestaurados = totalRestaurados + 1
                 LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                    string.format("Restored building for generator %s (%d buildings now in state)",
-                        genData.id, afterCount),
+                    string.format("Restaurado prédio para o gerador %s (%d prédios agora no estado)",
+                        dadosGerador.id, totalDepois),
                     "Fuel")
             end
             
-            -- connectedBuildings is Kahlua-deserialized after GlobalModData reload
-            -- (string numeric keys) → ipairs returns nothing. Use pairs.
-            for _, bid in pairs(genData.connectedBuildings or {}) do
-                buildingIds[bid] = true
+            -- connectedBuildings é desserializado pelo Kahlua após recarregamento de GlobalModData
+            -- (chaves numéricas string) → ipairs não retorna nada. Use pairs.
+            for _, idPredio in pairs(dadosGerador.connectedBuildings or {}) do
+                idsPredios[idPredio] = true
             end
-        end  -- close: if sq then
-    end  -- close: for _, genData in pairs(allGenerators)
+        end -- fim: if quadrado then
+    end -- fim: for _, dadosGerador in pairs(todosGeradores)
 
-    -- ── B-104: Post-loop stale-building cleanup ──────────────────────────────
-    -- Extracted to PurgeStaleBuildingDuplicates() to avoid Kahlua's 200-local
-    -- limit (ArrayIndexOutOfBoundsException at LexState.new_localvar:740).
-    if StateManager.IsStateLoaded and StateManager.IsStateLoaded() then
-        local pendingUpdates = {}  -- Collect buildings needing UI update
-        PurgeStaleBuildingDuplicates(StateManager, buildingIds, pendingUpdates)
-        -- Queue for ForceUpdateBuilding later in the deferred timer
-        for bid in pairs(pendingUpdates) do
-            _pendingBuildingUpdates[bid] = true
+    -- ── B-104: Limpeza pós-loop de prédios obsoletos ──────────────────────────
+    -- Extraído para expurgarDuplicatasPredioObsoletas() para evitar o limite de 200
+    -- variáveis locais do Kahlua (ArrayIndexOutOfBoundsException em LexState.new_localvar:740).
+    if gerenciadorEstado.IsStateLoaded and gerenciadorEstado.IsStateLoaded() then
+        local atualizacoesPendentes = {} -- Coleta prédios que precisam de atualização de interface
+        expurgarDuplicatasPredioObsoletas(gerenciadorEstado, idsPredios, atualizacoesPendentes)
+        -- Enfileira para ForceUpdateBuilding mais tarde no temporizador adiado
+        for idPredio in pairs(atualizacoesPendentes) do
+            _atualizacoesPredioPendentes[idPredio] = true
         end
     end
     -- ────────────────────────────────────────────────────────────────────────
 
-    local _hasBids = false
-    for _ in pairs(buildingIds) do _hasBids = true; break end
-    if not _hasBids then
-        -- No generator squares were loaded at frame 0. However generators ARE in state
-        -- (deserialized from GlobalModData). Their chunks will load shortly, but:
-        --   (a) OnLoadGridsquare only calls TryRestoreFromIsoModData on the FIRST square
-        --       of each chunk (via _processedChunks dedup), NOT on the generator's actual
-        --       square – so generators on non-first squares are never rescanned via chunk events.
-        --   (b) Even if TryRestoreFromIsoModData runs, the stale-consumer optimization used
-        --       to return early before the consumer-data fix below.
-        -- Solution: schedule a 60-tick deferred scan that calls TryRestoreFromIsoModData
-        -- on every generator's own square once the world is settled.
-        local allEmpty = true
-        for _ in pairs(allGenerators) do allEmpty = false; break end
-        if allEmpty then
+    local _possuiIdsPredio = false
+    for _ in pairs(idsPredios) do _possuiIdsPredio = true; break end
+    if not _possuiIdsPredio then
+        -- Nenhum quadrado de gerador estava carregado no frame 0. No entanto, os geradores ESTÃO no estado
+        -- (desserializados do GlobalModData). Seus chunks serão carregados em breve, mas:
+        --   (a) OnLoadGridsquare apenas chama tentarRestaurarDadosModIso no PRIMEIRO quadrado
+        --       de cada chunk (através do dedup _chunksProcessados), NÃO no quadrado real do gerador –
+        --       então geradores em quadrados que não são os primeiros nunca são reescaneados via eventos de chunk.
+        --   (b) Mesmo se tentarRestaurarDadosModIso for executado, a otimização de consumidor obsoleto
+        --       costumava retornar antes da correção de dados do consumidor abaixo.
+        -- Solução: agenda uma varredura adiada de 60 ticks que chama tentarRestaurarDadosModIso
+        -- no próprio quadrado de cada gerador assim que o mundo estiver estabelecido.
+        local tudoVazio = true
+        for _ in pairs(todosGeradores) do tudoVazio = false; break end
+        if tudoVazio then
             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                "StartupGeneratorRefresh: no generators in state – nothing to do",
+                "StartupGeneratorRefresh: nenhum gerador no estado – nada a fazer",
                 "Fuel")
             return
         end
 
-        -- Before giving up on unloaded squares: attempt a GlobalModData cross-reference.
-        -- When Load() succeeds (buildings under canonical bld_X_Y_Z in state blob) but
-        -- HydrateGeneratorsFromIndex also ran (generators restored with stale bld_def_...
-        -- IDs from the index), buildings exist in state but are unreachable because the
-        -- generator's connectedBuildings points to the old key.
-        -- Solution: for each generator with an unresolvable building ID, search all
-        -- buildings in state for one whose connectedGenerators includes this generator.
-        -- This works without any IsoObject access and fixes the mismatch immediately.
-        local xrefFixed = 0
-        local allBldState = StateManager.GetAllBuildings() or {}
-        for _, gd in pairs(allGenerators) do
-            local genKeyXref = string.format("%d_%d_%d", gd.x, gd.y, gd.z)
-            -- connectedBuildings / connectedGenerators are Kahlua-deserialized (string numeric keys)
-            for i, bid in pairs(gd.connectedBuildings or {}) do
-                if not StateManager.GetBuilding(bid) then
-                    -- Cannot find building under stored ID - try reverse-lookup via connectedGenerators
-                    for _, bld in pairs(allBldState) do
-                        if bld.connectedGenerators then
-                            for _, gk in pairs(bld.connectedGenerators) do
-                                if gk == genKeyXref then
+        -- Antes de desistir dos quadrados descarregados: tenta uma correspondência cruzada de GlobalModData.
+        -- Quando Load() tem sucesso (prédios sob a chave canônica bld_X_Y_Z no blob do estado) mas
+        -- HydrateGeneratorsFromIndex também foi executado (geradores restaurados com IDs obsoletos bld_def_...
+        -- a partir do índice), os prédios existem no estado, mas estão inacessíveis porque o
+        -- connectedBuildings do gerador aponta para a chave antiga.
+        -- Solução: para cada gerador com um ID de prédio não resolvido, procura em todos os
+        -- prédios no estado por um cujo connectedGenerators inclua este gerador.
+        -- Isso funciona sem qualquer acesso a objetos Iso e corrige a incompatibilidade imediatamente.
+        local referenciasCruzadasCorrigidas = 0
+        local todosPrediosEstado = gerenciadorEstado.GetAllBuildings() or {}
+        for _, dadosGerador in pairs(todosGeradores) do
+            local chaveGenRefCruzada = string.format("%d_%d_%d", dadosGerador.x, dadosGerador.y, dadosGerador.z)
+            -- connectedBuildings / connectedGenerators são desserializados pelo Kahlua (chaves numéricas string)
+            for indice, idPredio in pairs(dadosGerador.connectedBuildings or {}) do
+                if not gerenciadorEstado.GetBuilding(idPredio) then
+                    -- Não foi possível encontrar o prédio com o ID armazenado - tenta busca reversa via connectedGenerators
+                    for _, predio in pairs(todosPrediosEstado) do
+                        if predio.connectedGenerators then
+                            for _, chaveGerador in pairs(predio.connectedGenerators) do
+                                if chaveGerador == chaveGenRefCruzada then
                                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                        "[StartupXref] Remapped %s.connectedBuildings[%s]: %s -> %s",
-                                        gd.id, tostring(i), bid, bld.id), "Fuel")
-                                    gd.connectedBuildings[i] = bld.id
-                                    StateManager.AddGenerator(gd)  -- flush corrected ID to index
-                                    xrefFixed = xrefFixed + 1
+                                        "[StartupXref] Remapeado %s.connectedBuildings[%s]: %s -> %s",
+                                        dadosGerador.id, tostring(indice), idPredio, predio.id), "Fuel")
+                                    dadosGerador.connectedBuildings[indice] = predio.id
+                                    gerenciadorEstado.AddGenerator(dadosGerador) -- envia ID corrigido para o índice
+                                    referenciasCruzadasCorrigidas = referenciasCruzadasCorrigidas + 1
                                     break
                                 end
                             end
@@ -495,912 +497,910 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
                 end
             end
         end
-        if xrefFixed > 0 then
+        if referenciasCruzadasCorrigidas > 0 then
             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                "[StartupXref] Fixed %d stale building reference(s) via cross-reference", xrefFixed), "Fuel")
+                "[StartupXref] Corrigidas %d referência(s) obsoleta(s) de prédios via referência cruzada", referenciasCruzadasCorrigidas), "Fuel")
         end
 
-        -- Rebuild buildingIds from the (potentially corrected) generator state
-        allGenerators = StateManager.GetAllGenerators() or {}
+        -- Reconstrói idsPredios a partir do estado do gerador (potencialmente corrigido)
+        todosGeradores = gerenciadorEstado.GetAllGenerators() or {}
 
-        local genCount = 0
-        for _ in pairs(allGenerators) do genCount = genCount + 1 end
+        local totalGens = 0
+        for _ in pairs(todosGeradores) do totalGens = totalGens + 1 end
         LKS_EletricidadeConstrucao.Core.Logger.Info(
-            string.format("StartupGeneratorRefresh: %d gen(s) in state but no squares loaded yet – scheduling deferred rescan at tick 60",
-                genCount),
+            string.format("StartupGeneratorRefresh: %d gerador(es) no estado mas nenhum quadrado carregado ainda – agendando reescaneamento adiado no tick 60",
+                totalGens),
             "Fuel")
-        local deferTicks    = 60
-        local deferAttempts = 0
-        local MAX_DEFER_ATTEMPTS = 5
-        local deferFunc
-        deferFunc = function()
-            deferTicks = deferTicks - 1
-            if deferTicks > 0 then return end
-            Events.OnTick.Remove(deferFunc)
-            local allGens = StateManager.GetAllGenerators() or {}
-            local scanned = 0
-            for _, gd in pairs(allGens) do
-                local gSq = getSquare(gd.x, gd.y, gd.z)
-                if gSq then
-                    pcall(TryRestoreFromIsoModData, gSq)
-                    scanned = scanned + 1
+        local ticksAdiados = 60
+        local tentativasAdio = 0
+        local MAX_TENTATIVAS_ADIO = 5
+        local funcaoAdiada
+        funcaoAdiada = function()
+            ticksAdiados = ticksAdiados - 1
+            if ticksAdiados > 0 then return end
+            Events.OnTick.Remove(funcaoAdiada)
+            local todosGens = gerenciadorEstado.GetAllGenerators() or {}
+            local escaneados = 0
+            for _, dadosGerador in pairs(todosGens) do
+                local quadradoGerador = getSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+                if quadradoGerador then
+                    pcall(tentarRestaurarDadosModIso, quadradoGerador)
+                    escaneados = escaneados + 1
                 end
             end
             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                string.format("StartupGeneratorRefresh (deferred): rescanned %d generator square(s)", scanned),
+                string.format("StartupGeneratorRefresh (adiado): reescaneados %d quadrado(s) de geradores", escaneados),
                 "Fuel")
-            -- If still no squares loaded, retry after 120 more ticks (up to MAX_DEFER_ATTEMPTS)
-            if scanned == 0 and deferAttempts < MAX_DEFER_ATTEMPTS then
-                deferAttempts = deferAttempts + 1
-                deferTicks = 120
+            -- Se ainda nenhum quadrado foi carregado, tenta novamente após mais 120 ticks (até MAX_TENTATIVAS_ADIO)
+            if escaneados == 0 and tentativasAdio < MAX_TENTATIVAS_ADIO then
+                tentativasAdio = tentativasAdio + 1
+                ticksAdiados = 120
                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                    "StartupGeneratorRefresh (deferred): no squares yet, retry %d/%d in 120 ticks",
-                    deferAttempts, MAX_DEFER_ATTEMPTS), "Fuel")
-                Events.OnTick.Add(deferFunc)
+                    "StartupGeneratorRefresh (adiado): nenhum quadrado ainda, tentativa %d/%d em 120 ticks",
+                    tentativasAdio, MAX_TENTATIVAS_ADIO), "Fuel")
+                Events.OnTick.Add(funcaoAdiada)
                 return
             end
-            -- Phase 2: ForceUpdate all buildings currently known in state.
-            -- When all generators are still off-chunk (scanned == 0), _state.buildings is
-            -- empty and this is a no-op; buildings will be created by TryRestoreFromIsoModData
-            -- the moment the player's chunk loads.  When some generators were scanned
-            -- (partial on-chunk boot), this refreshes all known buildings in one pass.
-            -- Using ForceUpdate() (global) instead of ForceUpdateBuilding(id) per generator
-            -- avoids "Building not found" warnings when connectedBuildings still holds a
-            -- stale bld_def_... ID from a pre-migration save (off-chunk restart case).
-            local Dist2 = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-            if Dist2 and Dist2.ForceUpdate then
-                Dist2.ForceUpdate()
-                local bldCount2 = 0
-                local allBlds2 = StateManager.GetAllBuildings() or {}
-                for _ in pairs(allBlds2) do bldCount2 = bldCount2 + 1 end
+            -- Fase 2: ForceUpdate em todos os prédios conhecidos atualmente no estado.
+            -- Quando todos os geradores ainda estão fora do chunk (escaneados == 0), _state.buildings está
+            -- vazio e isso é uma operação sem efeito; os prédios serão criados por tentarRestaurarDadosModIso
+            -- no momento em que o chunk do jogador carregar. Quando alguns geradores foram escaneados
+            -- (inicialização parcial em chunk), isso atualiza todos os prédios conhecidos em uma única passagem.
+            -- O uso de ForceUpdate() (global) em vez de ForceUpdateBuilding(id) por gerador
+            -- evita avisos de "Prédio não encontrado" quando connectedBuildings ainda possui um
+            -- ID obsoleto bld_def_... de um salvamento anterior à migração (caso de reinicialização fora do chunk).
+            local Distribuidor = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+            if Distribuidor and Distribuidor.ForceUpdate then
+                Distribuidor.ForceUpdate()
+                local totalPredios2 = 0
+                local todosPredios2 = gerenciadorEstado.GetAllBuildings() or {}
+                for _ in pairs(todosPredios2) do totalPredios2 = totalPredios2 + 1 end
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("StartupGeneratorRefresh (deferred): ForceUpdate called (%d building(s) in state)",
-                        bldCount2),
+                    string.format("StartupGeneratorRefresh (adiado): ForceUpdate chamado (%d prédio(s) no estado)",
+                        totalPredios2),
                     "Fuel")
             end
         end
-        Events.OnTick.Add(deferFunc)
+        Events.OnTick.Add(funcaoAdiada)
         return
     end
 
-    local bldCount = 0
-    for _ in pairs(buildingIds) do bldCount = bldCount + 1 end
+    local totalPredios = 0
+    for _ in pairs(idsPredios) do totalPredios = totalPredios + 1 end
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("StartupGeneratorRefresh: %d pre-loaded generators found, %d buildings restored, scheduling refresh for %d buildings",
-            foundCount, restoredCount, bldCount),
+        string.format("StartupGeneratorRefresh: %d geradores pré-carregados encontrados, %d prédios restaurados, agendando atualização para %d prédios",
+            totalEncontrados, totalRestaurados, totalPredios),
         "Fuel")
 
-    -- Mark all buildings as scheduled to prevent ProcessChunkGenerators from
-    -- duplicating the startup refresh
-    for bid in pairs(buildingIds) do
-        _scheduledBuildingUpdates[bid] = true
+    -- Marca todos os prédios como agendados para evitar que ProcessChunkGenerators
+    -- duplique a atualização de inicialização
+    for idPredio in pairs(idsPredios) do
+        _atualizacoesPredioAgendadas[idPredio] = true
     end
 
-    -- V1 self-removing closure:
-    --   Phase 1 (30 ticks)  – rescan any buildings that came back with 0 consumers
-    --                          (world squares are now loaded; the immediate frame-0 scan
-    --                           found almost no tiles because the world wasn't settled yet)
-    --   Phase 2 (30+1 ticks) – call ForceUpdateBuilding so power distribution reflects
-    --                           the freshly populated consumer lists
-    local ticksLeft    = 30
-    local phase2Done   = false
-    local timerFunc
-    timerFunc = function()
-        ticksLeft = ticksLeft - 1
-        if ticksLeft > 0 then return end
+    -- Fechamento autolimpante estilo V1:
+    --   Fase 1 (30 ticks) – reescaneia qualquer prédio que retornou com 0 consumidores
+    --                       (os quadrados do mundo agora estão carregados; a varredura imediata no frame 0
+    --                        não encontrou quase nenhum bloco porque o mundo ainda não estava estabelecido)
+    --   Fase 2 (30+1 ticks) – chama ForceUpdateBuilding para que a distribuição de energia reflita
+    --                         as listas de consumidores recém-populadas
+    local ticksRestantes = 30
+    local fase2Concluida = false
+    local funcaoTimer
+    funcaoTimer = function()
+        ticksRestantes = ticksRestantes - 1
+        if ticksRestantes > 0 then return end
 
-        if not phase2Done then
-            -- ---- Phase 1: deferred consumer rescan --------------------------------
-            -- Buildings restored at frame 0 (V1-style spatial scan OR GlobalModData)
-            -- may have 0 or very few consumers because the world squares weren't
-            -- loaded yet.  Now that we are ~30 ticks in the world is settled, so
-            -- re-run ScanBuilding for any building with 0 consumers.
-            local Scanner = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
-            if Scanner and Scanner.ScanBuilding then
-                for bid in pairs(buildingIds) do
-                    local bld = StateManager.GetBuilding(bid)
-                    if bld and (not bld.powerConsumers or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(bld.powerConsumers)) then
-                        -- Derive light-switch coordinates.
-                        -- For canonical bld_X_Y_Z IDs, always decode from the ID itself:
-                        -- stored x/y/z may be stale generator coordinates from an old
-                        -- pending-state stub (B-104), placing the scan outside the building.
-                        local lsX, lsY, lsZ = bld.x, bld.y, bld.z
-                        local bxR, byR, bzRs = string.match(bid, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                        if bxR then lsX, lsY, lsZ = tonumber(bxR), tonumber(byR), tonumber(bzRs or "0") end
-                        if lsX and lsY then
+        if not fase2Concluida then
+            -- ---- Fase 1: reescaneamento de consumidor adiado ----------------------
+            -- Prédios restaurados no frame 0 (varredura espacial estilo V1 OU GlobalModData)
+            -- podem ter 0 ou muito poucos consumidores porque os quadrados do mundo não estavam
+            -- carregados ainda. Agora que estamos a ~30 ticks, o mundo está estabelecido, então
+            -- reexecuta ScanBuilding para qualquer prédio com 0 consumidores.
+            local Escaneador = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
+            if Escaneador and Escaneador.ScanBuilding then
+                for idPredio in pairs(idsPredios) do
+                    local predio = gerenciadorEstado.GetBuilding(idPredio)
+                    if predio and (not predio.powerConsumers or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(predio.powerConsumers)) then
+                        -- Deriva as coordenadas do interruptor de luz.
+                        -- Para IDs canônicos bld_X_Y_Z, sempre decodifica a partir do próprio ID:
+                        -- as coordenadas x/y/z armazenadas podem ser de geradores obsoletos vindas de um
+                        -- bloco pendente antigo (B-104), colocando a varredura fora do prédio.
+                        local interruptorX, interruptorY, interruptorZ = predio.x, predio.y, predio.z
+                        local coordX, coordY, coordZStr = string.match(idPredio, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        if coordX then interruptorX, interruptorY, interruptorZ = tonumber(coordX), tonumber(coordY), tonumber(coordZStr or "0") end
+                        if interruptorX and interruptorY then
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] StartupRescan: building %s has 0 consumers, rescanning from (%d,%d,%d)",
-                                bid, lsX, lsY, lsZ or 0), "Fuel")
+                                "[ChunkTracker] StartupRescan: prédio %s possui 0 consumidores, reescaneando a partir de (%d,%d,%d)",
+                                idPredio, interruptorX, interruptorY, interruptorZ or 0), "Fuel")
                             pcall(function()
-                                Scanner.ScanBuilding(lsX, lsY, lsZ or 0, bid)
+                                Escaneador.ScanBuilding(interruptorX, interruptorY, interruptorZ or 0, idPredio)
                             end)
-                            bld = StateManager.GetBuilding(bid) or bld
-                            local _afterCount = 0
-                            if bld.powerConsumers then
-                                for _ in pairs(bld.powerConsumers) do _afterCount = _afterCount + 1 end
+                            predio = gerenciadorEstado.GetBuilding(idPredio) or predio
+                            local totalConsumidoresDepois = 0
+                            if predio.powerConsumers then
+                                for _ in pairs(predio.powerConsumers) do totalConsumidoresDepois = totalConsumidoresDepois + 1 end
                             end
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] StartupRescan: %s now has %d consumers",
-                                bid, _afterCount), "Fuel")
+                                "[ChunkTracker] StartupRescan: %s agora possui %d consumidores",
+                                idPredio, totalConsumidoresDepois), "Fuel")
                         end
                     end
                 end
             end
-            -- Prepare Phase 2 on the very next tick
-            phase2Done = true
-            ticksLeft  = 1
+            -- Prepara Fase 2 no próximo tick
+            fase2Concluida = true
+            ticksRestantes = 1
             return
         end
 
-        -- ---- Phase 2: ForceUpdateBuilding ----------------------------------------
-        Events.OnTick.Remove(timerFunc)
+        -- ---- Fase 2: ForceUpdateBuilding ------------------------------------------
+        Events.OnTick.Remove(funcaoTimer)
 
-        local Dist = LKS_EletricidadeConstrucao.Power
-                  and LKS_EletricidadeConstrucao.Power.Distributor
-        if Dist and Dist.ForceUpdateBuilding then
-            for bid in pairs(buildingIds) do
-                pcall(Dist.ForceUpdateBuilding, bid)
+        local Distribuidor = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+        if Distribuidor and Distribuidor.ForceUpdateBuilding then
+            for idPredio in pairs(idsPredios) do
+                pcall(Distribuidor.ForceUpdateBuilding, idPredio)
             end
         end
 
-        -- Release all reservations after startup completes
-        for bid in pairs(buildingIds) do
-            _scheduledBuildingUpdates[bid] = nil
+        -- Libera todos os agendamentos após a conclusão da inicialização
+        for idPredio in pairs(idsPredios) do
+            _atualizacoesPredioAgendadas[idPredio] = nil
         end
 
         LKS_EletricidadeConstrucao.Core.Logger.Info(
-            "StartupGeneratorRefresh: ForceUpdateBuilding complete for " .. bldCount .. " building(s)",
+            "StartupGeneratorRefresh: ForceUpdateBuilding completo para " .. totalPredios .. " prédio(s)",
             "Fuel")
     end
-    Events.OnTick.Add(timerFunc)
+    Events.OnTick.Add(funcaoTimer)
 end
 
 -- ============================================================================
--- V1-STYLE ISO MODDATA RESTORE
+-- RESTAURAÇÃO DE DADOS MOD ISO ESTILO V1
 -- ============================================================================
 
---- V1-style: scan a single grid square for IsoGenerators whose Gen_BuildingPoolID
---- is set, and rebuild StateManager entries from their ModData if they are missing.
---- OPTIMIZED: Skips full building scan if generator already has valid links.
---- @param square IsoGridSquare Grid square to scan
-TryRestoreFromIsoModData = function(square)
-    if not square then return end
-    local objects = square:getObjects()
-    if not objects then return end
+--- Estilo V1: escaneia um único quadrado da grade em busca de IsoGenerators cujo Gen_BuildingPoolID
+--- está definido, e reconstrói as entradas do StateManager a partir do seu ModData se estiverem ausentes.
+--- OTIMIZADO: Pula a varredura completa do prédio se o gerador já possuir conexões válidas.
+--- @param quadrado IsoGridSquare O quadrado da grade a ser escaneado.
+tentarRestaurarDadosModIso = function(quadrado)
+    if not quadrado then return end
+    local objetos = quadrado:getObjects()
+    if not objetos then return end
 
-    local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not StateManager then return end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado then return end
 
-    for i = 0, objects:size() - 1 do
-        local obj = objects:get(i)
-        if obj and instanceof(obj, "IsoGenerator") then
-            local md = obj:getModData()
-            if md and md.Gen_BuildingPoolID then
+    for indice = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indice)
+        if objeto and instanceof(objeto, "IsoGenerator") then
+            local modDataObj = objeto:getModData()
+            if modDataObj and modDataObj.Gen_BuildingPoolID then
                 -- ----------------------------------------------------------------
-                -- CROSS-SAVE ISOLATION: validate LKS_EletricidadeConstrucao_WorldId before trusting any
-                -- pool data stamped on this IsoGenerator object.  If the world ID
-                -- doesn't match the current save, this data belongs to another
-                -- save and must be cleared before it can pollute the runtime state.
+                -- ISOLAMENTO DE SALVAMENTO CRUZADO (CROSS-SAVE): valida LKS_EletricidadeConstrucao_WorldId
+                -- antes de confiar em qualquer dado de pool gravado neste objeto IsoGenerator.
+                -- Se o ID do mundo não corresponder ao salvamento atual, estes dados pertencem
+                -- a outro salvamento e devem ser limpos antes de poluir o estado de execução.
                 -- ----------------------------------------------------------------
-                local currentWid = StateManager.GetCurrentWorldId and StateManager.GetCurrentWorldId()
-                if currentWid and currentWid ~= "unknown" and md.LKS_EletricidadeConstrucao_WorldId
-                    and md.LKS_EletricidadeConstrucao_WorldId ~= "unknown" and md.LKS_EletricidadeConstrucao_WorldId ~= currentWid then
+                local idMundoAtual = gerenciadorEstado.GetCurrentWorldId and gerenciadorEstado.GetCurrentWorldId()
+                if idMundoAtual and idMundoAtual ~= "unknown" and modDataObj.LKS_EletricidadeConstrucao_WorldId
+                    and modDataObj.LKS_EletricidadeConstrucao_WorldId ~= "unknown" and modDataObj.LKS_EletricidadeConstrucao_WorldId ~= idMundoAtual then
                     LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-                        "[ChunkTracker] Stale generator ModData detected (stored world=%s, current=%s) - clearing",
-                        md.LKS_EletricidadeConstrucao_WorldId, currentWid), "Fuel")
-                    -- Wipe all LKS_EletricidadeConstrucao pool keys so this generator starts fresh in the new save
-                    md.Gen_BuildingPoolID           = nil
-                    md.LKS_EletricidadeConstrucao_WorldId                   = nil
-                    md.LKS_EletricidadeConstrucao_PoolData                  = nil
-                    md.Gen_Stats_Consumers          = nil
-                    md.Gen_Stats_ActiveConsumers    = nil
-                    md.Gen_Stats_Lights             = nil
-                    md.Gen_Stats_ActiveLights       = nil
-                    md.Gen_Stats_Lamps              = nil
-                    md.Gen_Stats_ActiveLamps        = nil
-                    md.Gen_Stats_Appliances         = nil
-                    md.Gen_Stats_ActiveAppliances   = nil
-                    md.Gen_Stats_PowerDraw          = nil
-                    md.Gen_Stats_Strain             = nil
-                    md.Gen_Stats_FuelRateLph        = nil
-                    md.Gen_Stats_Powered            = nil
-                    -- Heating state must also be wiped on cross-save stale detection
-                    -- so the generator does not carry old heating config into the new save.
-                    md.HeatingEnabled               = nil
-                    md.HeatingPositions             = nil
-                    md.HeatingTargetTemp            = nil
+                        "[ChunkTracker] ModData do gerador obsoleto detectado (mundo armazenado=%s, atual=%s) - limpando",
+                        modDataObj.LKS_EletricidadeConstrucao_WorldId, idMundoAtual), "Fuel")
+                    -- Limpa todas as chaves de pool do LKS_EletricidadeConstrucao para que este gerador comece do zero no novo salvamento
+                    modDataObj.Gen_BuildingPoolID = nil
+                    modDataObj.LKS_EletricidadeConstrucao_WorldId = nil
+                    modDataObj.LKS_EletricidadeConstrucao_PoolData = nil
+                    modDataObj.Gen_Stats_Consumers = nil
+                    modDataObj.Gen_Stats_ActiveConsumers = nil
+                    modDataObj.Gen_Stats_Lights = nil
+                    modDataObj.Gen_Stats_ActiveLights = nil
+                    modDataObj.Gen_Stats_Lamps = nil
+                    modDataObj.Gen_Stats_ActiveLamps = nil
+                    modDataObj.Gen_Stats_Appliances = nil
+                    modDataObj.Gen_Stats_ActiveAppliances = nil
+                    modDataObj.Gen_Stats_PowerDraw = nil
+                    modDataObj.Gen_Stats_Strain = nil
+                    modDataObj.Gen_Stats_FuelRateLph = nil
+                    modDataObj.Gen_Stats_Powered = nil
+                    -- O estado de aquecimento também deve ser limpo na detecção de dados obsoletos de salvamento cruzado
+                    -- para que o gerador não carregue configurações de aquecimento antigas para o novo salvamento.
+                    modDataObj.HeatingEnabled = nil
+                    modDataObj.HeatingPositions = nil
+                    modDataObj.HeatingTargetTemp = nil
                     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                        obj:transmitModData()
+                        objeto:transmitModData()
                     end
-                    -- Skip this generator - no valid pool data
+                    -- Pula este gerador - dados de pool inválidos
                 else
 
-                if currentWid and currentWid ~= "unknown" and md.LKS_EletricidadeConstrucao_WorldId ~= currentWid then
-                    md.LKS_EletricidadeConstrucao_WorldId = currentWid
+                if idMundoAtual and idMundoAtual ~= "unknown" and modDataObj.LKS_EletricidadeConstrucao_WorldId ~= idMundoAtual then
+                    modDataObj.LKS_EletricidadeConstrucao_WorldId = idMundoAtual
                     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                        obj:transmitModData()
+                        objeto:transmitModData()
                     end
                 end
 
-                local gx = square:getX()
-                local gy = square:getY()
-                local gz = square:getZ()
-                local genId = LKS_EletricidadeConstrucao.Data.Generator.MakeId(gx, gy, gz)
+                local coordX = quadrado:getX()
+                local coordY = quadrado:getY()
+                local coordZ = quadrado:getZ()
+                local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(coordX, coordY, coordZ)
 
-                local genData = StateManager.GetGenerator(genId)
-                -- Option A (B-99): powerConsumers are never saved to GlobalModData, so
-                -- bldData.powerConsumers is always empty at boot.  needScan (below) is
-                -- therefore true on the first chunk load of each session.  Within a
-                -- session the short-circuit (consumers present → skip) is correct and
-                -- prevents redundant rescans on repeated visits to the same chunk.
+                local dadosGerador = gerenciadorEstado.GetGenerator(idGerador)
+                -- Opção A (B-99): powerConsumers nunca são salvos no GlobalModData, por isso
+                -- bldData.powerConsumers sempre está vazio na inicialização. needScan (abaixo)
+                -- é, portanto, true no primeiro carregamento de chunk de cada sessão.
+                -- Dentro de uma sessão, o curto-circuito (consumidores presentes → pula) está correto
+                -- e evita reescaneamentos redundantes em visitas repetidas ao mesmo chunk.
 
-                local buildingPoolID = md.Gen_BuildingPoolID
-                -- B-111: Save original building ID BEFORE any migrations/recoveries modify it.
-                -- This allows stale building lookup fallback to find data under the old ID.
-                local originalBuildingID = buildingPoolID
+                local idPoolPredio = modDataObj.Gen_BuildingPoolID
+                -- B-111: Salva o ID original do prédio ANTES que qualquer migração/recuperação o modifique.
+                -- Isso permite que a busca reversa por ID de prédio obsoleto encontre dados sob o ID antigo.
+                local idPredioOriginal = idPoolPredio
 
-                -- ── ID MIGRATION ──────────────────────────────────────────────────────
-                -- Legacy V1 saves stored player-built buildings under a `bld_def_XXXXX`
-                -- ID inherited from the vanilla IsoBuilding definition instead of the
-                -- actual light-switch coordinates.  The canonical V2 format is `bld_X_Y_Z`.
-                -- When LKS_EletricidadeConstrucao_PoolData carries the light-switch position, reconstruct the
-                -- correct ID so that BorderDetector's `isPlayerBuilt` check, the
-                -- RadiusFallback, and all GlobalModData lookups all work correctly.
-                if md.LKS_EletricidadeConstrucao_PoolData and md.LKS_EletricidadeConstrucao_PoolData.x and md.LKS_EletricidadeConstrucao_PoolData.y
-                        and not string.match(buildingPoolID, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
-                    local lsX0 = md.LKS_EletricidadeConstrucao_PoolData.x
-                    local lsY0 = md.LKS_EletricidadeConstrucao_PoolData.y
-                    local lsZ0 = md.LKS_EletricidadeConstrucao_PoolData.z or gz
-                    local canonicalId = LKS_EletricidadeConstrucao.Data.Building.MakeId(lsX0, lsY0, lsZ0)
+                -- ── MIGRAÇÃO DE ID ───────────────────────────────────────────────────
+                -- Salvamentos legados da V1 armazenavam prédios construídos pelo jogador sob um ID `bld_def_XXXXX`
+                -- herdado da definição vanilla de IsoBuilding em vez das coordenadas reais do interruptor de luz.
+                -- O formato canônico da V2 é `bld_X_Y_Z`.
+                -- Quando LKS_EletricidadeConstrucao_PoolData carrega a posição do interruptor de luz, reconstrói o
+                -- ID correto para que a verificação `isPlayerBuilt` do BorderDetector, o
+                -- RadiusFallback e todas as buscas no GlobalModData funcionem corretamente.
+                if modDataObj.LKS_EletricidadeConstrucao_PoolData and modDataObj.LKS_EletricidadeConstrucao_PoolData.x and modDataObj.LKS_EletricidadeConstrucao_PoolData.y
+                        and not string.match(idPoolPredio, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
+                    local switchX = modDataObj.LKS_EletricidadeConstrucao_PoolData.x
+                    local switchY = modDataObj.LKS_EletricidadeConstrucao_PoolData.y
+                    local switchZ = modDataObj.LKS_EletricidadeConstrucao_PoolData.z or coordZ
+                    local idCanonico = LKS_EletricidadeConstrucao.Data.Building.MakeId(switchX, switchY, switchZ)
                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                        "[ChunkTracker] ID migration: %s → %s (player-built, from LKS_EletricidadeConstrucao_PoolData)",
-                        buildingPoolID, canonicalId), "Fuel")
-                    -- Migrate existing GlobalModData entry (if any) to the canonical key
-                    local oldEntry = StateManager.GetBuilding(buildingPoolID)
-                    if oldEntry then
-                        oldEntry.id = canonicalId
-                        StateManager.RemoveBuilding(buildingPoolID)
-                        StateManager.AddBuilding(oldEntry)
+                        "[ChunkTracker] Migração de ID: %s → %s (construído por jogador, a partir de LKS_EletricidadeConstrucao_PoolData)",
+                        idPoolPredio, idCanonico), "Fuel")
+                    -- Migra a entrada existente do GlobalModData (se houver) para a chave canônica
+                    local entradaAntiga = gerenciadorEstado.GetBuilding(idPoolPredio)
+                    if entradaAntiga then
+                        entradaAntiga.id = idCanonico
+                        gerenciadorEstado.RemoveBuilding(idPoolPredio)
+                        gerenciadorEstado.AddBuilding(entradaAntiga)
                     end
-                    -- Persist canonical ID on the IsoObject so future boots skip migration
-                    md.Gen_BuildingPoolID = canonicalId
+                    -- Persiste o ID canônico no IsoObject para que inicializações futuras pulem a migração
+                    modDataObj.Gen_BuildingPoolID = idCanonico
                     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                        obj:transmitModData()
+                        objeto:transmitModData()
                     end
-                    -- Fix any existing generator connectedBuildings list that still uses the old ID
-                    if genData and genData.connectedBuildings then
-                        -- connectedBuildings is Kahlua-deserialized (string numeric keys); use pairs
-                        for i, b in pairs(genData.connectedBuildings) do
-                            if b == buildingPoolID then
-                                genData.connectedBuildings[i] = canonicalId
+                    -- Corrige qualquer lista connectedBuildings de geradores existentes que ainda usem o ID antigo
+                    if dadosGerador and dadosGerador.connectedBuildings then
+                        -- connectedBuildings is desserializado pelo Kahlua (chaves numéricas string); use pairs
+                        for chave, predioId in pairs(dadosGerador.connectedBuildings) do
+                            if predioId == idPoolPredio then
+                                dadosGerador.connectedBuildings[chave] = idCanonico
                             end
                         end
                     end
-                    buildingPoolID = canonicalId
+                    idPoolPredio = idCanonico
                 end
                 -- ─────────────────────────────────────────────────────────────────────
 
-                -- ── SECONDARY CANONICAL LOOKUP ────────────────────────────────────────
-                -- B-109: If the migration above did NOT run (LKS_EletricidadeConstrucao_PoolData is nil) and
-                -- buildingPoolID is still a legacy bld_def_... ID, attempt to recover
-                -- the canonical bld_X_Y_Z ID from:
-                --   1. current genData.connectedBuildings (written by prior Purge/Lazy-Xref)
-                --   2. StateManager's existing stale building (if it was already created
-                --      by another generator in a different chunk and later migrated)
-                --   3. ANY canonical building in state that shares generators with the
-                --      same stale ID (cross-chunk duplicate detection)
+                -- ── BUSCA CANÔNICA SECUNDÁRIA ────────────────────────────────────────
+                -- B-109: Se a migração acima NÃO foi executada (LKS_EletricidadeConstrucao_PoolData é nulo) e
+                -- idPoolPredio ainda for um ID legado bld_def_..., tenta recuperar
+                -- o ID canônico bld_X_Y_Z a partir de:
+                --   1. dadosGerador.connectedBuildings atual (gravado por Expurgar/Referência Cruzada Adiada anterior)
+                --   2. Prédio obsoleto existente no StateManager (se já tiver sido criado
+                --      por outro gerador em um chunk diferente e migrado posteriormente)
+                --   3. QUALQUER prédio canônico no estado que compartilhe geradores com o
+                --      mesmo idPoolPredio obsoleto (detecção de duplicatas entre chunks)
                 --
-                -- This prevents multi-chunk generator pools from splitting when chunks
-                -- load in different order (pool owner loads after non-owners, so
-                -- non-owners create stale building before owner migrates to canonical).
-                if not string.match(buildingPoolID, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
-                    local canonFound = nil
-                    -- Try 1: Check current genData (if exists)
-                    if genData and genData.connectedBuildings then
-                        for _, existingBid in pairs(genData.connectedBuildings) do
-                            if string.match(existingBid, "^bld_%-?%d+_%-?%d+_%-?%d+$")
-                                    and StateManager.GetBuilding(existingBid) then
-                                canonFound = existingBid
+                -- Isso evita que pools de geradores que abrangem múltiplos chunks se dividam quando
+                -- os chunks são carregados em ordens diferentes (o dono do pool carrega depois dos não-donos,
+                -- fazendo com que os não-donos criem prédios obsoletos antes que o dono migre para o canônico).
+                if not string.match(idPoolPredio, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
+                    local canonicoEncontrado = nil
+                    -- Tentativa 1: Verifica os prédios conectados rastreados no estado do gerador
+                    if dadosGerador and dadosGerador.connectedBuildings then
+                        for _, idPredioExistente in pairs(dadosGerador.connectedBuildings) do
+                            if string.match(idPredioExistente, "^bld_%-?%d+_%-?%d+_%-?%d+$")
+                                    and gerenciadorEstado.GetBuilding(idPredioExistente) then
+                                canonicoEncontrado = idPredioExistente
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ChunkTracker] B-109 Canonical recovery: %s → %s (from genData.connectedBuildings)",
-                                    buildingPoolID, existingBid), "Fuel")
+                                    "[ChunkTracker] B-109 Recuperação Canônica: %s → %s (a partir de dadosGerador.connectedBuildings)",
+                                    idPoolPredio, idPredioExistente), "Fuel")
                                 break
                             end
                         end
                     end
-                    -- Try 2: Check if stale building already exists and was migrated to canonical
-                    if not canonFound then
-                        local staleEntry = StateManager.GetBuilding(buildingPoolID)
-                        if staleEntry and staleEntry.id ~= buildingPoolID
-                                and string.match(staleEntry.id, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
-                            -- Stale entry was renamed to canonical by prior ID migration
-                            canonFound = staleEntry.id
+                    -- Tentativa 2: Verifica se o prédio obsoleto já existe e foi migrado para o canônico
+                    if not canonicoEncontrado then
+                        local entradaObsoleta = gerenciadorEstado.GetBuilding(idPoolPredio)
+                        if entradaObsoleta and entradaObsoleta.id ~= idPoolPredio
+                                and string.match(entradaObsoleta.id, "^bld_%-?%d+_%-?%d+_%-?%d+$") then
+                            -- A entrada obsoleta foi renomeada para canônica por migração de ID anterior
+                            canonicoEncontrado = entradaObsoleta.id
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] B-109 Canonical recovery: %s → %s (stale entry was migrated)",
-                                buildingPoolID, canonFound), "Fuel")
+                                "[ChunkTracker] B-109 Recuperação Canônica: %s → %s (entrada obsoleta foi migrada)",
+                                idPoolPredio, canonicoEncontrado), "Fuel")
                         end
                     end
-                    -- Try 3: Search all canonical buildings for one that contains OTHER generators
-                    -- with the SAME stale buildingPoolID. This handles cross-chunk splits where
-                    -- Chunk A's pool-owner migrated bld_def_X → bld_canonical, and Chunk B's
-                    -- non-owners haven't migrated yet but should link to the same canonical building.
-                    if not canonFound then
-                        local allGens = StateManager.GetAllGenerators() or {}
-                        local genKeysWithSameStaleId = {}  -- [genKey] = true for gens sharing this stale ID
-                        for gid, gd in pairs(allGens) do
-                            if gd.connectedBuildings then
-                                for _, gbid in pairs(gd.connectedBuildings) do
-                                    if gbid == buildingPoolID then
-                                        local gk2 = gd.id and string.match(gd.id, "gen_([%d_]+)$")
-                                        if gk2 then genKeysWithSameStaleId[gk2] = true end
+                    -- Tentativa 3: Procura em todos os prédios canônicos por um que contenha OUTROS geradores
+                    -- com o MESMO idPoolPredio obsoleto. Isso lida com divisões entre chunks onde o
+                    -- dono do pool do Chunk A migrou bld_def_X → bld_canonico, e os não-donos do
+                    -- Chunk B ainda não migraram, mas devem se conectar ao mesmo prédio canônico.
+                    if not canonicoEncontrado then
+                        local todosGens = gerenciadorEstado.GetAllGenerators() or {}
+                        local chavesGenComMesmoIdObsoleto = {} -- [chaveGerador] = true para geradores que compartilham este ID obsoleto
+                        for _, dadosGen in pairs(todosGens) do
+                            if dadosGen.connectedBuildings then
+                                for _, predioId in pairs(dadosGen.connectedBuildings) do
+                                    if predioId == idPoolPredio then
+                                        local chaveGerador2 = dadosGen.id and string.match(dadosGen.id, "gen_([%d_]+)$")
+                                        if chaveGerador2 then chavesGenComMesmoIdObsoleto[chaveGerador2] = true end
                                     end
                                 end
                             end
                         end
-                        -- Now search all canonical buildings for one that owns any of those generators
-                        local allBlds = StateManager.GetAllBuildings() or {}
-                        for cBid, cBld in pairs(allBlds) do
-                            if string.match(cBid, "^bld_%-?%d+_%-?%d+_%-?%d+$") and cBld.connectedGenerators then
-                                for _, cgk in pairs(cBld.connectedGenerators) do
-                                    if genKeysWithSameStaleId[cgk] then
-                                        canonFound = cBid
+                        -- Agora procura em todos os prédios canônicos por um que possua qualquer um desses geradores
+                        local todosPredios = gerenciadorEstado.GetAllBuildings() or {}
+                        for idPredioC, predioC in pairs(todosPredios) do
+                            if string.match(idPredioC, "^bld_%-?%d+_%-?%d+_%-?%d+$") and predioC.connectedGenerators then
+                                for _, chaveGenC in pairs(predioC.connectedGenerators) do
+                                    if chavesGenComMesmoIdObsoleto[chaveGenC] then
+                                        canonicoEncontrado = idPredioC
                                         LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                            "[ChunkTracker] B-109 Canonical recovery: %s → %s (cross-chunk match via gen %s)",
-                                            buildingPoolID, cBid, cgk), "Fuel")
+                                            "[ChunkTracker] B-109 Recuperação Canônica: %s → %s (correspondência entre chunks via gerador %s)",
+                                            idPoolPredio, idPredioC, chaveGenC), "Fuel")
                                         break
                                     end
                                 end
-                                if canonFound then break end
+                                if canonicoEncontrado then break end
                             end
                         end
                     end
-                    -- Apply recovered canonical ID
-                    if canonFound then
-                        md.Gen_BuildingPoolID = canonFound
+                    -- Aplica o ID canônico recuperado
+                    if canonicoEncontrado then
+                        modDataObj.Gen_BuildingPoolID = canonicoEncontrado
                         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                            obj:transmitModData()
+                            objeto:transmitModData()
                         end
-                        buildingPoolID = canonFound
+                        idPoolPredio = canonicoEncontrado
                     end
                 end
                 -- ─────────────────────────────────────────────────────────────────────
 
-                local genKey = string.format("%d_%d_%d", gx, gy, gz)
+                local chaveGerador = string.format("%d_%d_%d", coordX, coordY, coordZ)
 
-                -- Create / refresh the generator entry in StateManager
-                if not genData then
+                -- Cria / atualiza a entrada do gerador no StateManager
+                if not dadosGerador then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] V1-restore: %s → pool %s missing from state, rebuilding", genId, buildingPoolID),
+                        string.format("[ChunkTracker] Restauração V1: %s → pool %s ausente do estado, reconstruindo", idGerador, idPoolPredio),
                         "Fuel")
 
-                    local ok, gd = pcall(LKS_EletricidadeConstrucao.Data.Generator.New, obj)
-                    if ok and gd then
-                        genData = gd
+                    local sucesso, dadosNovos = pcall(LKS_EletricidadeConstrucao.Data.Generator.New, objeto)
+                    if sucesso and dadosNovos then
+                        dadosGerador = dadosNovos
                     else
-                        genData = {
-                            id = genId, x = gx, y = gy, z = gz,
-                            activated = obj:isActivated(),
-                            fuelAmount = obj:getFuel() or 0,
-                            condition  = obj:getCondition() or 100,
-                            chunkKey = LKS_EletricidadeConstrucao.Utils.Geometry.GetChunkKey(gx, gy),
+                        dadosGerador = {
+                            id = idGerador, x = coordX, y = coordY, z = coordZ,
+                            activated = objeto:isActivated(),
+                            fuelAmount = objeto:getFuel() or 0,
+                            condition = objeto:getCondition() or 100,
+                            chunkKey = LKS_EletricidadeConstrucao.Utils.Geometry.GetChunkKey(coordX, coordY),
                             lastUpdateTime = getTimestampMs(),
                         }
                     end
-                    genData.connectedBuildings = { buildingPoolID }
-                    StateManager.AddGenerator(genData)
+                    dadosGerador.connectedBuildings = { idPoolPredio }
+                    gerenciadorEstado.AddGenerator(dadosGerador)
                 else
-                    -- Generator already tracked – just ensure the building back-link is present
-                    genData.connectedBuildings = genData.connectedBuildings or {}
-                    local seen = false
-                    -- NOTE: pairs() is required here, not ipairs().  After GlobalModData
-                    -- deserialization in Kahlua (PZ's Lua VM) array-style tables may carry
-                    -- string numeric keys ("1", "2", …) instead of integer keys.  ipairs()
-                    -- stops at the first hole / string key and would return nothing,
-                    -- leaving seen=false on every chunk-return and inserting duplicates. (B-71)
-                    for _, b in pairs(genData.connectedBuildings) do
-                        if b == buildingPoolID then seen = true; break end
+                    -- Gerador já sendo rastreado – apenas garante que o vínculo reverso ao prédio esteja presente
+                    dadosGerador.connectedBuildings = dadosGerador.connectedBuildings or {}
+                    local visto = false
+                    -- NOTA: pairs() é obrigatório aqui, não ipairs(). Após a desserialização de
+                    -- GlobalModData no Kahlua (PZ's Lua VM) tabelas do tipo array podem conter
+                    -- chaves numéricas string ("1", "2", ...) em vez de chaves inteiras. O ipairs()
+                    -- para no primeiro buraco / chave string e não retornaria nada,
+                    -- deixando visto=false em cada retorno de chunk e inserindo duplicatas. (B-71)
+                    for _, predioId in pairs(dadosGerador.connectedBuildings) do
+                        if predioId == idPoolPredio then visto = true; break end
                     end
-                    if not seen then
-                        table.insert(genData.connectedBuildings, buildingPoolID)
+                    if not visto then
+                        table.insert(dadosGerador.connectedBuildings, idPoolPredio)
                     end
-                    -- ALWAYS flush genData back to the generator index so that the
-                    -- post-B-49-migration connectedBuildings (now canonical bld_X_Y_Z)
-                    -- is persisted.  Previously only MarkDirty() was called here, which
-                    -- updated the main state blob but left the generator index stale.
-                    -- On the next startup Load()+HydrateGeneratorsFromIndex would then
-                    -- restore generators with the OLD bld_def_... IDs, causing
-                    -- "Building not found" failures for every ForceUpdateBuilding call.
-                    StateManager.AddGenerator(genData)
+                    -- SEMPRE envia dadosGerador de volta ao índice de geradores para que a lista
+                    -- connectedBuildings pós-migração-B-49 (agora canônica bld_X_Y_Z) seja persistida.
+                    -- Anteriormente, apenas MarkDirty() era chamado aqui, o que atualizava o blob principal
+                    -- de estado mas deixava o índice de geradores obsoleto.
+                    -- Na inicialização seguinte, Load()+HydrateGeneratorsFromIndex restauraria geradores
+                    -- com os IDs bld_def_... ANTIGOS, causando falhas de "Prédio não encontrado"
+                    -- para cada chamada do ForceUpdateBuilding.
+                    gerenciadorEstado.AddGenerator(dadosGerador)
                 end
 
                 -- ----------------------------------------------------------
-                -- Run the same building-scan flow as ConnectBuilding so that
-                -- powerConsumers is populated with real data, not a stub.
+                -- Executa o mesmo fluxo de escaneamento de prédios que ConnectBuilding
+                -- para que powerConsumers seja populado com dados reais, não um esboço vazio.
                 -- ----------------------------------------------------------
-                local Scanner = LKS_EletricidadeConstrucao.Building
+                local Escaneador = LKS_EletricidadeConstrucao.Building
                                  and LKS_EletricidadeConstrucao.Building.Scanner
-                -- B-111: After B-109 ID recovery, the building might still exist under the
-                -- STALE ID (B-107 Purge hasn't run yet). Check both canonical and stale IDs
-                -- to avoid creating an empty stub when good data exists under the old ID.
-                local bldData  = StateManager.GetBuilding(buildingPoolID)
+                -- B-111: Após a recuperação de ID B-109, o prédio ainda pode existir sob o ID
+                -- OBSOLETO (a purga B-107 ainda não foi executada). Verifica os IDs canônico e obsoleto
+                -- para evitar criar um esboço vazio quando dados válidos já existem sob o ID antigo.
+                local dadosPredio = gerenciadorEstado.GetBuilding(idPoolPredio)
                 
-                -- If canonical not found AND we recovered a different ID (B-109 changed it),
-                -- check the ORIGINAL stale ID from IsoObject before creating an empty stub.
-                if not bldData and originalBuildingID and originalBuildingID ~= buildingPoolID then
-                    local staleBld = StateManager.GetBuilding(originalBuildingID)
-                    if staleBld and staleBld.powerConsumers and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(staleBld.powerConsumers) then
-                        -- B-111-consumer-fix: Create canonical building immediately as copy of stale.
-                        -- Don't just reference stale, because Purge will delete it later and
-                        -- generators would be linked to deleted building. Copy data now.
-                        -- CRITICAL: Deep copy powerConsumers, not just reference it!
-                        local copiedConsumers = {}
-                        for consKey, consData in pairs(staleBld.powerConsumers) do
-                            copiedConsumers[consKey] = consData
+                -- Se o canônico não for encontrado E recuperamos um ID diferente (B-109 alterou-o),
+                -- verifica o ID obsoleto ORIGINAL a partir do IsoObject antes de criar um esboço vazio.
+                if not dadosPredio and idPredioOriginal and idPredioOriginal ~= idPoolPredio then
+                    local predioObsoleto = gerenciadorEstado.GetBuilding(idPredioOriginal)
+                    if predioObsoleto and predioObsoleto.powerConsumers and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(predioObsoleto.powerConsumers) then
+                        -- B-111-consumer-fix: Cria o prédio canônico imediatamente como cópia do obsoleto.
+                        -- Não referencie apenas o obsoleto, pois a purga irá deletá-lo mais tarde e
+                        -- os geradores ficariam vinculados a um prédio deletado. Copie os dados agora.
+                        -- CRÍTICO: Cópia profunda (deep copy) de powerConsumers, não apenas referência!
+                        local consumidoresCopiados = {}
+                        for chaveConsumidor, dadosConsumidor in pairs(predioObsoleto.powerConsumers) do
+                            consumidoresCopiados[chaveConsumidor] = dadosConsumidor
                         end
                         
-                        bldData = {
-                            id = buildingPoolID,  -- Use canonical ID
-                            x = staleBld.x,
-                            y = staleBld.y,
-                            z = staleBld.z,
-                            connectedGenerators = {},  -- Will be populated below
-                            isPowered = staleBld.isPowered,
-                            powerConsumers = copiedConsumers,  -- Deep copy, not reference
-                            totalPowerDraw = staleBld.totalPowerDraw,
-                            heatingPowerDraw = staleBld.heatingPowerDraw,
-                            heatingEnabled = staleBld.heatingEnabled,
-                            heatingSourceCount = staleBld.heatingSourceCount,
-                            heatingTargetTemp = staleBld.heatingTargetTemp,
+                        dadosPredio = {
+                            id = idPoolPredio, -- Usa ID canônico
+                            x = predioObsoleto.x,
+                            y = predioObsoleto.y,
+                            z = predioObsoleto.z,
+                            connectedGenerators = {}, -- Será populado abaixo
+                            isPowered = predioObsoleto.isPowered,
+                            powerConsumers = consumidoresCopiados, -- Cópia profunda
+                            totalPowerDraw = predioObsoleto.totalPowerDraw,
+                            heatingPowerDraw = predioObsoleto.heatingPowerDraw,
+                            heatingEnabled = predioObsoleto.heatingEnabled,
+                            heatingSourceCount = predioObsoleto.heatingSourceCount,
+                            heatingTargetTemp = predioObsoleto.heatingTargetTemp,
                         }
-                        StateManager.AddBuilding(bldData)
-                        _pendingBuildingUpdates[buildingPoolID] = true  -- Queue for UI update
-                        local consCount = 0
-                        if staleBld.powerConsumers then
-                            for _ in pairs(staleBld.powerConsumers) do consCount = consCount + 1 end
+                        gerenciadorEstado.AddBuilding(dadosPredio)
+                        _atualizacoesPredioPendentes[idPoolPredio] = true -- Fila para atualização de interface
+                        local totalConsumidoresAntigos = 0
+                        if predioObsoleto.powerConsumers then
+                            for _ in pairs(predioObsoleto.powerConsumers) do totalConsumidoresAntes = totalConsumidoresAntes + 1 end
                         end
                         LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                            "[ChunkTracker] B-111: Created canonical %s with %d consumers from stale %s",
-                            buildingPoolID, consCount, originalBuildingID), "Fuel")
+                            "[ChunkTracker] B-111: Criado canônico %s com %d consumidores a partir do obsoleto %s",
+                            idPoolPredio, totalConsumidoresAntigos, idPredioOriginal), "Fuel")
                     end
                 end
                 
-                local needScan = not bldData
-                              or not bldData.powerConsumers
-                              or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(bldData.powerConsumers)
+                local precisaEscanear = not dadosPredio
+                              or not dadosPredio.powerConsumers
+                              or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(dadosPredio.powerConsumers)
 
-                -- ── PENDING-STATE SCAN GUARD ──────────────────────────────────────────
-                -- When ConfirmAndLoadState() hasn't run yet (state still "pending"),
-                -- world squares may not all be settled (server not fully started, some
-                -- chunks still streaming in).  Running ScanBuilding now could produce a
-                -- partial consumer count for buildings that span multiple chunks.
-                -- Fix: create a minimal stub; ConfirmAndLoadState() calls
-                -- HandleStartupGeneratorRefresh() after Load(), which re-enters this
-                -- path with state = "loaded" and needScan = true (Option A / B-99:
-                -- powerConsumers are never saved so the building always starts empty),
-                -- triggering a full scan once the world is stable.
-                if needScan and StateManager.IsStateLoaded and not StateManager.IsStateLoaded() then
+                -- ── GUARDA DE VARREDURA EM ESTADO PENDENTE ───────────────────────────
+                -- Quando ConfirmAndLoadState() ainda não foi executado (estado ainda "pendente"),
+                -- os quadrados do mundo podem não estar todos estabelecidos (servidor não totalmente iniciado,
+                -- alguns chunks ainda carregando). Executar ScanBuilding agora poderia produzir uma contagem
+                -- parcial de consumidores para prédios que se estendem por múltiplos chunks.
+                -- Correção: cria um esboço minimalista; ConfirmAndLoadState() chama
+                -- HandleStartupGeneratorRefresh() após o carregamento, que reentra neste caminho
+                -- com estado = "carregado" e precisaEscanear = true (Opção A / B-99:
+                -- powerConsumers nunca são salvos, fazendo com que o prédio sempre comece vazio),
+                -- disparando uma varredura completa assim que o mundo estiver estável.
+                if precisaEscanear and gerenciadorEstado.IsStateLoaded and not gerenciadorEstado.IsStateLoaded() then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                        "[ChunkTracker] State pending – deferring scan for %s (ConfirmAndLoadState will supply full data)",
-                        buildingPoolID), "Fuel")
-                    if not bldData then
-                        -- B-104: Decode building origin from the canonical ID instead of
-                        -- using generator coords.  Generator squares are outside the
-                        -- building walls so scanning from gx/gy never finds a light switch.
-                        local bx0, by0, bz0s = string.match(buildingPoolID, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                        bldData = {
-                            id = buildingPoolID,
-                            x = bx0 and tonumber(bx0) or gx,
-                            y = by0 and tonumber(by0) or gy,
-                            z = bz0s and tonumber(bz0s) or gz,
+                        "[ChunkTracker] Estado pendente – adiando varredura para %s (ConfirmAndLoadState fornecerá os dados completos)",
+                        idPoolPredio), "Fuel")
+                    if not dadosPredio then
+                        -- B-104: Decodifica a origem do prédio a partir do ID canônico em vez de
+                        -- usar as coordenadas do gerador. Os quadrados dos geradores ficam fora das paredes
+                        -- do prédio, então escanear a partir de gx/gy nunca encontra um interruptor de luz.
+                        local coordBX, coordBY, coordBZStr = string.match(idPoolPredio, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        dadosPredio = {
+                            id = idPoolPredio,
+                            x = coordBX and tonumber(coordBX) or coordX,
+                            y = coordBY and tonumber(coordBY) or coordY,
+                            z = coordBZStr and tonumber(coordBZStr) or coordZ,
                             connectedGenerators = {},
                             isPowered = false,
                             powerConsumers = {},
                             totalPowerDraw = 0,
                             heatingPowerDraw = 0,
                         }
-                        StateManager.AddBuilding(bldData)
+                        gerenciadorEstado.AddBuilding(dadosPredio)
                     end
-                    needScan = false  -- defer to GlobalModData load
+                    precisaEscanear = false -- adia para o carregamento do GlobalModData
                 end
                 -- ─────────────────────────────────────────────────────────────────────
 
-                if needScan and Scanner and Scanner.ScanBuilding then
-                    -- Find a nearby building square (generator sits outside walls)
-                    local bldSq = nil
-                    if square:getBuilding() then
-                        bldSq = square
+                if precisaEscanear and Escaneador and Escaneador.ScanBuilding then
+                    -- Encontra um quadrado de prédio próximo (o gerador fica fora das paredes)
+                    local quadradoPredio = nil
+                    if quadrado:getBuilding() then
+                        quadradoPredio = quadrado
                     else
-                        local dirs = {
+                        local direcoes = {
                             IsoDirections.N, IsoDirections.S, IsoDirections.E, IsoDirections.W,
                             IsoDirections.NE, IsoDirections.NW, IsoDirections.SE, IsoDirections.SW,
                         }
-                        for _, dir in ipairs(dirs) do
-                            local adj = square:getAdjacentSquare(dir)
-                            if adj and adj:getBuilding() then bldSq = adj; break end
+                        for _, direcao in ipairs(direcoes) do
+                            local adjacente = quadrado:getAdjacentSquare(direcao)
+                            if adjacente and adjacente:getBuilding() then quadradoPredio = adjacente; break end
                         end
                     end
 
-                    if bldSq then
-                        local building = bldSq:getBuilding()
-                        local def = building and building.getDef and building:getDef()
-                        local rooms = def and def.getRooms and def:getRooms()
-                        local lsX, lsY, lsZ
+                    if quadradoPredio then
+                        local objetoPredio = quadradoPredio:getBuilding()
+                        local definicaoPredio = objetoPredio and objetoPredio.getDef and objetoPredio:getDef()
+                        local salas = definicaoPredio and definicaoPredio.getRooms and definicaoPredio:getRooms()
+                        local switchX, switchY, switchZ
 
-                        -- Search rooms for a light switch (identical to ConnectBuilding)
-                        if rooms then
-                            for ri = 0, rooms:size() - 1 do
-                                local room = rooms:get(ri)
-                                if room and not lsX then
-                                    for rx = room:getX(), room:getX2() do
-                                        for ry = room:getY(), room:getY2() do
-                                            local sq2 = getCell():getGridSquare(rx, ry, gz)
-                                            if sq2 then
-                                                local objs2 = sq2:getObjects()
-                                                for oi = 0, objs2:size() - 1 do
-                                                    local o2 = objs2:get(oi)
-                                                    if o2 and instanceof(o2, "IsoLightSwitch") then
-                                                        lsX, lsY, lsZ = rx, ry, gz
+                        -- Procura interruptores de luz nas salas (idêntico ao ConnectBuilding)
+                        if salas then
+                            for ri = 0, salas:size() - 1 do
+                                local sala = salas:get(ri)
+                                if sala and not switchX then
+                                    for rx = sala:getX(), sala:getX2() do
+                                        for ry = sala:getY(), sala:getY2() do
+                                            local quadradoSala = getCell():getGridSquare(rx, ry, coordZ)
+                                            if quadradoSala then
+                                                local objetosSala = quadradoSala:getObjects()
+                                                for oi = 0, objetosSala:size() - 1 do
+                                                    local objSala = objetosSala:get(oi)
+                                                    if objSala and instanceof(objSala, "IsoLightSwitch") then
+                                                        switchX, switchY, switchZ = rx, ry, coordZ
                                                         break
                                                     end
                                                 end
                                             end
-                                            if lsX then break end
+                                            if switchX then break end
                                         end
-                                        if lsX then break end
+                                        if switchX then break end
                                     end
                                 end
-                                if lsX then break end
+                                if switchX then break end
                             end
                         end
 
-                        if lsX then
-                            -- ── CANONICAL ID MIGRATION FROM LIGHT-SWITCH ────────────
-                            -- Only migrate stale IDs (bld_def_... or other legacy formats).
-                            -- If buildingPoolID is already canonical (bld_X_Y_Z), do NOT
-                            -- trust the room-scan's lsX: a generator between two buildings
-                            -- may find the adjacent building's light switch first, producing
-                            -- a wrong derivedCanonicalId that would overwrite the correct
-                            -- saved ID.  For canonical IDs, override lsX/Y/Z with the
-                            -- coordinates encoded in the ID itself so the scan targets the
-                            -- correct building regardless of which adjacent square PZ
-                            -- happened to return first.
-                            local isStaleId = not string.match(buildingPoolID, "^bld_%-?%d+_%-?%d+_%-?%d+$")
-                            if not isStaleId then
-                                -- Already canonical – re-anchor lsX/Y/Z from the ID
-                                local bx, by, bz = string.match(buildingPoolID, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        if switchX then
+                            -- ── MIGRAÇÃO DE ID CANÔNICO A PARTIR DO INTERRUPTOR ──
+                            -- Apenas migra IDs obsoletos (bld_def_... ou outros formatos legados).
+                            -- Se idPoolPredio já for canônico (bld_X_Y_Z), NÃO confie no switchX da varredura
+                            -- de salas: um gerador posicionado entre dois prédios pode encontrar o interruptor
+                            -- do prédio adjacente primeiro, produzindo um idCanonicoDerivado incorreto que
+                            -- sobrescreveria o ID correto gravado. Para IDs canônicos, força switchX/Y/Z com as
+                            -- coordenadas decodificadas do próprio ID para que a varredura atinja o prédio
+                            -- correto independentemente de qual quadrado adjacente o PZ retorne primeiro.
+                            local ehIdObsoleto = not string.match(idPoolPredio, "^bld_%-?%d+_%-?%d+_%-?%d+$")
+                            if not ehIdObsoleto then
+                                -- Já é canônico – reancora switchX/Y/Z a partir do ID
+                                local bx, by, bz = string.match(idPoolPredio, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
                                 if bx then
-                                    lsX, lsY, lsZ = tonumber(bx), tonumber(by), tonumber(bz)
+                                    switchX, switchY, switchZ = tonumber(bx), tonumber(by), tonumber(bz)
                                 end
                             end
-                            local derivedCanonicalId = LKS_EletricidadeConstrucao.Data.Building.MakeId(lsX, lsY, lsZ)
-                            if isStaleId and derivedCanonicalId ~= buildingPoolID then
+                            local idCanonicoDerivado = LKS_EletricidadeConstrucao.Data.Building.MakeId(switchX, switchY, switchZ)
+                            if ehIdObsoleto and idCanonicoDerivado ~= idPoolPredio then
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ChunkTracker] LS-migration: gen=%s stale=%s → canonical=%s",
-                                    genId, buildingPoolID, derivedCanonicalId), "Fuel")
+                                    "[ChunkTracker] Migração LS: gerador=%s obsoleto=%s → canônico=%s",
+                                    idGerador, idPoolPredio, idCanonicoDerivado), "Fuel")
 
-                                -- Stamp the canonical ID on the IsoObject
-                                md.Gen_BuildingPoolID = derivedCanonicalId
+                                -- Grava o ID canônico no IsoObject
+                                modDataObj.Gen_BuildingPoolID = idCanonicoDerivado
                                 if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                    obj:transmitModData()
+                                    objeto:transmitModData()
                                 end
 
-                                -- Update genData.connectedBuildings
-                                if genData and genData.connectedBuildings then
-                                    for i, bid in pairs(genData.connectedBuildings) do
-                                        if bid == buildingPoolID then
-                                            genData.connectedBuildings[i] = derivedCanonicalId
+                                -- Update dadosGerador.connectedBuildings
+                                if dadosGerador and dadosGerador.connectedBuildings then
+                                    for chave, predioId in pairs(dadosGerador.connectedBuildings) do
+                                        if predioId == idPoolPredio then
+                                            dadosGerador.connectedBuildings[chave] = idCanonicoDerivado
                                         end
                                     end
-                                    StateManager.AddGenerator(genData)
+                                    gerenciadorEstado.AddGenerator(dadosGerador)
                                 end
 
-                                -- Transfer heatingEnabled/sourceCount/targetTemp from stale
-                                -- building entry to canonical (if canonical lacks them and
-                                -- stale has them) so the next heating sync finds correct data.
-                                -- B-111-heating-fix: Check heatingSourceCount instead of heatingEnabled,
-                                -- because canonical might have heatingEnabled=false (IsoObject default)
-                                -- while stale has heatingEnabled=true + heatingSourceCount>0 (GlobalModData).
-                                local staleEntry = StateManager.GetBuilding(buildingPoolID)
-                                local canonEntry = StateManager.GetBuilding(derivedCanonicalId)
-                                if staleEntry and canonEntry then
-                                    local canonHasNoSources = not canonEntry.heatingSourceCount or canonEntry.heatingSourceCount == 0
-                                    local staleHasSources = staleEntry.heatingSourceCount and staleEntry.heatingSourceCount > 0
-                                    if canonHasNoSources and staleHasSources then
-                                        canonEntry.heatingEnabled     = staleEntry.heatingEnabled
-                                        canonEntry.heatingSourceCount = staleEntry.heatingSourceCount
-                                        canonEntry.heatingTargetTemp  = staleEntry.heatingTargetTemp
+                                -- Transfere as configurações de aquecimento da entrada obsoleta para a canônica
+                                -- (se o canônico não as possuir e o obsoleto sim) para que a próxima sincronização
+                                -- de aquecimento encontre os dados corretos.
+                                -- B-111-heating-fix: Verifica heatingSourceCount em vez de heatingEnabled,
+                                -- porque o canônico pode ter heatingEnabled=false (padrão do IsoObject)
+                                -- enquanto o obsoleto tem heatingEnabled=true + heatingSourceCount>0 (GlobalModData).
+                                local entradaObsoleta = gerenciadorEstado.GetBuilding(idPoolPredio)
+                                local entradaCanonica = gerenciadorEstado.GetBuilding(idCanonicoDerivado)
+                                if entradaObsoleta and entradaCanonica then
+                                    local canonicoSemFontes = not entradaCanonica.heatingSourceCount or entradaCanonica.heatingSourceCount == 0
+                                    local obsoletoComFontes = entradaObsoleta.heatingSourceCount and entradaObsoleta.heatingSourceCount > 0
+                                    if canonicoSemFontes and obsoletoComFontes then
+                                        entradaCanonica.heatingEnabled = entradaObsoleta.heatingEnabled
+                                        entradaCanonica.heatingSourceCount = entradaObsoleta.heatingSourceCount
+                                        entradaCanonica.heatingTargetTemp = entradaObsoleta.heatingTargetTemp
                                     end
-                                    -- Move connectedGenerators from stale to canonical
-                                    if staleEntry.connectedGenerators then
-                                        canonEntry.connectedGenerators = canonEntry.connectedGenerators or {}
-                                        for _, gk in pairs(staleEntry.connectedGenerators) do
-                                            local exists = false
-                                            for _, ek in pairs(canonEntry.connectedGenerators) do
-                                                if ek == gk then exists = true; break end
+                                    -- Move connectedGenerators do obsoleto para o canônico
+                                    if entradaObsoleta.connectedGenerators then
+                                        entradaCanonica.connectedGenerators = entradaCanonica.connectedGenerators or {}
+                                        for _, chaveGerador in pairs(entradaObsoleta.connectedGenerators) do
+                                            local existe = false
+                                            for _, chaveExistente in pairs(entradaCanonica.connectedGenerators) do
+                                                if chaveExistente == chaveGerador then existe = true; break end
                                             end
-                                            if not exists then
-                                                table.insert(canonEntry.connectedGenerators, gk)
+                                            if not existe then
+                                                table.insert(entradaCanonica.connectedGenerators, chaveGerador)
                                             end
                                         end
                                     end
-                                    -- B-111-consumer-fix: Merge powerConsumers from stale to canonical
-                                    if staleEntry.powerConsumers then
-                                        canonEntry.powerConsumers = canonEntry.powerConsumers or {}
-                                        for consKey, consData in pairs(staleEntry.powerConsumers) do
-                                            if not canonEntry.powerConsumers[consKey] then
-                                                canonEntry.powerConsumers[consKey] = consData
+                                    -- B-111-consumer-fix: Mescla powerConsumers do obsoleto para o canônico
+                                    if entradaObsoleta.powerConsumers then
+                                        entradaCanonica.powerConsumers = entradaCanonica.powerConsumers or {}
+                                        for chaveConsumidor, dadosConsumidor in pairs(entradaObsoleta.powerConsumers) do
+                                            if not entradaCanonica.powerConsumers[chaveConsumidor] then
+                                                entradaCanonica.powerConsumers[chaveConsumidor] = dadosConsumidor
                                             end
                                         end
-                                        -- Recalculate power draw totals after merge
-                                        local totalDraw = 0
-                                        local heatingDraw = 0
-                                        for _, cons in pairs(canonEntry.powerConsumers) do
-                                            if cons.powerDraw then
-                                                totalDraw = totalDraw + cons.powerDraw
-                                                if cons.isHeater then
-                                                    heatingDraw = heatingDraw + cons.powerDraw
+                                        -- Recalcula os totais de carga elétrica após a mesclagem
+                                        local cargaTotal = 0
+                                        local cargaAquecimento = 0
+                                        for _, consumidor in pairs(entradaCanonica.powerConsumers) do
+                                            if consumidor.powerDraw then
+                                                cargaTotal = cargaTotal + consumidor.powerDraw
+                                                if consumidor.isHeater then
+                                                    cargaAquecimento = cargaAquecimento + consumidor.powerDraw
                                                 end
                                             end
                                         end
-                                        canonEntry.totalPowerDraw = totalDraw
-                                        canonEntry.heatingPowerDraw = heatingDraw
-                                        -- Queue for UI update
-                                        _pendingBuildingUpdates[derivedCanonicalId] = true
+                                        entradaCanonica.totalPowerDraw = cargaTotal
+                                        entradaCanonica.heatingPowerDraw = cargaAquecimento
+                                        -- Enfileira para atualização de interface
+                                        _atualizacoesPredioPendentes[idCanonicoDerivado] = true
                                     end
-                                    StateManager.RemoveBuilding(buildingPoolID)
+                                    gerenciadorEstado.RemoveBuilding(idPoolPredio)
                                 end
 
-                                buildingPoolID = derivedCanonicalId
+                                idPoolPredio = idCanonicoDerivado
                             end
                             -- ─────────────────────────────────────────────────────────
 
-                            -- B-111-consumer-fix: After migration, check if canonical building
-                            -- now has consumers (merged from stale). If so, skip scan to avoid
-                            -- overwriting merged data with fresh empty building.
-                            local canonicalBldData = StateManager.GetBuilding(buildingPoolID)
-                            local alreadyHasConsumers = canonicalBldData
-                                                     and canonicalBldData.powerConsumers
-                                                     and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(canonicalBldData.powerConsumers)
+                            -- B-111-consumer-fix: Após a migração, verifica se o prédio canônico
+                            -- agora possui consumidores (mesclados a partir do obsoleto). Se sim, pula o escaneamento
+                            -- para evitar sobrescrever os dados mesclados com um prédio recém-criado vazio.
+                            local dadosPredioCanonico = gerenciadorEstado.GetBuilding(idPoolPredio)
+                            local jaPossuiConsumidores = dadosPredioCanonico
+                                                     and dadosPredioCanonico.powerConsumers
+                                                     and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(dadosPredioCanonico.powerConsumers)
                             
-                            if alreadyHasConsumers then
-                                bldData = canonicalBldData  -- Use canonical with merged consumers
+                            if jaPossuiConsumidores then
+                                dadosPredio = dadosPredioCanonico -- Usa o canônico com consumidores mesclados
                             end
                             
-                            if not alreadyHasConsumers then
-                                LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("[ChunkTracker] V1-restore: scanning building %s from light-switch (%d,%d,%d)",
-                                    buildingPoolID, lsX, lsY, lsZ), "Fuel")
-                                local scanned = pcall(function()
-                                    bldData = Scanner.ScanBuilding(lsX, lsY, lsZ, buildingPoolID)
+                            if not jaPossuiConsumidores then
+                                LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("[ChunkTracker] Restauração V1: escaneando prédio %s a partir do interruptor de luz (%d,%d,%d)",
+                                    idPoolPredio, switchX, switchY, switchZ), "Fuel")
+                                local sucessoEscaneamento = pcall(function()
+                                    dadosPredio = Escaneador.ScanBuilding(switchX, switchY, switchZ, idPoolPredio)
                                 end)
-                                if bldData then
+                                if dadosPredio then
                                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                        string.format("[ChunkTracker] V1-restore: scan complete for %s (%d consumers)",
-                                            buildingPoolID, bldData.powerConsumers and #bldData.powerConsumers or 0),
+                                        string.format("[ChunkTracker] Restauração V1: varredura concluída para %s (%d consumidores)",
+                                            idPoolPredio, dadosPredio.powerConsumers and #dadosPredio.powerConsumers or 0),
                                         "Fuel")
                                 end
                             else
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                    string.format("[ChunkTracker] V1-restore: skipping scan for %s (already has %d consumers from merge)",
-                                        buildingPoolID, bldData.powerConsumers and #bldData.powerConsumers or 0),
+                                    string.format("[ChunkTracker] Restauração V1: pulando varredura para %s (já possui %d consumidores da mesclagem)",
+                                        idPoolPredio, dadosPredio.powerConsumers and #dadosPredio.powerConsumers or 0),
                                     "Fuel")
                             end
                         else
-                            -- No light switch found – ensure at least a basic stub exists
-                            if not bldData then
-                                bldData = {
-                                    id = buildingPoolID,
-                                    x = gx, y = gy, z = gz,
+                            -- Nenhum interruptor de luz encontrado – garante ao menos um esboço básico
+                            if not dadosPredio then
+                                dadosPredio = {
+                                    id = idPoolPredio,
+                                    x = coordX, y = coordY, z = coordZ,
                                     connectedGenerators = {},
                                     isPowered = false,
                                     powerConsumers = {},
                                     totalPowerDraw = 0,
                                     heatingPowerDraw = 0,
                                 }
-                                StateManager.AddBuilding(bldData)
+                                gerenciadorEstado.AddBuilding(dadosPredio)
                             end
                         end
                     else
-                        -- No adjacent IsoBuilding found.
-                        -- This is normal for player-built structures: getBuilding() always
-                        -- returns nil for player-placed tiles, so the room-scan path above
-                        -- never finds a light switch.
-                        -- Use the light-switch coordinates stored in LKS_EletricidadeConstrucao_PoolData (written by
-                        -- StateManager.Save()) to run a direct ScanBuilding instead.
-                        local lsX2, lsY2, lsZ2
+                        -- Nenhum IsoBuilding adjacente encontrado.
+                        -- Isso é normal para estruturas construídas por jogadores: getBuilding() sempre
+                        -- retorna nil para blocos colocados por jogadores, de modo que o caminho de salas acima
+                        -- nunca encontra um interruptor de luz.
+                        -- Em vez disso, usa as coordenadas de interruptor salvas em LKS_EletricidadeConstrucao_PoolData (gravadas por
+                        -- StateManager.Save()) para rodar uma varredura direta ScanBuilding.
+                        local switchX2, switchY2, switchZ2
 
-                        -- 1) LKS_EletricidadeConstrucao_PoolData.x/y/z is the light switch anchor saved on the owner gen
-                        if md.LKS_EletricidadeConstrucao_PoolData and md.LKS_EletricidadeConstrucao_PoolData.x and md.LKS_EletricidadeConstrucao_PoolData.y and md.LKS_EletricidadeConstrucao_PoolData.z then
-                            lsX2 = md.LKS_EletricidadeConstrucao_PoolData.x
-                            lsY2 = md.LKS_EletricidadeConstrucao_PoolData.y
-                            lsZ2 = md.LKS_EletricidadeConstrucao_PoolData.z
+                        -- 1) LKS_EletricidadeConstrucao_PoolData.x/y/z é o interruptor âncora salvo no gerador dono
+                        if modDataObj.LKS_EletricidadeConstrucao_PoolData and modDataObj.LKS_EletricidadeConstrucao_PoolData.x and modDataObj.LKS_EletricidadeConstrucao_PoolData.y and modDataObj.LKS_EletricidadeConstrucao_PoolData.z then
+                            switchX2 = modDataObj.LKS_EletricidadeConstrucao_PoolData.x
+                            switchY2 = modDataObj.LKS_EletricidadeConstrucao_PoolData.y
+                            switchZ2 = modDataObj.LKS_EletricidadeConstrucao_PoolData.z
                         end
 
-                        -- 2) Fallback: parse coordinates from bld_X_Y_Z ID format
-                        if not lsX2 then
-                            local bx, by, bz = string.match(buildingPoolID, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        -- 2) Fallback: analisa coordenadas a partir do formato do ID bld_X_Y_Z
+                        if not switchX2 then
+                            local bx, by, bz = string.match(idPoolPredio, "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
                             if bx then
-                                lsX2, lsY2, lsZ2 = tonumber(bx), tonumber(by), tonumber(bz)
+                                switchX2, switchY2, switchZ2 = tonumber(bx), tonumber(by), tonumber(bz)
                             end
                         end
 
-                                -- B-111-consumer-fix: Check if CANONICAL building has consumers before
-                        -- scanning. bldData might be the stale reference, so check canonical ID.
-                        local canonicalBldData = StateManager.GetBuilding(buildingPoolID)
-                        local alreadyHasConsumers = canonicalBldData
-                                                 and canonicalBldData.powerConsumers
-                                                 and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(canonicalBldData.powerConsumers)
-                        if alreadyHasConsumers then
-                            bldData = canonicalBldData  -- Use canonical, not stale
+                        -- B-111-consumer-fix: Verifica se o prédio CANÔNICO possui consumidores antes de
+                        -- escanear. dadosPredio pode ser a referência obsoleta, por isso verifica com ID canônico.
+                        local dadosPredioCanonico = gerenciadorEstado.GetBuilding(idPoolPredio)
+                        local jaPossuiConsumidores = dadosPredioCanonico
+                                                 and dadosPredioCanonico.powerConsumers
+                                                 and not LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(dadosPredioCanonico.powerConsumers)
+                        if jaPossuiConsumidores then
+                            dadosPredio = dadosPredioCanonico -- Usa o canônico, não o obsoleto
                         end
 
-                        if lsX2 and Scanner and Scanner.ScanBuilding and not alreadyHasConsumers then
+                        if switchX2 and Escaneador and Escaneador.ScanBuilding and not jaPossuiConsumidores then
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] V1-restore (player-built): scanning %s from stored light-switch (%d,%d,%d)",
-                                buildingPoolID, lsX2, lsY2, lsZ2), "Fuel")
-                            local ok2 = pcall(function()
-                                bldData = Scanner.ScanBuilding(lsX2, lsY2, lsZ2, buildingPoolID)
+                                "[ChunkTracker] Restauração V1 (construído por jogador): escaneando %s a partir do interruptor salvo (%d,%d,%d)",
+                                idPoolPredio, switchX2, switchY2, switchZ2), "Fuel")
+                            local sucesso2 = pcall(function()
+                                dadosPredio = Escaneador.ScanBuilding(switchX2, switchY2, switchZ2, idPoolPredio)
                             end)
-                            if bldData then
+                            if dadosPredio then
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ChunkTracker] V1-restore (player-built): scan complete for %s (%d consumers)",
-                                    buildingPoolID, bldData.powerConsumers and #bldData.powerConsumers or 0), "Fuel")
+                                    "[ChunkTracker] Restauração V1 (construído por jogador): varredura concluída para %s (%d consumidores)",
+                                    idPoolPredio, dadosPredio.powerConsumers and #dadosPredio.powerConsumers or 0), "Fuel")
                             end
-                        elseif not bldData then
-                            -- Last resort: create a stub so at least the building exists in state
-                            bldData = {
-                                id = buildingPoolID,
-                                x = lsX2 or gx, y = lsY2 or gy, z = lsZ2 or gz,
+                        elseif not dadosPredio then
+                            -- Último recurso: cria um esboço para que pelo menos o prédio exista no estado
+                            dadosPredio = {
+                                id = idPoolPredio,
+                                x = switchX2 or coordX, y = switchY2 or coordY, z = switchZ2 or coordZ,
                                 connectedGenerators = {},
                                 isPowered = false,
                                 powerConsumers = {},
                                 totalPowerDraw = 0,
                                 heatingPowerDraw = 0,
                             }
-                            StateManager.AddBuilding(bldData)
+                            gerenciadorEstado.AddBuilding(dadosPredio)
                         end
                     end
-                elseif not bldData then
-                    -- Scanner not available or consumers already populated – ensure entry exists
-                    bldData = {
-                        id = buildingPoolID,
-                        x = gx, y = gy, z = gz,
+                elseif not dadosPredio then
+                    -- Escaneador não disponível ou consumidores já populados – garante que a entrada exista
+                    dadosPredio = {
+                        id = idPoolPredio,
+                        x = coordX, y = coordY, z = coordZ,
                         connectedGenerators = {},
                         isPowered = false,
                         powerConsumers = {},
                         totalPowerDraw = 0,
                         heatingPowerDraw = 0,
                     }
-                    StateManager.AddBuilding(bldData)
+                    gerenciadorEstado.AddBuilding(dadosPredio)
                 end
 
-                -- Re-fetch (ScanBuilding may have replaced the table reference)
-                bldData = StateManager.GetBuilding(buildingPoolID) or bldData
+                -- Busca novamente (ScanBuilding pode ter substituído a referência da tabela)
+                dadosPredio = gerenciadorEstado.GetBuilding(idPoolPredio) or dadosPredio
 
-                -- ── HEATING SYNC: IsoObject → in-memory (Option A / B-99) ─────────────
-                -- B-110: Only apply IsoObject heating state when the building's heating
-                -- config is uninitialized (nil). Once the building has heating state
-                -- (from GlobalModData or first generator in a multi-gen pool), don't let
-                -- subsequent generators' IsoObject values overwrite it.
+                -- ── HEATING SYNC: IsoObject → memória (Opção A / B-99) ────────────────
+                -- B-110: Apenas aplica o estado de aquecimento do IsoObject quando a
+                -- configuração de aquecimento do prédio não estiver inicializada (nil).
+                -- Uma vez que o prédio tenha estado de aquecimento (de GlobalModData ou do
+                -- primeiro gerador carregado em um pool multi-gen), não permite que valores
+                -- subsequentes dos IsoObjects dos geradores o sobrescrevam.
                 --
-                -- Multi-gen issue: Gen1 loads with md.HeatingEnabled=true, sets building
-                -- to true. Gen2 loads later with md.HeatingEnabled=false, would overwrite
-                -- to false. But heatingSourceCount (from GlobalModData) is already set to
-                -- 3, creating inconsistent state (heating OFF, sources ON). Fix: first
-                -- generator to load wins, subsequent generators are ignored.
-                if bldData then
-                    if bldData.heatingEnabled == nil then
-                        -- Building has no heating state yet, populate from IsoObject
-                        if md.HeatingEnabled ~= nil then
-                            bldData.heatingEnabled    = md.HeatingEnabled
-                            bldData.heatingTargetTemp = md.HeatingTargetTemp or 22.0
+                -- Problema multi-gen: Gerador1 carrega com HeatingEnabled=true, define o prédio
+                -- como true. Gerador2 carrega depois com HeatingEnabled=false, sobrescreveria
+                -- para false. Mas heatingSourceCount (de GlobalModData) já está definido como 3,
+                -- criando estado inconsistente (aquecimento DESLIGADO, fontes LIGADAS).
+                -- Correção: o primeiro gerador a carregar vence, geradores subsequentes são ignorados.
+                if dadosPredio then
+                    if dadosPredio.heatingEnabled == nil then
+                        -- Prédio ainda não possui estado de aquecimento, popula do IsoObject
+                        if modDataObj.HeatingEnabled ~= nil then
+                            dadosPredio.heatingEnabled = modDataObj.HeatingEnabled
+                            dadosPredio.heatingTargetTemp = modDataObj.HeatingTargetTemp or 22.0
                         else
-                            -- IsoObject has no heating stamp → fresh generator, default to off
-                            bldData.heatingEnabled    = false
-                            bldData.heatingTargetTemp = 22.0
+                            -- IsoObject não possui marcação de aquecimento → gerador novo, padrão desativado
+                            dadosPredio.heatingEnabled = false
+                            dadosPredio.heatingTargetTemp = 22.0
                         end
                     end
-                    -- else: building already has heating state (from GlobalModData or
-                    -- prior generator), don't overwrite from this generator's IsoObject
+                    -- senão: o prédio já possui estado de aquecimento (de GlobalModData ou
+                    -- gerador anterior), não sobrescreve a partir do IsoObject deste gerador
                 end
                 -- ─────────────────────────────────────────────────────────────────────
 
-                -- Ensure bidirectional link: building.connectedGenerators → genKey
-                if bldData then
-                    bldData.connectedGenerators = bldData.connectedGenerators or {}
-                    local alreadyLinked = false
-                    -- connectedGenerators is Kahlua-deserialized (string numeric keys); use pairs
-                    for _, k in pairs(bldData.connectedGenerators) do
-                        if k == genKey then alreadyLinked = true; break end
+                -- Garante vínculo bidirecional: predio.connectedGenerators → chaveGerador
+                if dadosPredio then
+                    dadosPredio.connectedGenerators = dadosPredio.connectedGenerators or {}
+                    local jaVinculado = false
+                    -- connectedGenerators é desserializado pelo Kahlua (chaves numéricas string); use pairs
+                    for _, chaveG in pairs(dadosPredio.connectedGenerators) do
+                        if chaveG == chaveGerador then jaVinculado = true; break end
                     end
-                    if not alreadyLinked then
-                        table.insert(bldData.connectedGenerators, genKey)
+                    if not jaVinculado then
+                        table.insert(dadosPredio.connectedGenerators, chaveGerador)
                     end
                 end
 
-                -- Option A (B-99): LKS_EletricidadeConstrucao_PoolData seeding removed.  Building geometry
-                -- (boundingBox, borderRadius, isRVInterior) is supplied by ScanBuilding
-                -- and does not need to be back-filled from IsoObject secondary storage.
+                -- Opção A (B-99): Semeadura de LKS_EletricidadeConstrucao_PoolData removida. A geometria do prédio
+                -- (boundingBox, borderRadius, isRVInterior) é fornecida por ScanBuilding
+                -- e não precisa ser preenchida a partir do armazenamento secundário do IsoObject.
 
-                StateManager.MarkDirty()
-                end -- close else (world ID valid path)
-            end -- close if md.Gen_BuildingPoolID
+                gerenciadorEstado.MarkDirty()
+                end -- fim do else (caminho de ID de mundo válido)
+            end -- fim do if modDataObj.Gen_BuildingPoolID
         end
     end
 end
 -- ============================================================================
 
---- Handle chunk load event
---- OPTIMIZED: Chunk-level deduplication prevents processing same chunk 100 times
---- @param square IsoGridSquare Grid square that was loaded
-function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnLoadGridsquare(square)
-    if not square then
+--- Trata evento de carregamento de chunk
+--- OTIMIZADO: Deduplicação em nível de chunk evita processar o mesmo chunk 100 vezes redundantes
+--- @param quadrado IsoGridSquare Quadrado da grade que foi carregado
+function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnLoadGridsquare(quadrado)
+    if not quadrado then
         return
     end
 
-    -- Safety check: ensure required modules are loaded
+    -- Verificação de segurança: garante que módulos necessários estão carregados
     if not LKS_EletricidadeConstrucao.Core or not LKS_EletricidadeConstrucao.Core.StateManager then
         return
     end
 
-    local Geometry = LKS_EletricidadeConstrucao.Utils.Geometry
-    local x = square:getX()
-    local y = square:getY()
+    local Geometria = LKS_EletricidadeConstrucao.Utils.Geometry
+    local coordX = quadrado:getX()
+    local coordY = quadrado:getY()
     
-    -- Get chunk key
-    local chunkKey = Geometry.GetChunkKey(x, y)
+    -- Obtém a chave do chunk
+    local chaveChunk = Geometria.GetChunkKey(coordX, coordY)
     
-    -- OPTIMIZATION: Chunk-level deduplication (OnLoadGridsquare fires 100 times per 10x10 chunk)
-    if _processedChunks[chunkKey] then
-        return  -- Already processed this chunk
+    -- OTIMIZAÇÃO: Deduplicação em nível de chunk (OnLoadGridsquare dispara 100 vezes por chunk 10x10)
+    if _chunksProcessados[chaveChunk] then
+        return -- Já processou este chunk
     end
-    _processedChunks[chunkKey] = true
+    _chunksProcessados[chaveChunk] = true
     
-    -- Record load time
-    _chunkLoadTimes[chunkKey] = getTimestampMs()
+    -- Registra o tempo de carregamento
+    _temposCarregamentoChunk[chaveChunk] = getTimestampMs()
     
     LKS_EletricidadeConstrucao.Core.Logger.Trace(
-        string.format("Chunk loaded: %s at (%d,%d)", chunkKey, x, y),
+        string.format("Chunk carregado: %s em (%d,%d)", chaveChunk, coordX, coordY),
         "Fuel"
     )
     
-    -- V1-style: restore generator → building links from IsoObject ModData.
-    -- IMPORTANT (B-55): We must scan ALL squares in the chunk, not just the first one.
-    -- The chunk dedup guard above fires on whichever square happens to arrive first –
-    -- that square is almost never the one a generator sits on.  If neither generator
-    -- is on the first-processed square then TryRestoreFromIsoModData finds no
-    -- IsoGenerator, the building is never added to state, and ForceUpdateBuilding
-    -- later fails with "Building not found" → building stays unpowered.
+    -- Estilo V1: restaura gerador → vínculos de prédios do ModData do IsoObject.
+    -- IMPORTANTE (B-55): Devemos escanear TODOS os quadrados no chunk, não apenas o primeiro.
+    -- A guarda de dedup de chunk acima dispara em qualquer quadrado que chegue primeiro –
+    -- esse quadrado quase nunca é o quadrado onde reside o gerador. Se nenhum gerador
+    -- estiver no primeiro quadrado processado, tentarRestaurarDadosModIso não encontra
+    -- IsoGenerator, o prédio nunca é adicionado ao estado, e ForceUpdateBuilding
+    -- falha mais tarde com "Prédio não encontrado" → o prédio permanece sem energia.
     --
-    -- Strategy: scan the first square immediately (covers the common case of a
-    -- generator AT that square with zero extra cost), then walk all 100 squares
-    -- in the chunk and call TryRestoreFromIsoModData only on squares that
-    -- actually contain an IsoGenerator.  IsoGenerators are rare so the inner
-    -- instanceof check exits fast for the vast majority of squares.
-    -- Only restore if building isn't already established (skip on healthy chunk-returns)
-    if NeedsIsoRestore(square) then
-        pcall(TryRestoreFromIsoModData, square)
+    -- Estratégia: escaneia o primeiro quadrado imediatamente (cobre o caso comum de um
+    -- gerador NESSE quadrado com custo extra zero), então percorre todos os 100 quadrados
+    -- no chunk e chama tentarRestaurarDadosModIso apenas em quadrados que de fato
+    -- contenham um IsoGenerator. IsoGenerators são raros então a verificação instanceof
+    -- sai rápido para a vasta maioria dos quadrados.
+    -- Apenas restaura se o prédio não estiver estabelecido no estado (pula em retornos saudáveis de chunk)
+    if precisaRestaurarIso(quadrado) then
+        pcall(tentarRestaurarDadosModIso, quadrado)
     end
 
     do
-        local chunkBaseX = math.floor(x / 10) * 10
-        local chunkBaseY = math.floor(y / 10) * 10
-        local z          = square:getZ()
-        local cell       = getCell and getCell()
-        if cell then
+        local chunkBaseX = math.floor(coordX / 10) * 10
+        local chunkBaseY = math.floor(coordY / 10) * 10
+        local coordZ = quadrado:getZ()
+        local celula = getCell and getCell()
+        if celula then
             for dx = 0, 9 do
                 for dy = 0, 9 do
-                    local sq2 = cell:getGridSquare(chunkBaseX + dx, chunkBaseY + dy, z)
-                    if sq2 and sq2 ~= square then
-                        local objs2 = sq2:getObjects()
-                        if objs2 then
-                            for oi = 0, objs2:size() - 1 do
-                                local o2 = objs2:get(oi)
-                                if o2 and instanceof(o2, "IsoGenerator") then
-                                    -- Guard: skip if building already healthy in state (B-71)
-                                    if NeedsIsoRestore(sq2) then
-                                        pcall(TryRestoreFromIsoModData, sq2)
+                    local quadrado2 = celula:getGridSquare(chunkBaseX + dx, chunkBaseY + dy, coordZ)
+                    if quadrado2 and quadrado2 ~= quadrado then
+                        local objetos2 = quadrado2:getObjects()
+                        if objetos2 then
+                            for oi = 0, objetos2:size() - 1 do
+                                local objeto2 = objetos2:get(oi)
+                                if objeto2 and instanceof(objeto2, "IsoGenerator") then
+                                    -- Guarda: pula se prédio já saudável no estado (B-71)
+                                    if precisaRestaurarIso(quadrado2) then
+                                        pcall(tentarRestaurarDadosModIso, quadrado2)
                                     end
-                                    break  -- Only one call per square needed
+                                    break -- Apenas uma chamada por quadrado necessária
                                 end
                             end
                         end
@@ -1410,52 +1410,53 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnLoadGridsquare(square)
         end
     end
 
-    -- Check for generators in this chunk
-    LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(chunkKey, x, y)
+    -- Verifica geradores neste chunk
+    LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(chaveChunk, coordX, coordY)
 end
 
---- Handle chunk unload event
---- @param square IsoGridSquare Grid square that was unloaded
-function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnUnloadGridsquare(square)
-    if not square then
+--- Trata evento de descarregamento de chunk
+--- @param quadrado IsoGridSquare Quadrado da grade que foi descarregado
+function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.OnUnloadGridsquare(quadrado)
+    if not quadrado then
         return
     end
     
-    local Geometry = LKS_EletricidadeConstrucao.Utils.Geometry
-    local x = square:getX()
-    local y = square:getY()
+    local Geometria = LKS_EletricidadeConstrucao.Utils.Geometry
+    local coordX = quadrado:getX()
+    local coordY = quadrado:getY()
     
-    -- Get chunk key
-    local chunkKey = Geometry.GetChunkKey(x, y)
+    -- Obtém a chave do chunk
+    local chaveChunk = Geometria.GetChunkKey(coordX, coordY)
     
-    -- OPTIMIZATION: Chunk-level deduplication for unload (only process once)
-    if not _processedChunks[chunkKey] then
-        return  -- Never processed this chunk on load, skip unload
+    -- OTIMIZAÇÃO: Deduplicação em nível de chunk para descarregamento (só processa uma vez)
+    if not _chunksProcessados[chaveChunk] then
+        return -- Nunca processou este chunk no carregamento, pula descarregamento
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Trace(
-        string.format("Chunk unloading: %s at (%d,%d)", chunkKey, x, y),
+        string.format("Chunk descarregando: %s em (%d,%d)", chaveChunk, coordX, coordY),
         "Fuel"
     )
     
-    -- NOTE: Fuel consumption continues on GlobalModData regardless of chunk load status.
-    -- No need to track unload time or catch up on reload - fuel is always up to date.
+    -- NOTA: O consumo de combustível continua no GlobalModData independentemente do status do chunk.
+    -- Não há necessidade de rastrear tempos de descarregamento ou recuperar atrasos no recarregamento -
+    -- o combustível está sempre atualizado.
     
-    -- Remove chunk from tracking
-    _chunkLoadTimes[chunkKey] = nil
-    _processedChunks[chunkKey] = nil
+    -- Remove o chunk do rastreamento
+    _temposCarregamentoChunk[chaveChunk] = nil
+    _chunksProcessados[chaveChunk] = nil
 end
 
 -- ============================================================================
--- GENERATOR PROCESSING
+-- PROCESSAMENTO DE GERADOR
 -- ============================================================================
 
---- Process all generators in chunk when it loads
---- @param chunkKey string Chunk key
---- @param x number Sample X coordinate in chunk
---- @param y number Sample Y coordinate in chunk
-function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(chunkKey, x, y)
-    -- Safety check: ensure required modules are loaded
+--- Processa todos os geradores no chunk quando este carrega
+--- @param chaveChunk string Chave do chunk
+--- @param coordX number Coordenada X amostral no chunk
+--- @param coordY number Coordenada Y amostral no chunk
+function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(chaveChunk, coordX, coordY)
+    -- Verificação de segurança: garante que módulos necessários estão carregados
     if not LKS_EletricidadeConstrucao.Core or not LKS_EletricidadeConstrucao.Core.StateManager then
         return
     end
@@ -1463,459 +1464,455 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(chu
         return
     end
 
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
     local Config = LKS_EletricidadeConstrucao.Config
 
-    -- Get all generators in this chunk (needed for both fuel and UI refresh)
-    if not StateManager.GetGeneratorsInChunk then
+    -- Obtém todos os geradores neste chunk (necessário tanto para combustível quanto para interface)
+    if not gerenciadorEstado.GetGeneratorsInChunk then
         return
     end
-    local generators = StateManager.GetGeneratorsInChunk(chunkKey)
-    if #generators == 0 then return end
+    local geradores = gerenciadorEstado.GetGeneratorsInChunk(chaveChunk)
+    if #geradores == 0 then return end
 
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Processing %d generators in chunk %s", #generators, chunkKey),
+        string.format("Processando %d geradores no chunk %s", #geradores, chaveChunk),
         "Fuel"
     )
 
-    -- Sync IsoObject fuel with GlobalModData (which is continuously updated regardless of chunk status)
-    -- No catch-up needed: fuel calculation runs on GlobalModData even when chunk is unloaded
-    local needsPowerUpdate = false
-    local affectedBuildings = {}  -- Track buildings that need power refresh
+    -- Sincroniza o combustível do IsoObject com o GlobalModData (que é continuamente atualizado)
+    local precisaAtualizarEnergia = false
+    local prediosAfetados = {} -- Rastreia prédios que precisam de atualização de energia
     
-    for _, genData in ipairs(generators) do
-        local genObject = getGeneratorFromSquare(genData.x, genData.y, genData.z)
-        if genObject then
-            local stateFuel = genData.fuelAmount or 0
-            local liveFuel = genObject:getFuel() or 0
-            -- B-111: Don't treat activated=nil as false. Per B-36, nil means "implicitly active"
-            -- (only explicit false means deactivated). This prevents random generators from being
-            -- turned off during off-chunk restoration when they have nil activation state.
-            local stateActivated = genData.activated  -- nil, true, or false
-            local liveActivated = genObject:isActivated() or false
+    for _, dadosGerador in ipairs(geradores) do
+        local objetoGerador = getGeneratorFromSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+        if objetoGerador then
+            local combustivelEstado = dadosGerador.fuelAmount or 0
+            local combustivelAtual = objetoGerador:getFuel() or 0
+            -- B-111: Não trata activated=nil como false. Conforme B-36, nil significa "implicitamente ativo"
+            -- (apenas false explícito significa desativado). Isso impede que geradores aleatórios sejam
+            -- desligados durante restauração fora de chunk quando possuem estado de ativação nil.
+            local ativacaoEstado = dadosGerador.activated -- nil, true, ou false
+            local ativacaoAtual = objetoGerador:isActivated() or false
             
-            -- Sync fuel state to IsoObject for UI display (state is always authoritative)
-            -- Also reset lastSyncedFuel so Update()'s refuel-detection sees the correct baseline.
-            if liveFuel ~= stateFuel then
-                genObject:setFuel(stateFuel)
+            -- Sincroniza estado do combustível para o IsoObject para exibição de interface (estado é sempre autoridade)
+            -- Também redefine lastSyncedFuel para que a detecção de reabastecimento de Update() veja a base correta.
+            if combustivelAtual ~= combustivelEstado then
+                objetoGerador:setFuel(combustivelEstado)
                 LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                    string.format("Chunk-load fuel sync: generator %s %.3f -> %.3f", 
-                        genData.id, liveFuel, stateFuel),
+                    string.format("Sincronia de combustível pós-carregamento: gerador %s %.3f -> %.3f", 
+                        dadosGerador.id, combustivelAtual, combustivelEstado),
                     "Fuel"
                 )
             end
-            genData.lastSyncedFuel = stateFuel
+            dadosGerador.lastSyncedFuel = combustivelEstado
 
-            -- If generator has no fuel, force-deactivate the IsoObject regardless of live state.
-            -- This ensures isBuildingPoweredInline returns false immediately after chunk loads.
-            if stateFuel <= 0 and liveActivated then
-                genObject:setActivated(false)
-                genData.activated = false
-                needsPowerUpdate = true
-                if genData.connectedBuildings then
-                    -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-                    for _, bid in pairs(genData.connectedBuildings) do
-                        affectedBuildings[bid] = true
+            -- Se o gerador não possui combustível, força a desativação do IsoObject independentemente do estado atual.
+            -- Isso garante que isBuildingPoweredInline retorne false imediatamente após o carregamento do chunk.
+            if combustivelEstado <= 0 and ativacaoAtual then
+                objetoGerador:setActivated(false)
+                dadosGerador.activated = false
+                precisaAtualizarEnergia = true
+                if dadosGerador.connectedBuildings then
+                    -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string)
+                    for _, predioId in pairs(dadosGerador.connectedBuildings) do
+                        prediosAfetados[predioId] = true
                     end
                 end
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("Chunk-load: force-deactivated generator %s (no fuel)", genData.id),
+                    string.format("Carga de chunk: desativado gerador %s de força (sem combustível)", dadosGerador.id),
                     "Fuel"
                 )
             end
             
-            -- B-111: Only sync activation when state is EXPLICITLY set to false (not nil)
-            -- AND generator has fuel. If generator has fuel but state says false, it might
-            -- be stale (ran out of fuel off-chunk, got refueled, but activated flag wasn't
-            -- reset). Trust the IsoObject in that case.
-            if stateActivated == false and stateFuel > 0 and liveActivated then
-                -- State says deactivated, but generator has fuel and IsoObject says active.
-                -- This suggests the generator ran dry off-chunk (activated→false) then was
-                -- refueled, but activated flag wasn't reset. Trust IsoObject, fix state.
-                genData.activated = true
+            -- B-111: Apenas sincroniza ativação quando o estado é EXPLICITAMENTE definido como false (não nil)
+            -- E o gerador tem combustível. Se o gerador tem combustível mas o estado diz false, ele pode ser
+            -- obsoleto (ficou sem combustível fora do chunk, foi reabastecido, mas o sinalizador ativo não foi
+            -- redefinido). Confia no IsoObject neste caso.
+            if ativacaoEstado == false and combustivelEstado > 0 and ativacaoAtual then
+                -- Estado diz desativado, mas o gerador possui combustível e o IsoObject diz ativo.
+                -- Isso sugere que o gerador secou fora de chunk (ativo→false) e então foi reabastecido,
+                -- mas o sinalizador de ativo não foi redefinido. Confia no IsoObject, corrige o estado.
+                dadosGerador.activated = true
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("Chunk-load: generator %s has fuel (%.2f) and IsoObject active, correcting stale activated=false in state",
-                        genData.id, stateFuel),
+                    string.format("Carga de chunk: gerador %s possui combustível (%.2f) e IsoObject ativo, corrigindo ativacao=false obsoleta no estado",
+                        dadosGerador.id, combustivelEstado),
                     "Fuel"
                 )
-            elseif stateActivated ~= nil and stateActivated ~= liveActivated then
-                -- State is explicitly set (not nil) and differs from IsoObject.
-                -- Only sync if generator has no fuel OR state says activate.
-                if stateFuel <= 0 or stateActivated == true then
-                    genObject:setActivated(stateActivated)
-                    needsPowerUpdate = true
+            elseif ativacaoEstado ~= nil and ativacaoEstado ~= ativacaoAtual then
+                -- O estado está explicitamente definido (não nil) e difere do IsoObject.
+                -- Apenas sincroniza se o gerador não possui combustível OU o estado disser ativo.
+                if combustivelEstado <= 0 or ativacaoEstado == true then
+                    objetoGerador:setActivated(ativacaoEstado)
+                    precisaAtualizarEnergia = true
                 end
                 
-                -- Add all connected buildings to refresh list
-                if genData.connectedBuildings then
-                    -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-                    for _, bid in pairs(genData.connectedBuildings) do
-                        affectedBuildings[bid] = true
+                -- Adiciona todos os prédios conectados à lista de atualização
+                if dadosGerador.connectedBuildings then
+                    -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string)
+                    for _, predioId in pairs(dadosGerador.connectedBuildings) do
+                        prediosAfetados[predioId] = true
                     end
                 end
                 
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("Chunk-load activation sync: generator %s %s -> %s (fuel: %.2f)", 
-                        genData.id, tostring(liveActivated), tostring(stateActivated), stateFuel),
+                    string.format("Sincronia de ativação pós-carregamento: gerador %s %s -> %s (combustível: %.2f)", 
+                        dadosGerador.id, tostring(ativacaoAtual), tostring(ativacaoEstado), combustivelEstado),
                     "Fuel"
                 )
             end
         end
     end
     
-    -- If any generator changed activation state, immediately update power distribution
-    -- for affected buildings. This ensures ApplyTilePower runs NOW that chunk is loaded.
-    if needsPowerUpdate then
-        local Dist = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-        if Dist and Dist.ForceUpdateBuilding then
-            local updateCount = 0
-            for bid in pairs(affectedBuildings) do
-                pcall(Dist.ForceUpdateBuilding, bid)
-                updateCount = updateCount + 1
+    -- Se qualquer gerador alterou o estado de ativação, atualiza imediatamente a distribuição de energia
+    -- para os prédios afetados. Isso garante que ApplyTilePower seja executado AGORA que o chunk foi carregado.
+    if precisaAtualizarEnergia then
+        local Distribuidor = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+        if Distribuidor and Distribuidor.ForceUpdateBuilding then
+            local totalAtualizados = 0
+            for predioId in pairs(prediosAfetados) do
+                pcall(Distribuidor.ForceUpdateBuilding, predioId)
+                totalAtualizados = totalAtualizados + 1
             end
             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                string.format("Updated power for %d buildings after generator state sync", updateCount),
+                string.format("Energia atualizada para %d prédio(s) após sincronia de estado de geradores", totalAtualizados),
                 "Fuel"
             )
         end
     end
 
-    -- Defer the ForceUpdateBuilding calls by ~30 ticks (~2 s at 15 fps) so that
-    -- adjacent chunks containing the building's interior squares have time to
-    -- load before we try to read appliance/light isActive state.
-    -- V1 pattern: create a self-removing local closure per chunk-load event.
-    -- Never register a persistent module-level OnTick handler (causes nil-call
-    -- crashes in Kahlua when the module reference isn't fully resolved yet).
-    local buildingIds = {}
-    for _, genData in ipairs(generators) do
-        -- connectedBuildings is Kahlua-deserialized after GlobalModData reload
-        -- (string numeric keys). ipairs returns nothing on such tables. Use pairs.
-        for _, bid in pairs(genData.connectedBuildings or {}) do
-            buildingIds[bid] = true   -- dedup
+    -- Adia as chamadas de ForceUpdateBuilding por ~30 ticks (~2 s a 15 fps) para que
+    -- chunks adjacentes que contenham os quadrados internos do prédio tenham tempo de
+    -- carregar antes de tentarmos ler o estado isActive de aparelhos/luzes.
+    -- Padrão V1: cria um fechamento local autolimpante por evento de carregamento de chunk.
+    -- Nunca registra um manipulador OnTick persistente no escopo do módulo (causa falhas
+    -- de chamada nula no Kahlua quando a referência do módulo não está totalmente resolvida).
+    local idsPredios = {}
+    for _, dadosGerador in ipairs(geradores) do
+        -- connectedBuildings é desserializado pelo Kahlua após recarregamento de GlobalModData
+        -- (chaves numéricas string). ipairs não retorna nada nestas tabelas. Use pairs.
+        for _, predioId in pairs(dadosGerador.connectedBuildings or {}) do
+            idsPredios[predioId] = true -- dedup
         end
     end
 
-    local _hasBids2 = false
-    for _ in pairs(buildingIds) do _hasBids2 = true; break end
-    if _hasBids2 then
-        -- Collect this chunk's generator coordinates for the deferred rescan.
-        -- We capture them NOW while the data is in scope; the batch timer drains them.
-        for _, genData in ipairs(generators) do
-            _pendingGenRescans[genData.id] = { x = genData.x, y = genData.y, z = genData.z }
+    local _possuiIdsPredio2 = false
+    for _ in pairs(idsPredios) do _possuiIdsPredio2 = true; break end
+    if _possuiIdsPredio2 then
+        -- Coleta as coordenadas dos geradores deste chunk para o reescaneamento adiado.
+        -- Capturamos agora enquanto os dados estão no escopo; o temporizador de lote os consome.
+        for _, dadosGerador in ipairs(geradores) do
+            _reescaneamentosGeradorPendentes[dadosGerador.id] = { x = dadosGerador.x, y = dadosGerador.y, z = dadosGerador.z }
         end
 
-        -- OPTIMIZATION: Use global batch timer instead of creating per-chunk timer closures
-        -- Add buildings to pending batch
-        -- B-111-offchunk-resync: Always add buildings when their generator chunks load,
-        -- even if they were processed at startup. At startup, generators might not have
-        -- been reachable (getSquare returned nil), so stats never got synced to ModData.
-        -- Now that chunks are loaded, we need to retry the sync.
-        local addedCount = 0
-        for bid in pairs(buildingIds) do
-            if not _pendingBuildingUpdates[bid] then
-                _pendingBuildingUpdates[bid] = true
-                -- Don't check _scheduledBuildingUpdates - allow reprocessing
-                addedCount = addedCount + 1
+        -- OTIMIZAÇÃO: Usa temporizador de lote global em vez de criar temporizadores locais por chunk
+        -- Adiciona prédios à fila do lote
+        -- B-111-offchunk-resync: Sempre adiciona os prédios quando os chunks de seus geradores carregam,
+        -- mesmo se já processados na inicialização. Na inicialização, geradores podem não ter sido
+        -- alcançáveis (getSquare retornando nil), então estatísticas nunca foram gravadas no ModData.
+        -- Agora que os chunks carregaram, precisamos tentar sincronizar.
+        local totalAdicionados = 0
+        for predioId in pairs(idsPredios) do
+            if not _atualizacoesPredioPendentes[predioId] then
+                _atualizacoesPredioPendentes[predioId] = true
+                -- Não verifica _atualizacoesPredioAgendadas - permite reprocessamento
+                totalAdicionados = totalAdicionados + 1
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("[ChunkLoad] Added building %s to batch queue (generator chunk loaded)", bid),
+                    string.format("[ChunkLoad] Prédio %s adicionado à fila do lote (chunk do gerador carregado)", predioId),
                     "Fuel")
             end
         end
 
-        -- Start global batch timer if not already running
-        if addedCount > 0 and not _batchTimerActive then
-            _batchTimerActive = true
-            local ticksLeft = 30  -- ~2 s delay
-            local timerFunc
-            timerFunc = function()
-                ticksLeft = ticksLeft - 1
-                if ticksLeft > 0 then return end
+        -- Inicia o temporizador de lote global se não estiver ativo
+        if totalAdicionados > 0 and not _timerLoteAtivo then
+            _timerLoteAtivo = true
+            local ticksAdiados = 30 -- atraso de ~2 s
+            local funcaoTimer
+            funcaoTimer = function()
+                ticksAdiados = ticksAdiados - 1
+                if ticksAdiados > 0 then return end
 
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("[ChunkTracker] Batch timer fired after 30 ticks"),
+                    string.format("[ChunkTracker] Temporizador do lote disparado após 30 ticks"),
                     "Fuel")
-                Events.OnTick.Remove(timerFunc)
-                _batchTimerActive = false
+                Events.OnTick.Remove(funcaoTimer)
+                _timerLoteAtivo = false
 
-                -- Phase 1a: run TryRestoreFromIsoModData on each generator's own
-                -- square so that StateManager links and building stubs exist
-                -- before the consumer rescan below runs.
+                -- Fase 1a: executa tentarRestaurarDadosModIso em cada quadrado de gerador
+                -- para que as ligações do StateManager e esboços de prédios existam
+                -- antes da execução da varredura de consumidores abaixo.
                 --
-                -- B-101: Only clear _pendingGenRescans entries whose squares are
-                -- actually loaded.  Previously the entry was always cleared even when
-                -- getSquare() returned nil (chunk not yet streamed in), permanently
-                -- abandoning that generator -- its IsoObject moddata was never updated
-                -- to the canonical bld_X_Y_Z ID, causing the info window and
-                -- requestFreshStats to use a stale bld_def_... ID against a StateManager
-                -- entry that no longer existed under that key.
-                local rescanCount = 0
-                local processedGenIds = {}
-                for genId, coord in pairs(_pendingGenRescans) do
-                    local gSq = getSquare(coord.x, coord.y, coord.z)
-                    if gSq then
-                        -- Guard: skip TryRestore if building already established (B-71)
-                        if NeedsIsoRestore(gSq) then
-                            pcall(TryRestoreFromIsoModData, gSq)
-                            rescanCount = rescanCount + 1
+                -- B-101: Apenas limpa entradas de _reescaneamentosGeradorPendentes cujos quadrados estão
+                -- de fato carregados. Anteriormente a entrada era sempre limpa mesmo quando
+                -- getSquare() retornava nil (chunk ainda não carregado), abandonando permanentemente
+                -- aquele gerador -- seu moddata de IsoObject nunca era atualizado para o ID canônico
+                -- bld_X_Y_Z, fazendo com que a janela e o requestFreshStats usassem o ID obsoleto
+                -- bld_def_... contra uma entrada do StateManager que não existia mais sob aquela chave.
+                local totalReescaneados = 0
+                local idsGensProcessados = {}
+                for idGerador, coordenadas in pairs(_reescaneamentosGeradorPendentes) do
+                    local quadradoGerador = getSquare(coordenadas.x, coordenadas.y, coordenadas.z)
+                    if quadradoGerador then
+                        -- Guarda: pula se prédio já saudável no estado (B-71)
+                        if precisaRestaurarIso(quadradoGerador) then
+                            pcall(tentarRestaurarDadosModIso, quadradoGerador)
+                            totalReescaneados = totalReescaneados + 1
                         end
-                        processedGenIds[genId] = true
-                        _pendingGenRescans[genId] = nil  -- only remove when square was loaded
+                        idsGensProcessados[idGerador] = true
+                        _reescaneamentosGeradorPendentes[idGerador] = nil -- apenas remove se o quadrado carregou
                     end
-                    -- If gSq is nil the entry is kept so the next batch cycle retries it.
+                    -- Se o quadrado for nulo, a entrada é mantida para que o próximo ciclo tente novamente.
                 end
-                if rescanCount > 0 then
+                if totalReescaneados > 0 then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Batch rescan: rescanned %d generator square(s) before ForceUpdate",
-                            rescanCount), "Fuel")
+                        string.format("[ChunkTracker] Reescaneamento lote: reescaneados %d quadrado(s) de geradores antes de ForceUpdate",
+                            totalReescaneados), "Fuel")
                 end
 
-                -- B-107: Multi-generator building duplicate cleanup after chunk-load rescan.
-                -- TryRestoreFromIsoModData may create stale bld_def_... entries if a generator's
-                -- IsoObject wasn't updated by PurgeStaleBuildingDuplicates at startup (generator
-                -- was in an unloads chunk). Run Purge here to merge any new duplicates before
-                -- Phase 1b scans them, ensuring the canonical building gets the consumer data.
-                local SM_p1 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-                if SM_p1 and SM_p1.IsStateLoaded and SM_p1.IsStateLoaded() then
-                    -- Collect all building IDs that need potential cleanup
-                    local allBuildingIds = {}
-                    for bid in pairs(_pendingBuildingUpdates) do
-                        allBuildingIds[bid] = true
+                -- B-107: Limpeza de duplicatas de prédios multi-geradores pós-varredura de carregamento de chunk.
+                -- tentarRestaurarDadosModIso pode criar entradas obsoletas bld_def_... se um gerador
+                -- de IsoObject não foi atualizado por expurgarDuplicatasPredioObsoletas na inicialização (gerador
+                -- estava em chunk descarregado). Executa Purge aqui para mesclar quaisquer novas duplicatas antes
+                -- que a Fase 1b faça o escaneamento, garantindo que o prédio canônico receba os dados de consumidores.
+                local gerenciadorEstado1 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+                if gerenciadorEstado1 and gerenciadorEstado1.IsStateLoaded and gerenciadorEstado1.IsStateLoaded() then
+                    -- Coleta todos os IDs de prédios que precisam de limpeza potencial
+                    local todosIdsPredio = {}
+                    for predioId in pairs(_atualizacoesPredioPendentes) do
+                        todosIdsPredio[predioId] = true
                     end
-                    PurgeStaleBuildingDuplicates(SM_p1, allBuildingIds, _pendingBuildingUpdates)
-                    -- Update _pendingBuildingUpdates to canonical IDs after purge
-                    _pendingBuildingUpdates = allBuildingIds
+                    expurgarDuplicatasPredioObsoletas(gerenciadorEstado1, todosIdsPredio, _atualizacoesPredioPendentes)
+                    -- Atualiza _atualizacoesPredioPendentes para IDs canônicos após purga
+                    _atualizacoesPredioPendentes = todosIdsPredio
                 end
 
-                -- Phase 1a-post: refresh _pendingBuildingUpdates with post-migration
-                -- canonical IDs. TryRestoreFromIsoModData may have renamed bld_def_XXXX
-                -- keys to bld_X_Y_Z; _pendingBuildingUpdates was populated before that
-                -- migration so it still holds the old keys. Rebuild it now so Phase 1b
-                -- and Phase 2 operate on valid, resolvable building IDs.
-                -- B-111-offchunk-fix: Process ALL generators, not just rescanned ones,
-                -- because generators restored from GlobalModData might not have been rescanned
-                -- but still need their building links updated.
-                local SM_p1a = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-                if SM_p1a then
-                    -- Collect canonical IDs from ALL generators in StateManager
-                    local canonicalBids = {}
-                    for _, gd in pairs(SM_p1a.GetAllGenerators() or {}) do
-                        if gd and gd.connectedBuildings then
-                            -- connectedBuildings is Kahlua-deserialized (string numeric keys); use pairs
-                            for _, bid in pairs(gd.connectedBuildings) do
-                                if SM_p1a.GetBuilding(bid) then
-                                    canonicalBids[bid] = true
+                -- Fase 1a-pos: atualiza _atualizacoesPredioPendentes com IDs canônicos pós-migração.
+                -- tentarRestaurarDadosModIso pode ter renomeado chaves bld_def_XXXX para bld_X_Y_Z;
+                -- _atualizacoesPredioPendentes foi populado antes dessa migração e ainda contém as chaves antigas.
+                -- Reconstrói agora para que a Fase 1b e Fase 2 operem em IDs de prédio válidos e resolvíveis.
+                -- B-111-offchunk-fix: Processa TODOS os geradores, não apenas os reescaneados,
+                -- porque geradores restaurados de GlobalModData podem não ter sido reescaneados
+                -- mas ainda precisam de seus links de prédios atualizados.
+                local gerenciadorEstado1a = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+                if gerenciadorEstado1a then
+                    -- Coleta IDs canônicos de TODOS os geradores no StateManager
+                    local idsCanonicos = {}
+                    for _, dadosGen in pairs(gerenciadorEstado1a.GetAllGenerators() or {}) do
+                        if dadosGen and dadosGen.connectedBuildings then
+                            -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string); use pairs
+                            for _, predioId in pairs(dadosGen.connectedBuildings) do
+                                if gerenciadorEstado1a.GetBuilding(predioId) then
+                                    idsCanonicos[predioId] = true
                                 end
                             end
                         end
                     end
-                    -- Rebuild: keep valid existing entries, drop stale ones, add canonical ones
-                    local newPending = {}
-                    for bid in pairs(_pendingBuildingUpdates) do
-                        if SM_p1a.GetBuilding(bid) then
-                            newPending[bid] = true
+                    -- Reconstrói: mantém entradas válidas existentes, descarta obsoletas e adiciona canônicas
+                    local pendentesNovos = {}
+                    for predioId in pairs(_atualizacoesPredioPendentes) do
+                        if gerenciadorEstado1a.GetBuilding(predioId) then
+                            pendentesNovos[predioId] = true
                         end
-                        -- else: stale (e.g. bld_def_... was migrated away) - silently drop
+                        -- senão: obsoleto (ex: bld_def_... migrado) - descarta silenciosamente
                     end
-                    for bid in pairs(canonicalBids) do
-                        newPending[bid] = true
-                        _scheduledBuildingUpdates[bid] = true
+                    for predioId in pairs(idsCanonicos) do
+                        pendentesNovos[predioId] = true
+                        _atualizacoesPredioAgendadas[predioId] = true
                     end
-                    _pendingBuildingUpdates = newPending
+                    _atualizacoesPredioPendentes = pendentesNovos
                 end
 
-                -- Phase 1b: Always re-run ScanBuilding for every pending building
-                -- whose light-switch square is now loaded.
-                -- TryRestoreFromIsoModData skips ScanBuilding when powerConsumers
-                -- is non-empty, so stale consumers (all isActive=false set by the
-                -- off-chunk ForceUpdateBuilding) would persist without this step.
-                -- A fresh scan is cheap (border detection + object walk) and
-                -- ensures strain, UI consumer counts, and fuel rate are all
-                -- recalculated from live world state the moment the chunk loads.
+                -- Fase 1b: Sempre reexecuta ScanBuilding para cada prédio pendente
+                -- cujo quadrado de interruptor de luz esteja agora carregado na memória.
+                -- tentarRestaurarDadosModIso pula ScanBuilding quando powerConsumers
+                -- está populado, de modo que consumidores obsoletos (todos isActive=false definidos
+                -- pelo ForceUpdateBuilding fora de chunk) persistiriam sem esta etapa.
+                -- Uma varredura nova é barata (detecção de borda + busca de objeto) e
+                -- garante que sobrecarga, contagem de consumidores na interface e consumo de combustível
+                -- sejam recalculados a partir do estado do mundo real no instante do carregamento do chunk.
                 --
-                -- B-83: Only call ScanBuilding when the ENTIRE building area is
-                -- loaded.  Large buildings span multiple chunks; if any chunk is
-                -- still unloaded getSquare() returns nil for its tiles and
-                -- ClearConsumers + ScanConsumers would permanently lose those
-                -- consumers.  IsBuildingAreaLoaded checks all bounding-box
-                -- corners (5 samples) – cheap and sufficient.
-                local Scanner = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
-                local SM = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-                if Scanner and Scanner.ScanBuilding and SM then
-                    local bldRescanCount = 0
-                    local bldSkipCount   = 0
-                    for bid in pairs(_pendingBuildingUpdates) do
-                        local bld = SM.GetBuilding(bid)
-                        if bld and bld.x and bld.y then
-                            local lsX, lsY, lsZ = bld.x, bld.y, bld.z or 0
-                            local lsSq = getSquare(lsX, lsY, lsZ)
-                            if lsSq then
-                                -- Only rescan when every chunk in the building footprint is loaded.
-                                local areaLoaded = (not Scanner.IsBuildingAreaLoaded)
-                                    or Scanner.IsBuildingAreaLoaded(bld)
-                                if areaLoaded then
-                                    -- Square is loaded and area is fully loaded - rescan to get fresh consumer list
-                                    local ok = pcall(function()
-                                        Scanner.ScanBuilding(lsX, lsY, lsZ, bid)
+                -- B-83: Apenas chama ScanBuilding quando TODA a área do prédio está carregada.
+                -- Prédios grandes abrangem múltiplos chunks; se qualquer chunk ainda estiver descarregado,
+                -- getSquare() retorna nil para seus blocos e ClearConsumers + ScanConsumers perderia
+                -- permanentemente aqueles consumidores. IsBuildingAreaLoaded verifica todos os cantos
+                -- do retângulo envolvente (5 amostras) – barato e suficiente.
+                local Escaneador = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
+                local gerenciadorEstado2 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+                if Escaneador and Escaneador.ScanBuilding and gerenciadorEstado2 then
+                    local totalVarridosPredio = 0
+                    local totalPuladosPredio = 0
+                    for predioId in pairs(_atualizacoesPredioPendentes) do
+                        local predio = gerenciadorEstado2.GetBuilding(predioId)
+                        if predio and predio.x and predio.y then
+                            local switchX, switchY, switchZ = predio.x, predio.y, predio.z or 0
+                            local quadradoSwitch = getSquare(switchX, switchY, switchZ)
+                            if quadradoSwitch then
+                                -- Apenas reescaneia quando todos os chunks do prédio estiverem carregados.
+                                local areaCarregada = (not Escaneador.IsBuildingAreaLoaded)
+                                    or Escaneador.IsBuildingAreaLoaded(predio)
+                                if areaCarregada then
+                                    -- Quadrado carregado e área totalmente carregada - escaneia para obter lista atualizada
+                                    local sucesso = pcall(function()
+                                        Escaneador.ScanBuilding(switchX, switchY, switchZ, predioId)
                                     end)
-                                    if ok then
-                                        bldRescanCount = bldRescanCount + 1
+                                    if sucesso then
+                                        totalVarridosPredio = totalVarridosPredio + 1
                                     end
                                 else
-                                    -- Building area partially unloaded – skip rescan, keep saved consumer list.
-                                    bldSkipCount = bldSkipCount + 1
+                                    -- Área do prédio parcialmente descarregada – pula varredura, mantém lista salva.
+                                    totalPuladosPredio = totalPuladosPredio + 1
                                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                        string.format("[ChunkTracker] Skipping rescan for %s – partial area load",
-                                            bid), "Fuel")
+                                        string.format("[ChunkTracker] Pulando varredura para %s – área parcialmente carregada",
+                                            predioId), "Fuel")
                                 end
                             end
                         end
                     end
-                    if bldRescanCount > 0 then
+                    if totalVarridosPredio > 0 then
                         LKS_EletricidadeConstrucao.Core.Logger.Info(
-                            string.format("[ChunkTracker] Chunk re-entry rescan: rebuilt consumers for %d building(s) (skipped %d partial)",
-                                bldRescanCount, bldSkipCount), "Fuel")
+                            string.format("[ChunkTracker] Revarredura por entrada de chunk: reconstruídos consumidores para %d prédio(s) (pulados %d parciais)",
+                                totalVarridosPredio, totalPuladosPredio), "Fuel")
                     end
                 end
 
-                -- Phase 2: Process all pending buildings in one batch
-                local Dist = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-                local SM_p2 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-                if Dist and Dist.ForceUpdateBuilding and SM_p2 then
+                -- Fase 2: Processa todos os prédios pendentes em um único lote
+                local Distribuidor = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+                local gerenciadorEstado3 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+                if Distribuidor and Distribuidor.ForceUpdateBuilding and gerenciadorEstado3 then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Starting Phase 2: %d buildings in queue",
-                            (function() local n=0; for _ in pairs(_pendingBuildingUpdates) do n=n+1 end; return n end)()),
+                        string.format("[ChunkTracker] Iniciando Fase 2: %d prédios na fila",
+                            (function() local n=0; for _ in pairs(_atualizacoesPredioPendentes) do n=n+1 end; return n end)()),
                         "Fuel")
-                    local batchCount = 0
-                    local skippedCount = 0
-                    for bid in pairs(_pendingBuildingUpdates) do
-                        -- B-111-offchunk-fix: Verify building exists before updating.
-                        -- After Purge, stale IDs might remain in queue but building was merged.
-                        local bld = SM_p2.GetBuilding(bid)
-                        if bld then
-                            -- Log consumer count before ForceUpdateBuilding
-                            local consCountBefore = 0
-                            if bld.powerConsumers then
-                                for _ in pairs(bld.powerConsumers) do consCountBefore = consCountBefore + 1 end
+                    local totalLote = 0
+                    local totalPulados = 0
+                    for predioId in pairs(_atualizacoesPredioPendentes) do
+                        -- B-111-offchunk-fix: Verifica se o prédio existe antes de atualizar.
+                        -- Após Purge, IDs obsoletos podem permanecer na fila mas o prédio foi mesclado.
+                        local predio = gerenciadorEstado3.GetBuilding(predioId)
+                        if predio then
+                            -- Registra contagem de consumidores antes de ForceUpdateBuilding
+                            local totalConsumidoresAntes = 0
+                            if predio.powerConsumers then
+                                for _ in pairs(predio.powerConsumers) do totalConsumidoresAntes = totalConsumidoresAntes + 1 end
                             end
                             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                string.format("[ChunkTracker] Phase 2: ForceUpdateBuilding for %s (%d consumers)", bid, consCountBefore),
+                                string.format("[ChunkTracker] Fase 2: ForceUpdateBuilding para %s (%d consumidores)", predioId, totalConsumidoresAntes),
                                 "Fuel")
-                            pcall(Dist.ForceUpdateBuilding, bid)
-                            batchCount = batchCount + 1
+                            pcall(Distribuidor.ForceUpdateBuilding, predioId)
+                            totalLote = totalLote + 1
                         else
-                            skippedCount = skippedCount + 1
+                            totalPulados = totalPulados + 1
                             LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                                string.format("[ChunkTracker] Batch Phase 2: building %s not found in StateManager, skipping ForceUpdate", bid),
+                                string.format("[ChunkTracker] Lote Fase 2: prédio %s não encontrado no StateManager, pulando ForceUpdate", predioId),
                                 "Fuel")
                         end
                     end
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Batch Phase 2 complete: updated %d buildings (skipped %d missing)", batchCount, skippedCount),
+                        string.format("[ChunkTracker] Lote Fase 2 concluído: atualizados %d prédios (pulados %d ausentes)", totalLote, totalPulados),
                         "Fuel")
                 end
 
-                -- Clear batch (but don't clear _scheduledBuildingUpdates - it's no longer used)
-                _pendingBuildingUpdates = {}
+                -- Limpa o lote (mas mantém _atualizacoesPredioAgendadas intocada)
+                _atualizacoesPredioPendentes = {}
 
-                -- B-101: If any generator squares were not loaded (getSquare()
-                -- returned nil above), their entries still live in _pendingGenRescans.
-                -- Restart a secondary timer so they are retried once the player's
-                -- movement streams in the missing chunk(s).
-                if TableHasEntries(_pendingGenRescans) then  -- B-106: pairs-based check (next() can be nil in Kahlua)
-                    local retryCount = 0
-                    for _ in pairs(_pendingGenRescans) do retryCount = retryCount + 1 end
+                -- B-101: Se quaisquer quadrados de gerador não estavam carregados (getSquare()
+                -- retornou nil acima), suas entradas continuam em _reescaneamentosGeradorPendentes.
+                -- Reinicia um temporizador secundário para que sejam tentados quando o jogador
+                -- se movimentar e carregar o(s) chunk(s) ausente(s).
+                if tabelaPossuiEntradas(_reescaneamentosGeradorPendentes) then -- B-106: pairs-based check
+                    local totalRepeticoes = 0
+                    for _ in pairs(_reescaneamentosGeradorPendentes) do totalRepeticoes = totalRepeticoes + 1 end
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Batch retry queued: %d generator(s) pending (squares not yet loaded)",
-                            retryCount), "Fuel")
-                    _batchTimerActive = true
-                    local retryTicks = 120  -- ~8 s
-                    local retryFunc
-                    retryFunc = function()
-                        retryTicks = retryTicks - 1
-                        if retryTicks > 0 then return end
-                        Events.OnTick.Remove(retryFunc)
-                        _batchTimerActive = false
-                        local retryProcessed = 0
-                        for genId, coord in pairs(_pendingGenRescans) do
-                            local gSq2 = getSquare(coord.x, coord.y, coord.z)
-                            if gSq2 then
-                                if NeedsIsoRestore(gSq2) then
-                                    pcall(TryRestoreFromIsoModData, gSq2)
-                                    retryProcessed = retryProcessed + 1
+                        string.format("[ChunkTracker] Repetição lote agendada: %d gerador(es) pendentes (quadrados ainda não carregados)",
+                            totalRepeticoes), "Fuel")
+                    _timerLoteAtivo = true
+                    local ticksRepeticao = 120 -- ~8 s
+                    local funcaoRepeticao
+                    funcaoRepeticao = function()
+                        ticksRepeticao = ticksRepeticao - 1
+                        if ticksRepeticao > 0 then return end
+                        Events.OnTick.Remove(funcaoRepeticao)
+                        _timerLoteAtivo = false
+                        local totalProcessadosRepeticao = 0
+                        for idGerador, coordenadas in pairs(_reescaneamentosGeradorPendentes) do
+                            local quadradoGerador2 = getSquare(coordenadas.x, coordenadas.y, coordenadas.z)
+                            if quadradoGerador2 then
+                                if precisaRestaurarIso(quadradoGerador2) then
+                                    pcall(tentarRestaurarDadosModIso, quadradoGerador2)
+                                    totalProcessadosRepeticao = totalProcessadosRepeticao + 1
                                 end
-                                _pendingGenRescans[genId] = nil
+                                _reescaneamentosGeradorPendentes[idGerador] = nil
                             end
                         end
-                        if retryProcessed > 0 then
+                        if totalProcessadosRepeticao > 0 then
                             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                string.format("[ChunkTracker] Batch retry complete: processed %d generator(s)",
-                                    retryProcessed), "Fuel")
+                                string.format("[ChunkTracker] Repetição lote concluída: processados %d gerador(es)",
+                                    totalProcessadosRepeticao), "Fuel")
                         end
-                        if TableHasEntries(_pendingGenRescans) then  -- B-106
+                        if tabelaPossuiEntradas(_reescaneamentosGeradorPendentes) then -- B-106
                             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                "[ChunkTracker] Batch retry: generators still pending after retry (remote chunks?)", "Fuel")
+                                "[ChunkTracker] Repetição lote: geradores continuam pendentes após repetição (chunks distantes?)", "Fuel")
                         end
                     end
-                    Events.OnTick.Add(retryFunc)
+                    Events.OnTick.Add(funcaoRepeticao)
                 end
             end
-            Events.OnTick.Add(timerFunc)
+            Events.OnTick.Add(funcaoTimer)
         end
     end
 end
 
 -- ============================================================================
--- CHUNK STATE QUERIES
+-- CONSULTAS DE ESTADO DE CHUNKS
 -- ============================================================================
 
---- Check if chunk is currently loaded
---- @param chunkKey string Chunk key
---- @return boolean True if loaded
-function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.IsChunkLoaded(chunkKey)
-    return _chunkLoadTimes[chunkKey] ~= nil
+--- Verifica se um chunk está atualmente carregado
+--- @param chaveChunk string Chave do chunk
+--- @return boolean True se estiver carregado
+function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.IsChunkLoaded(chaveChunk)
+    return _temposCarregamentoChunk[chaveChunk] ~= nil
 end
 
---- Get chunk load time
---- @param chunkKey string Chunk key
---- @return number|nil Load timestamp or nil if not loaded
-function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetChunkLoadTime(chunkKey)
-    return _chunkLoadTimes[chunkKey]
+--- Obtém o tempo de carregamento do chunk
+--- @param chaveChunk string Chave do chunk
+--- @return number|nil Timestamp do carregamento ou nil se não carregado
+function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetChunkLoadTime(chaveChunk)
+    return _temposCarregamentoChunk[chaveChunk]
 end
 
---- Get all loaded chunks
---- @return table Array of chunk keys
+--- Obtém todos os chunks carregados
+--- @return table Array contendo chaves de chunks
 function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetLoadedChunks()
     local chunks = {}
     
-    for chunkKey, _ in pairs(_chunkLoadTimes) do
-        table.insert(chunks, chunkKey)
+    for chaveChunk, _ in pairs(_temposCarregamentoChunk) do
+        table.insert(chunks, chaveChunk)
     end
     
     return chunks
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAR / DEBUG
 -- ============================================================================
 
---- Print chunk tracker status
+--- Exibe o status do rastreador de chunks no console
 function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.PrintStatus()
-    LKS_EletricidadeConstrucao.Print("=== Chunk Tracker Status ===")
-    LKS_EletricidadeConstrucao.Print("Initialized: " .. tostring(_isInitialized))
+    LKS_EletricidadeConstrucao.Print("=== Status do Rastreador de Chunks ===")
+    LKS_EletricidadeConstrucao.Print("Inicializado: " .. tostring(_inicializado))
     
-    local loadedChunks = LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetLoadedChunks()
-    LKS_EletricidadeConstrucao.Print("Loaded Chunks: " .. #loadedChunks)
+    local chunksCarregados = LKS_EletricidadeConstrucao.Fuel.ChunkTracker.GetLoadedChunks()
+    LKS_EletricidadeConstrucao.Print("Chunks Carregados: " .. #chunksCarregados)
     
-    for _, chunkKey in ipairs(loadedChunks) do
-        local loadTime = _chunkLoadTimes[chunkKey]
-        local generators = LKS_EletricidadeConstrucao.Core.StateManager.GetGeneratorsInChunk(chunkKey)
-        LKS_EletricidadeConstrucao.Print(string.format("  %s: loaded at %d, %d generators",
-            chunkKey, loadTime, #generators))
+    for _, chaveChunk in ipairs(chunksCarregados) do
+        local tempoCarga = _temposCarregamentoChunk[chaveChunk]
+        local geradores = LKS_EletricidadeConstrucao.Core.StateManager.GetGeneratorsInChunk(chaveChunk)
+        LKS_EletricidadeConstrucao.Print(string.format("  %s: carregado em %d, %d geradores",
+            chaveChunk, tempoCarga, #geradores))
     end
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Fuel.ChunkTracker", "2.0.0")

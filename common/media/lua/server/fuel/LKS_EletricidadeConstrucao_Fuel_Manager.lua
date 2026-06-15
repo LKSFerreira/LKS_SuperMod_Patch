@@ -6,85 +6,85 @@
 -- ============================================================================
 
 -- Notes:
---   - Runs on Events.EveryOneMinute (via LKS_EletricidadeConstrucao_ServerInit.lua).
---   - Barrels.UpdateAll() runs BEFORE fuel drain (refuel first, then calculate consumption).
---   - Fuel is authoritative on the IsoObject (gen:getFuel()/setFuel()). State fuelAmount is a cache.
---   - Each generator tracks Gen_LastCalcWorldAge in its IsoObject moddata.
---     On tick: per-generator worldAge delta drives deltaSeconds (catch-up included).
---   - No off-chunk drain: generators only drain when their chunk is loaded.
---   - Diminishing returns per identical sprite; strain multipliers via StrainCalculator.
+--   - Executa no Events.EveryOneMinute (via LKS_EletricidadeConstrucao_ServerInit.lua).
+--   - Barrels.UpdateAll() executa ANTES do consumo de combustível (abastece primeiro, depois calcula consumo).
+--   - O combustível é autoridade no IsoObject (gerador:getFuel()/setFuel()). O fuelAmount no estado é um cache.
+--   - Cada gerador rastreia Gen_LastCalcWorldAge no moddata de seu IsoObject.
+--     No tick: a variação do worldAge por gerador gera o deltaSeconds (recuperação de atraso inclusa).
+--   - Sem consumo fora de chunk: geradores apenas consomem combustível quando seus chunks estão carregados.
+--   - Retornos decrescentes por sprite idêntico; multiplicadores de sobrecarga via StrainCalculator.
 
--- Ensure namespace exists
+-- Garante que o namespace existe
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Fuel_Manager] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Fuel_Manager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- LOCAL STATE
+-- ESTADO LOCAL
 -- ============================================================================
 
-local _updateInterval = 1000  -- Update every second (in ms)
-local _lastWorldMinutes = 0   -- Last processed game-minute (for stats/uptime)
-local _currentWorldAge = 0    -- World age in hours at the start of the current Update() tick
-local _isInitialized = false
-local _eventRegistered = false
-local _lastSkipLog = 0
-local _poolRestoreSeen = {}   -- generatorId -> true once pool is repaired
-local _missingGenWarns = {}   -- genId -> count
+local _intervaloAtualizacao = 1000  -- Atualiza a cada segundo (em ms)
+local _ultimosMinutosMundo = 0     -- Último minuto de jogo processado (para estatísticas/uptime)
+local _idadeMundoAtual = 0         -- Idade do mundo em horas no início do tick de Update() atual
+local _inicializado = false
+local _eventoRegistrado = false
+local _ultimoLogIgnorado = 0
+local _restauracoesPoolVistas = {}   -- idGerador -> true uma vez que o pool é reparado
+local _avisosGeradoresAusentes = {}  -- idGerador -> quantidade
 
--- B-102: Per-tick pool calculation cache.
--- Cleared at the start of each Update() generator loop so each pool is computed once per tick.
--- _perTickPoolCache : [primaryGenId] → {totalPoolRate, poolActive}
--- _perTickGenToPool : [genId]        → primaryGenId  (which cache entry covers this gen's pool)
-local _perTickPoolCache = {}
-local _perTickGenToPool = {}
+-- B-102: Cache de cálculo de pool por tick.
+-- Limpo no início de cada loop de geradores do Update() para que cada pool seja computado uma vez por tick.
+-- _cachePoolPorTick : [idGeradorPrimario] → {totalPoolRate, poolActive}
+-- _geradorParaPoolPorTick : [idGerador]        → idGeradorPrimario (qual entrada do cache cobre o pool deste gerador)
+local _cachePoolPorTick = {}
+local _geradorParaPoolPorTick = {}
 
--- Variant generator tuning lives in shared constants so fuel + strain stay aligned.
-local GENERATOR_TYPE_MODIFIERS =
+-- Os ajustes de variação de geradores residem nos constantes compartilhados para que combustível + sobrecarga fiquem alinhados.
+local MODIFICADORES_TIPO_GERADOR =
     (LKS_EletricidadeConstrucao.Constants.GENERATOR_TYPES and LKS_EletricidadeConstrucao.Constants.GENERATOR_TYPES.MODIFIERS) or {}
 
--- Helper: get generator sprite name
-local function GetGeneratorSpriteName(gen)
-    if not gen then return nil end
-    local sprite = gen.getSpriteName and gen:getSpriteName()
-    if not sprite and gen.getSprite and gen:getSprite() then
-        sprite = gen:getSprite():getName()
+-- Auxiliar: obter nome do sprite do gerador
+local function obterNomeSpriteGerador(gerador)
+    if not gerador then return nil end
+    local nomeSprite = gerador.getSpriteName and gerador:getSpriteName()
+    if not nomeSprite and gerador.getSprite and gerador:getSprite() then
+        nomeSprite = gerador:getSprite():getName()
     end
-    return sprite
+    return nomeSprite
 end
 
--- Helper: total world minutes elapsed (game time, independent of real-time speed)
-local function GetWorldMinutes()
-    local gt = getGameTime and getGameTime()
-    if gt then
-        local worldHours = gt:getWorldAgeHours() or 0
-        -- worldAgeHours already includes fractional minutes, so multiply once
-        return worldHours * 60
+-- Auxiliar: minutos do mundo decorridos (tempo de jogo, independente da velocidade do tempo real)
+local function obterMinutosMundo()
+    local tempoJogo = getGameTime and getGameTime()
+    if tempoJogo then
+        local horasMundo = tempoJogo:getWorldAgeHours() or 0
+        -- worldAgeHours já inclui minutos fracionários, então multiplica uma vez
+        return horasMundo * 60
     end
-    return getTimestampMs() / 60000  -- fallback to real time if GameTime unavailable
+    return getTimestampMs() / 60000  -- fallback para tempo real se GameTime não estiver disponível
 end
 
--- Helper: diminish a bonus/malus toward 1.0 as more of the same type are present
-local function ApplyDiminishing(mult, count)
-    if not mult then return 1.0 end
-    if mult == 1.0 or not count or count <= 1 then return mult end
-    return 1.0 + ((mult - 1.0) / (2 ^ (count - 1)))
+-- Auxiliar: diminui um bônus/malus em direção a 1.0 conforme mais geradores do mesmo tipo estão presentes
+local function aplicarRetornosDecrescentes(multiplicador, quantidade)
+    if not multiplicador then return 1.0 end
+    if multiplicador == 1.0 or not quantidade or quantidade <= 1 then return multiplicador end
+    return 1.0 + ((multiplicador - 1.0) / (2 ^ (quantidade - 1)))
 end
 
-local function FindRestorablePoolId(StateManager, genData)
-    if not StateManager or not genData or not genData.connectedBuildings then
+local function encontrarIdPoolRestauravel(gerenciadorEstado, dadosGerador)
+    if not gerenciadorEstado or not dadosGerador or not dadosGerador.connectedBuildings then
         return nil
     end
 
-    local genKey = string.format("%d_%d_%d", genData.x or 0, genData.y or 0, genData.z or 0)
+    local chaveGerador = string.format("%d_%d_%d", dadosGerador.x or 0, dadosGerador.y or 0, dadosGerador.z or 0)
 
-    for _, buildingId in pairs(genData.connectedBuildings) do
-        local buildingData = StateManager.GetBuilding(buildingId)
-        if buildingData and buildingData.connectedGenerators then
-            for _, linkedGenKey in pairs(buildingData.connectedGenerators) do
-                if linkedGenKey == genKey then
-                    return buildingId
+    for _, idPredio in pairs(dadosGerador.connectedBuildings) do
+        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+        if dadosPredio and dadosPredio.connectedGenerators then
+            for _, chaveGeradorVinculado in pairs(dadosPredio.connectedGenerators) do
+                if chaveGeradorVinculado == chaveGerador then
+                    return idPredio
                 end
             end
         end
@@ -93,43 +93,43 @@ local function FindRestorablePoolId(StateManager, genData)
     return nil
 end
 
--- Helper: count generators with the same sprite connected across the same building pool
-local function CountSameSpriteGenerators(genObj, generatorData)
-    local sprite = GetGeneratorSpriteName(genObj)
-    if not sprite then return 1 end
+-- Auxiliar: conta geradores com o mesmo sprite conectados no mesmo pool de prédios
+local function contarGeradoresMesmoSprite(objetoGerador, dadosGerador)
+    local nomeSprite = obterNomeSpriteGerador(objetoGerador)
+    if not nomeSprite then return 1 end
 
-    local seen = {}
-    local count = 0
+    local visitados = {}
+    local contagem = 0
 
-    local function addIfSame(gen)
-        if not gen then return end
-        local key = string.format("%d,%d,%d", gen:getX(), gen:getY(), gen:getZ())
-        if seen[key] then return end
-        seen[key] = true
-        if GetGeneratorSpriteName(gen) == sprite then
-            count = count + 1
+    local function adicionarSeIgual(gerador)
+        if not gerador then return end
+        local chave = string.format("%d,%d,%d", gerador:getX(), gerador:getY(), gerador:getZ())
+        if visitados[chave] then return end
+        visitados[chave] = true
+        if obterNomeSpriteGerador(gerador) == nomeSprite then
+            contagem = contagem + 1
         end
     end
 
-    addIfSame(genObj)
+    adicionarSeIgual(objetoGerador)
 
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local cell = getCell()
-    if cell and generatorData and generatorData.connectedBuildings and StateManager and StateManager.GetBuilding then
-        -- connectedBuildings / connectedGenerators are Kahlua-deserialized (string numeric keys)
-        for _, bid in pairs(generatorData.connectedBuildings) do
-            local bd = StateManager.GetBuilding(bid)
-            if bd and bd.connectedGenerators then
-                for _, genKey in pairs(bd.connectedGenerators) do
-                    local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                    if gx then
-                        local sq = cell:getGridSquare(tonumber(gx), tonumber(gy), tonumber(gz))
-                        if sq then
-                            local objs = sq:getObjects()
-                            for i = 0, objs:size() - 1 do
-                                local obj = objs:get(i)
-                                if obj and instanceof(obj, "IsoGenerator") then
-                                    addIfSame(obj)
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local celula = getCell()
+    if celula and dadosGerador and dadosGerador.connectedBuildings and gerenciadorEstado and gerenciadorEstado.GetBuilding then
+        -- connectedBuildings / connectedGenerators são desserializados pelo Kahlua (chaves numéricas string)
+        for _, idPredio in pairs(dadosGerador.connectedBuildings) do
+            local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+            if dadosPredio and dadosPredio.connectedGenerators then
+                for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                    local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                    if coordX then
+                        local quadrado = celula:getGridSquare(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                        if quadrado then
+                            local objetos = quadrado:getObjects()
+                            for indice = 0, objetos:size() - 1 do
+                                local objeto = objetos:get(indice)
+                                if objeto and instanceof(objeto, "IsoGenerator") then
+                                    adicionarSeIgual(objeto)
                                     break
                                 end
                             end
@@ -140,69 +140,69 @@ local function CountSameSpriteGenerators(genObj, generatorData)
         end
     end
 
-    if count < 1 then return 1 end
-    return count
+    if contagem < 1 then return 1 end
+    return contagem
 end
 
--- Helper: count active generators in the same pool(s) so fuel can be shared
--- Made public for use by StrainCalculator (chunk-independent counting)
+-- Auxiliar: conta geradores ativos no(s) mesmo(s) pool(s) para que o combustível seja compartilhado
+-- Tornada pública para uso pelo StrainCalculator (contagem independente de chunk)
 function LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators(generatorData)
-    local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not generatorData or not StateManager then return 1 end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not generatorData or not gerenciadorEstado then return 1 end
 
-    -- BFS over the full pool (mirrors Step-1 discovery in CalculateFuelConsumption)
-    local count = 0
-    local visited = {}
-    local toVisit = {generatorData}
+    -- BFS sobre o pool completo (espelha a descoberta do Passo 1 em CalculateFuelConsumption)
+    local contagem = 0
+    local visitados = {}
+    local aVisitar = {generatorData}
 
-    while #toVisit > 0 do
-        local currentGen = table.remove(toVisit)
-        if currentGen and currentGen.id and not visited[currentGen.id] then
-            visited[currentGen.id] = true
+    while #aVisitar > 0 do
+        local geradorAtual = table.remove(aVisitar)
+        if geradorAtual and geradorAtual.id and not visitados[geradorAtual.id] then
+            visitados[geradorAtual.id] = true
 
-            -- Use GlobalModData instead of live IsoGenerator to make this chunk-independent
-            -- A generator is considered active if it has fuel AND is not explicitly deactivated
-            -- (activated field is only set to false when fuel runs out, never set to true)
-            local hasFuel = (currentGen.fuelAmount or 0) > 0
-            local notDeactivated = (currentGen.activated ~= false)  -- true if nil or true
+            -- Usa GlobalModData em vez do IsoGenerator ativo para tornar isso independente de chunk
+            -- Um gerador é considerado ativo se tiver combustível E não estiver explicitamente desativado
+            -- (o campo activated é apenas definido como false quando o combustível acaba, nunca definido como true)
+            local possuiCombustivel = (geradorAtual.fuelAmount or 0) > 0
+            local naoDesativado = (geradorAtual.activated ~= false)  -- true se nil ou true
             
-            if hasFuel and notDeactivated then
-                count = count + 1
+            if possuiCombustivel and naoDesativado then
+                contagem = contagem + 1
             end
 
-            -- Discover neighbours through ALL connected buildings (not just active gens)
-            if currentGen.connectedBuildings then
-                -- connectedBuildings / connectedGenerators are Kahlua-deserialized (string numeric keys)
-                for i, bid in pairs(currentGen.connectedBuildings) do
-                    local bd = StateManager.GetBuilding(bid)
-                    -- Lazy Xref: repair stale bld_def_... IDs in-place (see CalculateFuelConsumption)
-                    if not bd then
-                        local genKeyLocal = string.format("%d_%d_%d",
-                            currentGen.x, currentGen.y, currentGen.z)
-                        local allBlds = StateManager.GetAllBuildings() or {}
-                        for _, bld in pairs(allBlds) do
-                            if bld and bld.connectedGenerators then
-                                for _, gk in pairs(bld.connectedGenerators) do
-                                    if gk == genKeyLocal then
-                                        currentGen.connectedBuildings[i] = bld.id
-                                        StateManager.AddGenerator(currentGen)
-                                        bd = bld
+            -- Descobre vizinhos através de TODOS os prédios conectados (não apenas geradores ativos)
+            if geradorAtual.connectedBuildings then
+                -- connectedBuildings / connectedGenerators são desserializados pelo Kahlua (chaves numéricas string)
+                for indice, idPredio in pairs(geradorAtual.connectedBuildings) do
+                    local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+                    -- Lazy Xref: repara IDs obsoletos bld_def_... in-place (veja CalculateFuelConsumption)
+                    if not dadosPredio then
+                        local chaveGeradorLocal = string.format("%d_%d_%d",
+                            geradorAtual.x, geradorAtual.y, geradorAtual.z)
+                        local todosPredios = gerenciadorEstado.GetAllBuildings() or {}
+                        for _, predio in pairs(todosPredios) do
+                            if predio and predio.connectedGenerators then
+                                for _, chaveGerador in pairs(predio.connectedGenerators) do
+                                    if chaveGerador == chaveGeradorLocal then
+                                        geradorAtual.connectedBuildings[indice] = predio.id
+                                        gerenciadorEstado.AddGenerator(geradorAtual)
+                                        dadosPredio = predio
                                         break
                                     end
                                 end
                             end
-                            if bd then break end
+                            if dadosPredio then break end
                         end
                     end
-                    if bd and bd.connectedGenerators then
-                        for _, genKey in pairs(bd.connectedGenerators) do
-                            local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                            if gx then
-                                local gid = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(gx), tonumber(gy), tonumber(gz))
-                                if not visited[gid] then
-                                    local nextGen = StateManager.GetGenerator(gid)
-                                    if nextGen then
-                                        table.insert(toVisit, nextGen)
+                    if dadosPredio and dadosPredio.connectedGenerators then
+                        for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                            local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                            if coordX then
+                                local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                                if not visitados[idGerador] then
+                                    local proximoGerador = gerenciadorEstado.GetGenerator(idGerador)
+                                    if proximoGerador then
+                                        table.insert(aVisitar, proximoGerador)
                                     end
                                 end
                             end
@@ -213,1176 +213,968 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators(gener
         end
     end
 
-    if count < 1 then return 1 end
-    return count
+    if contagem < 1 then return 1 end
+    return contagem
 end
 
--- Local reference for internal use (after function is defined in namespace)
+-- Referência local para uso interno (após a função ser definida no namespace)
 local CountActivePoolGenerators = LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators
 
 -- ============================================================================
--- HELPERS
+-- AUXILIARES DE CONFIGURAÇÃO
 -- ============================================================================
 
---- Returns the vanilla sandbox GeneratorFuelConsumption multiplier,
---- normalised so that the vanilla default (0.1) maps to 1.0.
----   sandbox 0.0 → 0.0  (infinite fuel)
----   sandbox 0.1 → 1.0  (normal / no change to V2 base rate)
----   sandbox 0.5 → 5.0  (5× faster)
----   sandbox 1.0 → 10.0 (10× faster)
+--- Retorna o multiplicador de sandbox GeneratorFuelConsumption do vanilla,
+--- normalizado para que o padrão vanilla (0.1) seja mapeado para 1.0.
+---   sandbox 0.0 → 0.0  (combustível infinito)
+---   sandbox 0.1 → 1.0  (normal / sem alteração na taxa base da V2)
+---   sandbox 0.5 → 5.0  (5x mais rápido)
+---   sandbox 1.0 → 10.0 (10x mais rápido)
 function LKS_EletricidadeConstrucao.Fuel.Manager.GetSandboxFuelMultiplier()
-    local ok, value = pcall(function()
+    local sucesso, valor = pcall(function()
         return getSandboxOptions():getOptionByName("GeneratorFuelConsumption"):getValue()
     end)
-    if ok and type(value) == "number" and value >= 0 then
-        -- Use sandbox value directly (0.1 = vanilla default)
-        return value
+    if sucesso and type(valor) == "number" and valor >= 0 then
+        -- Usa o valor do sandbox diretamente (0.1 = padrão vanilla)
+        return valor
     end
-    print("failed to get sandbox fuel multiplier, using default 0.1")
-    return 0.1  -- fallback: vanilla default
+    print("falha ao obter multiplicador de combustível do sandbox, usando padrão 0.1")
+    return 0.1  -- fallback: padrão vanilla
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO
 -- ============================================================================
 
---- Initialize fuel manager
+--- Inicializa o gerenciador de combustível
 function LKS_EletricidadeConstrucao.Fuel.Manager.Initialize()
-    if _isInitialized then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Fuel Manager already initialized", "Fuel")
+    if _inicializado then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Gerenciador de Combustível já inicializado", "Fuel")
         return
     end
     
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    _updateInterval = Constants.FUEL.UPDATE_INTERVAL or 1000
-    _lastWorldMinutes = GetWorldMinutes()
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    _intervaloAtualizacao = Constantes.FUEL.UPDATE_INTERVAL or 1000
+    _ultimosMinutosMundo = obterMinutosMundo()
     
-    _isInitialized = true
+    _inicializado = true
 
-    -- NOTE: EveryOneMinute registration is handled in LKS_EletricidadeConstrucao_ServerInit.lua
-    -- Duplicate registration here could cause conflicts or double-processing
-    -- Commenting out the duplicate registration
-    --[[
-    -- Register periodic update on EveryOneMinute for consistent fuel ticks
-    if not _eventRegistered and Events and Events.EveryOneMinute then
-        Events.EveryOneMinute.Add(LKS_EletricidadeConstrucao.Fuel.Manager.Update)
-        _eventRegistered = true
-        LKS_EletricidadeConstrucao.Core.Logger.Info("Fuel Manager registered EveryOneMinute handler", "Fuel")
-        print("[LKS_EletricidadeConstrucao_Fuel] Registered EveryOneMinute handler")
-    else
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Fuel Manager could not register EveryOneMinute (Events missing?)", "Fuel")
-        print("[LKS_EletricidadeConstrucao_Fuel] Failed to register EveryOneMinute")
-    end
-    --]]
+    -- NOTE: O registro do EveryOneMinute é manipulado em LKS_EletricidadeConstrucao_ServerInit.lua
+    -- O registro duplicado aqui poderia causar conflitos ou processamento duplo
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Fuel Manager initialized (interval: " .. _updateInterval .. "ms)", "Fuel")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Gerenciador de Combustível inicializado (intervalo: " .. _intervaloAtualizacao .. "ms)", "Fuel")
 end
 
---- Check if fuel manager is initialized
---- @return boolean True if initialized
+--- Verifica se o gerenciador de combustível está inicializado
+--- @return boolean True se estiver inicializado
 function LKS_EletricidadeConstrucao.Fuel.Manager.IsInitialized()
-    return _isInitialized
+    return _inicializado
 end
 
 -- ============================================================================
--- UPDATE CYCLE
+-- CICLO DE ATUALIZAÇÃO
 -- ============================================================================
 
---- Update all active generators
---- Called periodically to process fuel consumption
+--- Atualiza todos os geradores ativos
+--- Chamado periodicamente para processar o consumo de combustível
 function LKS_EletricidadeConstrucao.Fuel.Manager.Update()
-    if not _isInitialized then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Fuel Manager Update called before init", "Fuel")
+    if not _inicializado then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Update do Gerenciador de Combustível chamado antes da inicialização", "Fuel")
         return
     end
     
-    local currentWorldMinutes = GetWorldMinutes()
-    -- Snapshot world age (hours) for per-generator delta calculations.
-    -- Each generator compares its own Gen_LastCalcWorldAge against this.
-    local gt = getGameTime and getGameTime()
-    _currentWorldAge = gt and (gt:getWorldAgeHours() or 0) or (currentWorldMinutes / 60)
+    local minutosMundoAtuais = obterMinutosMundo()
+    -- Captura a idade do mundo (horas) para cálculos de delta por gerador.
+    -- Cada gerador compara seu próprio Gen_LastCalcWorldAge contra isto.
+    local tempoJogo = getGameTime and getGameTime()
+    _idadeMundoAtual = tempoJogo and (tempoJogo:getWorldAgeHours() or 0) or (minutosMundoAtuais / 60)
 
-    -- deltaMinutes is still used for uptime stats only
-    local deltaMinutes = currentWorldMinutes - _lastWorldMinutes
-    if deltaMinutes < 0 then deltaMinutes = 0 end
-    local uptimeSeconds = deltaMinutes * 60
+    -- deltaMinutes ainda é usado apenas para estatísticas de tempo ativo (uptime)
+    local variacaoMinutos = minutosMundoAtuais - _ultimosMinutosMundo
+    if variacaoMinutos < 0 then variacaoMinutos = 0 end
+    local segundosAtivo = variacaoMinutos * 60
 
-    -- Sync generator runtime flags from live IsoGenerators so activation/condition
-    -- changes are reflected in the state before filtering for active ones. Fuel
-    -- stays authoritative in state so we can override vanilla drain.
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local anyStateChange = false
-    for _, genData in pairs(StateManager.GetAllGenerators()) do
-        local genObj = getGeneratorFromSquare(genData.x, genData.y, genData.z)
-        if genObj then
-            -- Repair missing Gen_BuildingPoolID from state on reload
-            local md = genObj:getModData()
-            local restorablePoolId = nil
-            if md and md.LKS_EletricidadeConstrucao_DisconnectSuppressed then
-                restorablePoolId = nil
-            elseif md and (not md.Gen_BuildingPoolID) and genData.id and not _poolRestoreSeen[genData.id] then
-                restorablePoolId = FindRestorablePoolId(StateManager, genData)
+    -- Sincroniza sinalizadores de execução dos geradores ativos a partir dos IsoGenerators reais
+    -- para que mudanças de ativação/condição sejam refletidas no estado antes de filtrar os ativos.
+    -- O combustível permanece autoridade no estado para podermos sobrepor a drenagem vanilla.
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local qualquerAlteracaoEstado = false
+    for _, dadosGerador in pairs(gerenciadorEstado.GetAllGenerators()) do
+        local objetoGerador = getGeneratorFromSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+        if objetoGerador then
+            -- Repara Gen_BuildingPoolID ausente do estado ao recarregar
+            local modDataObj = objetoGerador:getModData()
+            local idPoolRestauravel = nil
+            if modDataObj and modDataObj.LKS_EletricidadeConstrucao_DisconnectSuppressed then
+                idPoolRestauravel = nil
+            elseif modDataObj and (not modDataObj.Gen_BuildingPoolID) and dadosGerador.id and not _restauracoesPoolVistas[dadosGerador.id] then
+                idPoolRestauravel = encontrarIdPoolRestauravel(gerenciadorEstado, dadosGerador)
             end
-            -- Only restore the pool link if StateManager still has connectedBuildings.
-            -- After a deliberate disconnect, buildingData.connectedGenerators no longer
-            -- references this generator, so FindRestorablePoolId() returns nil and we
-            -- do not re-link it from stale generator state.
-            if restorablePoolId then
-                local poolId = restorablePoolId
-                md.Gen_BuildingPoolID = poolId
+            -- Apenas restaura a conexão do pool se o StateManager ainda possuir connectedBuildings.
+            -- Após uma desconexão deliberada, buildingData.connectedGenerators não referencia mais
+            -- este gerador, de modo que encontrarIdPoolRestauravel() retorna nil e nós
+            -- não o reconectamos a partir de um estado de gerador obsoleto.
+            if idPoolRestauravel then
+                local idPool = idPoolRestauravel
+                modDataObj.Gen_BuildingPoolID = idPool
                 if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                    genObj:transmitModData()
+                    objetoGerador:transmitModData()
                 end
-                anyStateChange = true
-                _poolRestoreSeen[genData.id] = true
-                LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Restored Gen_BuildingPoolID=%s for %s", md.Gen_BuildingPoolID, genData.id or "?"), "Fuel")
-                -- print(string.format("[LKS_EletricidadeConstrucao_Fuel] Restored pool %s to generator %s", md.Gen_BuildingPoolID, genData.id or "?"))
+                qualquerAlteracaoEstado = true
+                _restauracoesPoolVistas[dadosGerador.id] = true
+                LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Restaurado Gen_BuildingPoolID=%s para %s", modDataObj.Gen_BuildingPoolID, dadosGerador.id or "?"), "Fuel")
 
-                -- Also ensure the building knows about this generator so Distributor can sync stats.
+                -- Garante também que o prédio saiba desse gerador para o Distributor sincronizar estatísticas.
                 if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
-                    local bld = LKS_EletricidadeConstrucao.Core.StateManager.GetBuilding(poolId)
-                    if bld then
-                        bld.connectedGenerators = bld.connectedGenerators or {}
-                        local genKey = string.format("%d_%d_%d", genData.x or 0, genData.y or 0, genData.z or 0)
-                        local exists = false
-                        -- connectedGenerators is Kahlua-deserialized (string numeric keys)
-                        for _, k in pairs(bld.connectedGenerators) do
-                            if k == genKey then exists = true; break end
+                    local predio = LKS_EletricidadeConstrucao.Core.StateManager.GetBuilding(idPool)
+                    if predio then
+                        predio.connectedGenerators = predio.connectedGenerators or {}
+                        local chaveGerador = string.format("%d_%d_%d", dadosGerador.x or 0, dadosGerador.y or 0, dadosGerador.z or 0)
+                        local existe = false
+                        -- connectedGenerators é desserializado pelo Kahlua (chaves numéricas string)
+                        for _, chaveG in pairs(predio.connectedGenerators) do
+                            if chaveG == chaveGerador then existe = true; break end
                         end
                         if not exists then
-                            table.insert(bld.connectedGenerators, genKey)
+                            table.insert(predio.connectedGenerators, chaveGerador)
                             LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-                            LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Linked generator %s back to building %s", genKey, poolId), "Fuel")
+                            LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Vinculado gerador %s de volta ao prédio %s", chaveGerador, idPool), "Fuel")
                         end
                     end
                 end
 
-                -- Persist the restored pool link even if building data was already present.
+                -- Persiste a conexão do pool restaurada mesmo se os dados do prédio já estivessem presentes.
                 LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
             end
-            -- Sync runtime state from IsoObject
-            local activated = genObj:isActivated() or false
-            local cond      = genObj:getCondition() or 0
-            if genData.activated ~= activated or genData.condition ~= cond then
-                genData.activated   = activated
-                genData.condition   = cond
-                anyStateChange = true
+            -- Sincroniza estado de execução do IsoObject
+            local ativo = objetoGerador:isActivated() or false
+            local condicao = objetoGerador:getCondition() or 0
+            if dadosGerador.activated ~= ativo or dadosGerador.condition ~= condicao then
+                dadosGerador.activated = ativo
+                dadosGerador.condition = condicao
+                qualquerAlteracaoEstado = true
             end
             
-            -- Fuel sync: IsoObject is now authoritative.
-            -- Always pull the live value into the state cache; never overwrite
-            -- the IsoObject from state (UpdateGenerator is the only writer to
-            -- the IsoObject and it stamps Gen_LastCalcWorldAge at the same time).
-            local liveFuel    = genObj:getFuel() or 0
-            local stateFuel   = genData.fuelAmount or 0
-            local lastSynced  = genData.lastSyncedFuel
+            -- Sincronia de combustível: IsoObject agora é autoridade.
+            -- Sempre extrai o valor em tempo real para o cache do estado; nunca sobrescreve
+            -- o IsoObject a partir do estado (UpdateGenerator é o único escritor do
+            -- IsoObject e grava o Gen_LastCalcWorldAge ao mesmo tempo).
+            local combustivelReal = objetoGerador:getFuel() or 0
+            local combustivelEstado = dadosGerador.fuelAmount or 0
+            local ultimoSincronizado = dadosGerador.lastSyncedFuel
 
-            if liveFuel ~= stateFuel then
-                genData.fuelAmount = liveFuel
-                anyStateChange = true
+            if combustivelReal ~= combustivelEstado then
+                dadosGerador.fuelAmount = combustivelReal
+                qualquerAlteracaoEstado = true
             end
-            if lastSynced ~= nil and liveFuel > lastSynced + 0.5 then
-                -- fuel went UP since our last setFuel → player manually refuelled
+            if ultimoSincronizado ~= nil and combustivelReal > ultimoSincronizado + 0.5 then
+                -- o combustível subiu desde a nossa última sincronização → jogador reabasteceu manualmente
                 LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                    string.format("Detected manual refuel: %.3f -> %.3f for %s", stateFuel, liveFuel, genData.id or "?"),
+                    string.format("Reabastecimento manual detectado: %.3f -> %.3f para %s", combustivelEstado, combustivelReal, dadosGerador.id or "?"),
                     "Fuel"
                 )
             end
-            genData.lastSyncedFuel = liveFuel
+            dadosGerador.lastSyncedFuel = combustivelReal
         end
         
-        -- Safety check: generator can't be activated with no fuel
-        -- Fixes inconsistent state from previous runs (before continuous fuel model)
-        if genData.activated and (genData.fuelAmount or 0) <= 0 then
-            genData.activated = false
-            anyStateChange = true
+        -- Verificação de segurança: o gerador não pode funcionar sem combustível
+        -- Corrige estados inconsistentes de execuções anteriores (antes do modelo de combustível contínuo)
+        if dadosGerador.activated and (dadosGerador.fuelAmount or 0) <= 0 then
+            dadosGerador.activated = false
+            qualquerAlteracaoEstado = true
             LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                string.format("Generator %s was activated but has no fuel - deactivating", genData.id),
+                string.format("Gerador %s estava ativado mas está sem combustível - desativando", dadosGerador.id),
                 "Fuel"
             )
             
-            -- Also deactivate the live IsoObject so isBuildingPoweredInline sees false
-            if genObj then
-                genObj:setActivated(false)
-                genData.lastSyncedFuel = 0
+            -- Desativa também o IsoObject real para que isBuildingPoweredInline retorne false
+            if objetoGerador then
+                objetoGerador:setActivated(false)
+                dadosGerador.lastSyncedFuel = 0
             end
             
-            -- Update connected buildings power state immediately
-            if genData.connectedBuildings and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
-                -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-                for _, buildingId in pairs(genData.connectedBuildings) do
+            -- Atualiza o estado de energia dos prédios conectados imediatamente
+            if dadosGerador.connectedBuildings and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
+                -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string)
+                for _, idPredio in pairs(dadosGerador.connectedBuildings) do
                     if LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding then
-                        pcall(LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding, buildingId)
+                        pcall(LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding, idPredio)
                     end
                 end
             end
         end
     end
-    if anyStateChange then
-        StateManager.MarkDirty()
+    if qualquerAlteracaoEstado then
+        gerenciadorEstado.MarkDirty()
     end
     
-    -- Update all active generators using per-generator worldAge delta.
-    -- Only processes generators whose chunk is currently loaded (no off-chunk drain).
-    -- On first tick after a long absence the full elapsed time is used as deltaSeconds
-    -- (catch-up drain). Barrels have already been refuelled above.
-    -- B-102: Clear per-tick pool cache so each pool is computed exactly once this tick.
-    _perTickPoolCache = {}
-    _perTickGenToPool = {}
+    -- Atualiza todos os geradores ativos usando a variação de worldAge de cada gerador.
+    -- Apenas processa geradores cujo chunk esteja atualmente carregado (sem consumo fora de chunk).
+    -- No primeiro tick após uma longa ausência, o tempo decorrido total é usado como variacaoSegundos
+    -- (consumo de compensação). Os barris já foram reabastecidos acima.
+    -- B-102: Limpa o cache de pool por tick para que cada pool seja computado exatamente uma vez neste tick.
+    _cachePoolPorTick = {}
+    _geradorParaPoolPorTick = {}
 
-    local activeGenerators = StateManager.GetActiveGenerators()
+    local geradoresAtivos = gerenciadorEstado.GetActiveGenerators()
 
-    if #activeGenerators > 0 then
-        local updatedCount = 0
-        for _, genData in ipairs(activeGenerators) do
-            -- Require a loaded IsoObject: no drain while off-chunk.
-            local genObject = getGeneratorFromSquare(genData.x, genData.y, genData.z)
-            if genObject then
-                local md = genObject:getModData()
-                local lastCalcAge = md.Gen_LastCalcWorldAge  -- nil on first tick
-                local genDeltaMinutes
-                if lastCalcAge == nil then
-                    -- First tick ever for this generator: treat as one normal minute.
-                    genDeltaMinutes = 1
+    if #geradoresAtivos > 0 then
+        local totalAtualizados = 0
+        for _, dadosGerador in ipairs(geradoresAtivos) do
+            -- Exige o IsoObject carregado: sem drenagem fora de chunk.
+            local objetoGerador = getGeneratorFromSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+            if objetoGerador then
+                local modDataObj = objetoGerador:getModData()
+                local idadeUltimoCalculo = modDataObj.Gen_LastCalcWorldAge  -- nil no primeiro tick
+                local minutosDeltaGerador
+                if idadeUltimoCalculo == nil then
+                    -- Primeiro tick deste gerador: trata como um minuto normal.
+                    minutosDeltaGerador = 1
                 else
-                    genDeltaMinutes = (_currentWorldAge - lastCalcAge) * 60
+                    minutosDeltaGerador = (_idadeMundoAtual - idadeUltimoCalculo) * 60
                 end
-                if genDeltaMinutes >= 1 then
-                    local genDeltaSeconds = genDeltaMinutes * 60
-                    local fuelBefore = genObject:getFuel() or 0
-                    local isCatchup  = genDeltaMinutes > 1.5  -- more than one normal tick = genuine catch-up
-                    if isCatchup then
+                if minutosDeltaGerador >= 1 then
+                    local segundosDeltaGerador = minutosDeltaGerador * 60
+                    local combustivelAntes = objetoGerador:getFuel() or 0
+                    local ehCompensacao = minutosDeltaGerador > 1.5 -- mais de um tick normal = compensação real
+                    if ehCompensacao then
                         LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                            "[FuelManager][CatchUp] START gen=%s fuel=%.3f lastCalcAge=%.4fh currentAge=%.4fh delta=%.2f min (%.0fs)",
-                            genData.id, fuelBefore,
-                            lastCalcAge or 0, _currentWorldAge,
-                            genDeltaMinutes, genDeltaSeconds), "Fuel")
+                            "[FuelManager][Compensacao] INICIO gen=%s combustivel=%.3f idadeUltimoCalculo=%.4fh idadeAtual=%.4fh delta=%.2f min (%.0fs)",
+                            dadosGerador.id, combustivelAntes,
+                            idadeUltimoCalculo or 0, _idadeMundoAtual,
+                            minutosDeltaGerador, segundosDeltaGerador), "Fuel")
                     end
-                    LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(genData, genDeltaSeconds)
-                    if isCatchup then
-                        local fuelAfter  = genData.fuelAmount or 0
-                        local drained    = fuelBefore - fuelAfter
-                        local drainLph   = genDeltaSeconds > 0 and (drained * 3600 / genDeltaSeconds) or 0
+                    LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(dadosGerador, segundosDeltaGerador)
+                    if ehCompensacao then
+                        local combustivelDepois = dadosGerador.fuelAmount or 0
+                        local drenado = combustivelAntes - combustivelDepois
+                        local taxaLph = segundosDeltaGerador > 0 and (drenado * 3600 / segundosDeltaGerador) or 0
                         LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                            "[FuelManager][CatchUp]  END  gen=%s fuelBefore=%.3f fuelAfter=%.3f drained=%.4f (%.3f L/h equiv) pool=%d",
-                            genData.id, fuelBefore, fuelAfter, drained, drainLph,
-                            LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators(genData)), "Fuel")
+                            "[FuelManager][Compensacao] FIM gen=%s combustivelAntes=%.3f combustivelDepois=%.3f drenado=%.4f (equivalente a %.3f L/h) pool=%d",
+                            dadosGerador.id, combustivelAntes, combustivelDepois, drenado, taxaLph,
+                            LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators(dadosGerador)), "Fuel")
                     end
-                    updatedCount = updatedCount + 1
+                    totalAtualizados = totalAtualizados + 1
                 end
             end
-            -- off-chunk: skip silently, fuel unchanged until player returns
+            -- fora de chunk: pula silenciosamente, combustível inalterado até o jogador retornar
         end
         
-        if updatedCount > 0 then
-            StateManager.MarkDirty()
+        if totalAtualizados > 0 then
+            gerenciadorEstado.MarkDirty()
         end
     end
     
-    -- Update stats timestamp
-    _lastWorldMinutes = currentWorldMinutes
+    -- Atualiza carimbo de estatísticas
+    _ultimosMinutosMundo = minutosMundoAtuais
     
-    -- Update uptime statistics (use unbounded delta to reflect real elapsed time)
-    StateManager.UpdateUptime(uptimeSeconds)
+    -- Atualiza estatísticas de tempo ativo (usa variação ilimitada para refletir o tempo real decorrido)
+    gerenciadorEstado.UpdateUptime(segundosAtivo)
 end
 
 -- ============================================================================
--- GENERATOR UPDATE
+-- OPERAÇÕES MANUAIS DO JOGADOR
 -- ============================================================================
 
---- Force immediate fuel calculation for a specific generator (e.g., when heating is toggled)
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate (optional, defaults to 0)
+--- Força cálculo imediato do combustível para um gerador específico (ex: quando o aquecimento é alternado)
+--- @param x number Coordenada X
+--- @param y number Coordenada Y
+--- @param z number Coordenada Z (opcional, padrão 0)
 function LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(x, y, z)
-    if not _isInitialized then return end
+    if not _inicializado then return end
     z = z or 0
     
-    -- Ensure _currentWorldAge is current so UpdateGenerator writes a valid
-    -- Gen_LastCalcWorldAge checkpoint (avoids a huge delta on the next real tick).
-    local gt = getGameTime and getGameTime()
-    if gt then _currentWorldAge = gt:getWorldAgeHours() or _currentWorldAge end
+    -- Garante que _idadeMundoAtual esteja atualizado para que o UpdateGenerator grave um
+    -- ponto de verificação Gen_LastCalcWorldAge válido (evita um salto enorme no próximo tick real).
+    local tempoJogo = getGameTime and getGameTime()
+    if tempoJogo then _idadeMundoAtual = tempoJogo:getWorldAgeHours() or _idadeMundoAtual end
     
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local genKey = x .. "_" .. y .. "_" .. z
-    local genData = StateManager.GetGenerator(genKey)
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local chaveGerador = x .. "_" .. y .. "_" .. z
+    local dadosGerador = gerenciadorEstado.GetGenerator(chaveGerador)
     
-    if genData and genData.activated ~= false then
-        -- Force a minimal update (1 second) to recalculate fuel rate without consuming fuel
-        LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(genData, 1)
-        StateManager.MarkDirty()
+    if dadosGerador and dadosGerador.activated ~= false then
+        -- Força uma atualização mínima (1 segundo) para recalcular a taxa de consumo sem drenar combustível
+        LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(dadosGerador, 1)
+        gerenciadorEstado.MarkDirty()
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("Forced fuel update for generator at %d,%d,%d", x, y, z),
+            string.format("Atualização de combustível forçada para gerador em %d,%d,%d", x, y, z),
             "Fuel"
         )
     end
 end
 
 -- ============================================================================
--- GENERATOR UPDATE
+-- ATUALIZAÇÃO DO GERADOR
 -- ============================================================================
 
---- Update single generator fuel consumption.
---- IsoObject is the authoritative fuel source: fuel is read from and written to
---- gen:getFuel()/gen:setFuel().  State fuelAmount is kept in sync as a cache for
---- off-chunk power checks (isBuildingPoweredInline) and UI.
---- Gen_LastCalcWorldAge is written to IsoObject moddata so catch-up works
---- correctly even after a GlobalModData deserialization failure.
---- @param generatorData GeneratorData Generator to update
---- @param deltaSeconds number Time delta in seconds (may be large for catch-up)
+--- Atualiza o consumo de combustível de um único gerador.
+--- IsoObject é a fonte de combustível autoritativa: o valor é lido e gravado usando
+--- gen:getFuel()/gen:setFuel(). O fuelAmount do estado é mantido em sincronia como
+--- um cache para verificações de energia fora de chunk (isBuildingPoweredInline) e interface.
+--- Gen_LastCalcWorldAge é gravado no moddata do IsoObject para que a compensação funcione
+--- corretamente mesmo após uma falha de desserialização do GlobalModData.
+--- @param generatorData GeneratorData Gerador a atualizar
+--- @param deltaSeconds number Variação de tempo em segundos (pode ser grande na compensação)
 function LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(generatorData, deltaSeconds)
-    local Validation = LKS_EletricidadeConstrucao.Utils.Validation
+    local Validacao = LKS_EletricidadeConstrucao.Utils.Validation
     local Logger = LKS_EletricidadeConstrucao.Core.Logger
     
     if not generatorData then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("Generator data is nil", "Fuel")
+        LKS_EletricidadeConstrucao.Core.Logger.Error("Dados do gerador são nulos", "Fuel")
         return
     end
     
-    -- Check if generator is running (uses state cache fuelAmount + activated)
+    -- Verifica se o gerador está funcionando (usa cache do estado de fuelAmount + activated)
     if not LKS_EletricidadeConstrucao.Data.Generator.IsRunning(generatorData) then
         return
     end
     
-    -- IsoObject is authoritative for fuel.  Read live value when chunk is loaded.
-    local genObject = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    local chunkLoaded = (genObject ~= nil and Validation.IsGenerator(genObject))
+    -- IsoObject é autoritativo para o combustível. Lê o valor em tempo real se o chunk estiver carregado.
+    local objetoGerador = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    local chunkCarregado = (objetoGerador ~= nil and Validacao.IsGenerator(objetoGerador))
     
-    local currentFuel
-    if chunkLoaded then
-        -- IsoObject is the source of truth
-        currentFuel = genObject:getFuel() or 0
-        -- Keep state cache current so off-chunk checks stay accurate
-        generatorData.fuelAmount = currentFuel
+    local combustivelAtual
+    if chunkCarregado then
+        -- IsoObject é a fonte da verdade
+        combustivelAtual = objetoGerador:getFuel() or 0
+        -- Mantém cache do estado atualizado para verificações fora de chunk ficarem corretas
+        generatorData.fuelAmount = combustivelAtual
     else
-        -- Off-chunk fallback to state cache (should rarely happen: Update() pre-checks)
-        currentFuel = generatorData.fuelAmount or 0
+        -- Fallback fora de chunk para cache do estado (deve ocorrer raramente devido a pré-verificações no Update)
+        combustivelAtual = generatorData.fuelAmount or 0
     end
     
-    -- Calculate fuel consumption
-    local fuelConsumed = LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(generatorData, deltaSeconds)
+    -- Calcula consumo de combustível
+    local combustivelConsumido = LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(generatorData, deltaSeconds)
 
-    if fuelConsumed == -1 then
-        -- Generator physically failed (extreme strain or condition reached 0)
+    if combustivelConsumido == -1 then
+        -- Gerador falhou fisicamente (sobrecarga extrema ou integridade atingiu 0)
         generatorData.activated = false
-        if chunkLoaded then
-            genObject:setActivated(false)
-            genObject:sync()
-            genObject:getModData().Gen_LastCalcWorldAge = _currentWorldAge
+        if chunkCarregado then
+            objetoGerador:setActivated(false)
+            objetoGerador:sync()
+            objetoGerador:getModData().Gen_LastCalcWorldAge = _idadeMundoAtual
         end
         if generatorData.connectedBuildings and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
-            -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-            for _, buildingId in pairs(generatorData.connectedBuildings) do
-                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(buildingId)
+            -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string)
+            for _, idPredio in pairs(generatorData.connectedBuildings) do
+                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(idPredio)
             end
         end
-        Logger.Info(string.format("Generator %s physically failed due to strain/condition damage", generatorData.id or "?"), "Fuel")
+        Logger.Info(string.format("Gerador %s falhou fisicamente devido a danos de sobrecarga/integridade", generatorData.id or "?"), "Fuel")
         return
     end
 
-    if fuelConsumed <= 0 then
-        -- Still stamp the checkpoint so the next delta is measured from now
-        if chunkLoaded then
-            genObject:getModData().Gen_LastCalcWorldAge = _currentWorldAge
+    if combustivelConsumido <= 0 then
+        -- Ainda assim grava o ponto de verificação para o próximo cálculo partir de agora
+        if chunkCarregado then
+            objetoGerador:getModData().Gen_LastCalcWorldAge = _idadeMundoAtual
         end
-        Logger.Trace(string.format("[Fuel] No consumption for %s (delta=%.2fs)", generatorData.id or "?", deltaSeconds), "Fuel")
+        Logger.Trace(string.format("[Fuel] Sem consumo para %s (delta=%.2fs)", generatorData.id or "?", deltaSeconds), "Fuel")
         return
     end
     
-    local newFuel = math.max(0, currentFuel - fuelConsumed)
+    local novoCombustivel = math.max(0, combustivelAtual - combustivelConsumido)
     
-    -- Write authoritative fuel to IsoObject + sync state cache
-    generatorData.fuelAmount = newFuel
-    if chunkLoaded then
-        genObject:setFuel(newFuel)
-        generatorData.lastSyncedFuel = newFuel
-        -- Persist the worldAge checkpoint so catch-up is correct after chunk reload
-        genObject:getModData().Gen_LastCalcWorldAge = _currentWorldAge
+    -- Grava combustível autoritativo no IsoObject + sincroniza cache do estado
+    generatorData.fuelAmount = novoCombustivel
+    if chunkCarregado then
+        objetoGerador:setFuel(novoCombustivel)
+        generatorData.lastSyncedFuel = novoCombustivel
+        -- Persiste o ponto de verificação de worldAge para a compensação ficar correta após recarregar o chunk
+        objetoGerador:getModData().Gen_LastCalcWorldAge = _idadeMundoAtual
     end
     
-    if newFuel <= 0 then
+    if novoCombustivel <= 0 then
         generatorData.activated = false
-        if chunkLoaded then
-            genObject:setActivated(false)
+        if chunkCarregado then
+            objetoGerador:setActivated(false)
         end
         LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorFuelEmpty(generatorData)
         if generatorData.connectedBuildings and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
-            -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-            for _, buildingId in pairs(generatorData.connectedBuildings) do
-                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(buildingId)
+            -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string)
+            for _, idPredio in pairs(generatorData.connectedBuildings) do
+                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(idPredio)
             end
-            local _bldCount = 0
-            for _ in pairs(generatorData.connectedBuildings) do _bldCount = _bldCount + 1 end
-            Logger.Debug(string.format("Updated %d buildings after generator %s ran out of fuel",
-                _bldCount, generatorData.id), "Fuel")
+            local totalPredios = 0
+            for _ in pairs(generatorData.connectedBuildings) do totalPredios = totalPredios + 1 end
+            Logger.Debug(string.format("Atualizados %d prédio(s) após o gerador %s ficar sem combustível",
+                totalPredios, generatorData.id), "Fuel")
         end
-        Logger.Info(string.format("Generator %s ran out of fuel (chunk: %s)", generatorData.id, tostring(chunkLoaded)), "Fuel")
+        Logger.Info(string.format("Gerador %s ficou sem combustível (chunk carregado: %s)", generatorData.id, tostring(chunkCarregado)), "Fuel")
     end
     
-    -- Record statistics
-    LKS_EletricidadeConstrucao.Core.StateManager.RecordFuelConsumption(fuelConsumed)
+    -- Registra estatísticas
+    LKS_EletricidadeConstrucao.Core.StateManager.RecordFuelConsumption(combustivelConsumido)
     generatorData.lastUpdateTime = getTimestampMs()
     
-    local lph = deltaSeconds > 0 and (fuelConsumed * 3600 / deltaSeconds) or 0
-    Logger.Debug(string.format("Generator %s consumed %.4f fuel (%.3f L/h) (remaining: %.3f -> %.3f) [chunk: %s]",
-        generatorData.id, fuelConsumed, lph, currentFuel, newFuel, tostring(chunkLoaded)), "Fuel")
+    local lph = deltaSeconds > 0 and (combustivelConsumido * 3600 / deltaSeconds) or 0
+    Logger.Debug(string.format("Gerador %s consumiu %.4f de combustível (%.3f L/h) (restante: %.3f -> %.3f) [chunk: %s]",
+        generatorData.id, combustivelConsumido, lph, combustivelAtual, novoCombustivel, tostring(chunkCarregado)), "Fuel")
 end
 
 -- ============================================================================
--- FUEL CALCULATION
+-- CÁLCULO DE COMBUSTÍVEL
 -- ============================================================================
 
---- Calculate fuel consumption for a time period
---- @param generatorData GeneratorData Generator data
---- @param deltaSeconds number Time delta in seconds
---- @return number Fuel consumed
+--- Calcula o consumo de combustível para um período de tempo
+--- @param generatorData GeneratorData Dados do gerador
+--- @param deltaSeconds number Variação de tempo em segundos
+--- @return number Combustível consumido
 function LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(generatorData, deltaSeconds)
-    local Config    = LKS_EletricidadeConstrucao.Config
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local Logger    = LKS_EletricidadeConstrucao.Core.Logger
+    local Config = LKS_EletricidadeConstrucao.Config
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    local Logger = LKS_EletricidadeConstrucao.Core.Logger
 
-    -- Sum type-specific fuel consumption from all active consumers
-    local baseIdleRate = Constants.FUEL.BASE_CONSUMPTION_RATE or 0.0001  -- baseline per-second drain
-    local baseFuelRate = 0.0
-    local activeCount = 0  -- Track count for logging
+    -- Soma consumo de combustível específico por tipo a partir de todos os consumidores ativos
+    local taxaConsumoInativo = Constantes.FUEL.BASE_CONSUMPTION_RATE or 0.0001 -- consumo por segundo de base inativa
+    local taxaBaseCombustivel = 0.0
+    local contagemAtivos = 0 -- Rastreia quantidade para logs
     
-    -- Sum fuel consumption from ALL buildings in the pool (not just this generator's buildings)
-    -- This ensures equal fuel sharing across all generators in the same pool
-    local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    -- Soma consumo de combustível de TODOS os prédios no pool (não apenas dos prédios deste gerador)
+    -- Isso garante o compartilhamento igual de combustível por todos os geradores no mesmo pool
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
     
-    -- Step 1: Recursively discover ALL generators in this pool
-    local poolGenerators = {}  -- Set of all generator IDs in the pool
-    local poolBuildings = {}   -- Set of all building IDs in the pool
-    -- Flag set when PoolFallback is used: CountActivePoolGenerators would fail BFS for the
-    -- same reason (buildings not in state yet), so we skip it and use cachedPoolActive instead.
-    local usedPoolFallback = false
+    -- Passo 1: Descobre recursivamente TODOS os geradores neste pool
+    local geradoresPool = {} -- Conjunto de todos os IDs de geradores no pool
+    local prediosPool = {}   -- Conjunto de todos os IDs de prédios no pool
+    -- Sinalizador ativado se o PoolFallback foi usado (BFS falharia pelo mesmo motivo - prédios sem estado ainda)
+    local utilizouPoolFallback = false
 
-    -- ── B-102: Per-tick pool cache fast path ──────────────────────────────────
-    -- If a sibling generator in this pool already computed the pool load this tick,
-    -- reuse the cached result instead of repeating the full BFS + consumer scan.
+    -- ── B-102: Atalho do cache do pool por tick ───────────────────────────────
+    -- Se um gerador irmão neste pool já computou a carga do pool neste tick,
+    -- reutiliza o resultado em cache em vez de repetir a busca BFS + varredura de consumidores.
     do
-        local cacheKey = _perTickGenToPool[generatorData.id]
-        if cacheKey then
-            local cached = _perTickPoolCache[cacheKey]
-            if cached then
-                local poolActive2 = cached.poolActive
-                local perGenRate  = cached.totalPoolRate / poolActive2
+        local chaveCache = _geradorParaPoolPorTick[generatorData.id]
+        if chaveCache then
+            local emCache = _cachePoolPorTick[chaveCache]
+            if emCache then
+                local ativosPool = emCache.poolActive
+                local taxaPorGerador = emCache.totalPoolRate / ativosPool
 
-                -- Per-gen sprite modifier (mirrors the cache-miss path below)
-                local genObjC = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-                local fuelMultC = 1.0
-                if genObjC then
-                    local spriteC = genObjC.getSpriteName and genObjC:getSpriteName()
-                        or (genObjC.getSprite and genObjC:getSprite() and genObjC:getSprite():getName())
+                -- Multiplicador por tipo de gerador (espelha o caminho de falha de cache abaixo)
+                local objetoGeradorCache = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+                local multCombustivelC = 1.0
+                if objetoGeradorCache then
+                    local spriteC = objetoGeradorCache.getSpriteName and objetoGeradorCache:getSpriteName()
+                        or (objetoGeradorCache.getSprite and objetoGeradorCache:getSprite() and objetoGeradorCache:getSprite():getName())
                     generatorData.cachedSprite = spriteC
-                    local modsC = GENERATOR_TYPE_MODIFIERS[spriteC or ""]
-                    if modsC then
-                        fuelMultC = modsC.fuel or 1.0
-                        generatorData.cachedFuelMult   = fuelMultC
-                        generatorData.cachedStrainMult = modsC.strain or 1.0
+                    local modificadoresC = MODIFICADORES_TIPO_GERADOR[spriteC or ""]
+                    if modificadoresC then
+                        multCombustivelC = modificadoresC.fuel or 1.0
+                        generatorData.cachedFuelMult = multCombustivelC
+                        generatorData.cachedStrainMult = modificadoresC.strain or 1.0
                     end
-                    local sameSpriteC = CountSameSpriteGenerators(genObjC, generatorData)
-                    fuelMultC = ApplyDiminishing(fuelMultC, sameSpriteC)
+                    local mesmoSpriteC = contarGeradoresMesmoSprite(objetoGeradorCache, generatorData)
+                    multCombustivelC = aplicarRetornosDecrescentes(multCombustivelC, mesmoSpriteC)
                 else
-                    fuelMultC = generatorData.cachedFuelMult or 1.0
+                    multCombustivelC = generatorData.cachedFuelMult or 1.0
                 end
 
                 if generatorData.customFuelRate then
-                    perGenRate = generatorData.customFuelRate
+                    taxaPorGerador = generatorData.customFuelRate
                 end
 
-                local strainMultC = 1.0
+                local multSobrecargaC = 1.0
                 if Config.StrainSystemEnabled then
-                    -- B-103: pass the pool's building set from cache so StrainCalculator
-                    -- uses the same topology as the primary BFS and avoids stale-ID divergence.
-                    strainMultC = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, cached.poolBuildings, poolActive2)
+                    -- B-103: passa a lista de prédios do pool a partir do cache para o StrainCalculator
+                    -- usar a mesma topologia do BFS primário e evitar divergências de ID obsoleto.
+                    multSobrecargaC = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, emCache.poolBuildings, ativosPool)
                 end
 
-                local effectiveRateC = perGenRate * fuelMultC * strainMultC
-                local fuelConsumedC  = effectiveRateC * deltaSeconds
+                local taxaEfetivaC = taxaPorGerador * multCombustivelC * multSobrecargaC
+                local combustivelConsumidoC = taxaEfetivaC * deltaSeconds
 
-                if genObjC then
-                    local gmdC = genObjC:getModData()
-                    gmdC.Gen_Stats_FuelRateLph = effectiveRateC * poolActive2 * 3600
+                if objetoGeradorCache then
+                    local modDataCache = objetoGeradorCache:getModData()
+                    modDataCache.Gen_Stats_FuelRateLph = taxaEfetivaC * ativosPool * 3600
                     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                        genObjC:transmitModData()
+                        objetoGeradorCache:transmitModData()
                     end
                 end
 
                 Logger.Debug(string.format(
-                    "[FuelCalc][Cached] gen=%s poolActive=%d perGen=%.6f fuelMult=%.3f strainMult=%.3f eff=%.6f consumed=%.6f",
-                    generatorData.id or "?", poolActive2, perGenRate, fuelMultC, strainMultC,
-                    effectiveRateC, fuelConsumedC), "Fuel")
+                    "[FuelCalc][Cache] gen=%s ativosPool=%d porGerador=%.6f multCombustivel=%.3f multSobrecarga=%.3f efetivo=%.6f consumido=%.6f",
+                    generatorData.id or "?", ativosPool, taxaPorGerador, multCombustivelC, multSobrecargaC,
+                    taxaEfetivaC, combustivelConsumidoC), "Fuel")
 
                 if Config.StrainSystemEnabled and LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage then
-                    local failedC = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage(generatorData, deltaSeconds)
-                    if failedC then return -1 end
+                    local falhouC = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage(generatorData, deltaSeconds)
+                    if falhouC then return -1 end
                 end
 
-                return fuelConsumedC
+                return combustivelConsumidoC
             end
         end
     end
     -- ─────────────────────────────────────────────────────────────────────────
 
-    if StateManager then
-        local function RepairMissingPoolLinks(currentGen)
-            if not currentGen or currentGen.x == nil or currentGen.y == nil or currentGen.z == nil then
+    if gerenciadorEstado then
+        local function RepararConexoesPoolAusentes(geradorAtual)
+            if not geradorAtual or geradorAtual.x == nil or geradorAtual.y == nil or geradorAtual.z == nil then
                 return false
             end
 
-            local genObj = getGeneratorFromSquare(currentGen.x, currentGen.y, currentGen.z)
-            local genMD = genObj and genObj:getModData() or nil
-            local genKey = string.format("%d_%d_%d", currentGen.x, currentGen.y, currentGen.z)
+            local objetoGerador = getGeneratorFromSquare(geradorAtual.x, geradorAtual.y, geradorAtual.z)
+            local modDataGen = objetoGerador and objetoGerador:getModData() or nil
+            local chaveGerador = string.format("%d_%d_%d", geradorAtual.x, geradorAtual.y, geradorAtual.z)
 
-            local function Attach(buildingId, buildingData)
+            local function Vincular(buildingId, buildingData)
                 if not buildingId or not buildingData then return false end
 
-                currentGen.connectedBuildings = currentGen.connectedBuildings or {}
+                geradorAtual.connectedBuildings = geradorAtual.connectedBuildings or {}
                 if LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
                         and LKS_EletricidadeConstrucao.Data.Generator.AddBuilding then
-                    LKS_EletricidadeConstrucao.Data.Generator.AddBuilding(currentGen, buildingId)
+                    LKS_EletricidadeConstrucao.Data.Generator.AddBuilding(geradorAtual, buildingId)
                 else
-                    local hasBid = false
-                    for _, bid in pairs(currentGen.connectedBuildings) do
-                        if bid == buildingId then hasBid = true; break end
+                    local possuiBid = false
+                    for _, bid in pairs(geradorAtual.connectedBuildings) do
+                        if bid == buildingId then possuiBid = true; break end
                     end
-                    if not hasBid then
-                        table.insert(currentGen.connectedBuildings, buildingId)
+                    if not possuiBid then
+                        table.insert(geradorAtual.connectedBuildings, buildingId)
                     end
                 end
 
                 buildingData.connectedGenerators = buildingData.connectedGenerators or {}
-                local hasGen = false
+                local possuiGen = false
                 for _, gk in pairs(buildingData.connectedGenerators) do
-                    if gk == genKey then hasGen = true; break end
+                    if gk == chaveGerador then possuiGen = true; break end
                 end
-                if not hasGen then
-                    table.insert(buildingData.connectedGenerators, genKey)
+                if not possuiGen then
+                    table.insert(buildingData.connectedGenerators, chaveGerador)
                 end
 
-                StateManager.AddGenerator(currentGen)
-                if StateManager.MarkDirty then
-                    StateManager.MarkDirty()
+                gerenciadorEstado.AddGenerator(geradorAtual)
+                if gerenciadorEstado.MarkDirty then
+                    gerenciadorEstado.MarkDirty()
                 end
 
                 Logger.Info(string.format(
-                    "[PoolBFS] Repaired missing pool back-link: %s -> %s",
-                    currentGen.id or "?", buildingId), "Fuel")
+                    "[PoolBFS] Reparada conexao ausente de pool: %s -> %s",
+                    geradorAtual.id or "?", buildingId), "Fuel")
                 return true
             end
 
-            local livePoolId = genMD and genMD.Gen_BuildingPoolID or nil
-            if livePoolId then
-                local liveBuilding = StateManager.GetBuilding and StateManager.GetBuilding(livePoolId) or nil
-                if liveBuilding and Attach(livePoolId, liveBuilding) then
+            local idPoolAtivo = modDataGen and modDataGen.Gen_BuildingPoolID or nil
+            if idPoolAtivo then
+                local predioAtivo = gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(idPoolAtivo) or nil
+                if predioAtivo and Vincular(idPoolAtivo, predioAtivo) then
                     return true
                 end
             end
 
-            local buildingCount = 0
-            for bid, buildingData in pairs(StateManager.GetAllBuildings() or {}) do
-                buildingCount = buildingCount + 1
+            local totalPredios = 0
+            for bid, buildingData in pairs(gerenciadorEstado.GetAllBuildings() or {}) do
+                totalPredios = totalPredios + 1
                 if buildingData and buildingData.connectedGenerators then
                     for _, gk in pairs(buildingData.connectedGenerators) do
-                        if gk == genKey then
-                            if genMD and not genMD.Gen_BuildingPoolID then
-                                genMD.Gen_BuildingPoolID = bid
+                        if gk == chaveGerador then
+                            if modDataGen and not modDataGen.Gen_BuildingPoolID then
+                                modDataGen.Gen_BuildingPoolID = bid
                                 if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                    genObj:transmitModData()
+                                    objetoGerador:transmitModData()
                                 end
                             end
-                            return Attach(bid, buildingData)
+                            return Vincular(bid, buildingData)
                         end
                     end
                 end
             end
 
-            local debugKey = tostring(livePoolId) .. "|" .. tostring(buildingCount)
-            if currentGen._poolRepairDebugKey ~= debugKey then
-                currentGen._poolRepairDebugKey = debugKey
+            local chaveDepuracao = tostring(idPoolAtivo) .. "|" .. tostring(totalPredios)
+            if geradorAtual._chaveDepuracaoReparoPool ~= chaveDepuracao then
+                geradorAtual._chaveDepuracaoReparoPool = chaveDepuracao
                 Logger.Warn(string.format(
-                    "[PoolBFS] Repair failed for gen=%s livePool=%s buildingsInState=%d",
-                    currentGen.id or "?", tostring(livePoolId), buildingCount), "Fuel")
+                    "[PoolBFS] Falha ao reparar para gen=%s poolAtivo=%s prediosNoEstado=%d",
+                    geradorAtual.id or "?", tostring(idPoolAtivo), totalPredios), "Fuel")
             end
 
             return false
         end
 
-        -- Repair the starting generator before falling back to a solo pool.
+        -- Repara o gerador inicial antes de fazer o fallback para um pool solo.
         if not generatorData.connectedBuildings or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(generatorData.connectedBuildings) then
-            RepairMissingPoolLinks(generatorData)
+            RepararConexoesPoolAusentes(generatorData)
         end
         if not generatorData.connectedBuildings or LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(generatorData.connectedBuildings) then
             Logger.Warn(string.format(
-                "[PoolBFS] gen=%s has no connectedBuildings - pool will be computed as solo",
+                "[PoolBFS] gen=%s nao possui connectedBuildings - pool sera calculado como solo",
                 generatorData.id), "Fuel")
         end
         
-        local toVisit = {generatorData}  -- Start with the current generator data directly
-        local visited = {}
+        local aVisitar = {generatorData} -- Começa com dados do gerador atual diretamente
+        local visitados = {}
         
-        while #toVisit > 0 do
-            local currentGen = table.remove(toVisit)
-            if currentGen and currentGen.id and not visited[currentGen.id] then
-                visited[currentGen.id] = true
-                poolGenerators[currentGen.id] = true
+        while #aVisitar > 0 do
+            local geradorAtual = table.remove(aVisitar)
+            if geradorAtual and geradorAtual.id and not visitados[geradorAtual.id] then
+                visitados[geradorAtual.id] = true
+                geradoresPool[geradorAtual.id] = true
                 
-                -- Process this generator's connected buildings
-                if currentGen.connectedBuildings then
-                    for i, bid in pairs(currentGen.connectedBuildings) do
-                        local bd = StateManager.GetBuilding(bid)
+                -- Processa prédios conectados desse gerador
+                if geradorAtual.connectedBuildings then
+                    for indice, idPredio in pairs(geradorAtual.connectedBuildings) do
+                        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
 
-                        -- ── Lazy Xref: fix stale bld_def_... IDs on the fly ────────────
-                        -- If the building is not found under the stored ID (common with
-                        -- legacy bld_def_XXXXXX keys that were never migrated), do a
-                        -- reverse lookup: scan all buildings for one whose
-                        -- connectedGenerators list includes this generator's X_Y_Z key.
-                        -- Repair the ID in connectedBuildings immediately so subsequent
-                        -- fuel ticks find it without re-scanning.
-                        if not bd then
-                            local genKeyLocal = string.format("%d_%d_%d",
-                                currentGen.x, currentGen.y, currentGen.z)
-                            local allBlds = StateManager.GetAllBuildings() or {}
-                            for _, bld in pairs(allBlds) do
-                                if bld and bld.connectedGenerators then
-                                    for _, gk in pairs(bld.connectedGenerators) do
-                                        if gk == genKeyLocal then
+                        -- ── Lazy Xref: corrige IDs obsoletos bld_def_... em tempo de execução ──
+                        -- Se o prédio não for encontrado com o ID armazenado (comum em chaves legadas
+                        -- bld_def_XXXXXX que nunca foram migradas), faz uma busca reversa: escaneia todos
+                        -- os prédios por um cuja lista connectedGenerators inclua a chave X_Y_Z deste gerador.
+                        -- Repara o ID no connectedBuildings imediatamente para que os ticks subsequentes
+                        -- o encontrem sem reescaneamento.
+                        if not dadosPredio then
+                            local chaveGeradorLocal = string.format("%d_%d_%d",
+                                geradorAtual.x, geradorAtual.y, geradorAtual.z)
+                            local todosPredios = gerenciadorEstado.GetAllBuildings() or {}
+                            for _, predio in pairs(todosPredios) do
+                                if predio and predio.connectedGenerators then
+                                    for _, chaveGerador in pairs(predio.connectedGenerators) do
+                                        if chaveGerador == chaveGeradorLocal then
                                             Logger.Info(string.format(
                                                 "[PoolBFS] Lazy-Xref: %s connectedBuildings[%d] %s → %s",
-                                                currentGen.id, i, bid, bld.id), "Fuel")
-                                            currentGen.connectedBuildings[i] = bld.id
-                                            StateManager.AddGenerator(currentGen)
-                                            bd = bld
+                                                geradorAtual.id, indice, idPredio, predio.id), "Fuel")
+                                            geradorAtual.connectedBuildings[indice] = predio.id
+                                            gerenciadorEstado.AddGenerator(geradorAtual)
+                                            dadosPredio = predio
                                             break
                                         end
                                     end
                                 end
-                                if bd then break end
+                                if dadosPredio then break end
                             end
                         end
                         -- ────────────────────────────────────────────────────────────────
 
-                        if bd and bd.connectedGenerators then
-                            -- Add all generators from this building to visit queue
-                            for _, genKey in pairs(bd.connectedGenerators) do
-                                local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                                if gx then
-                                    local gid = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(gx), tonumber(gy), tonumber(gz))
-                                    if not visited[gid] then
-                                        local nextGen = StateManager.GetGenerator(gid)
-                                        if nextGen then
-                                            table.insert(toVisit, nextGen)
+                        if dadosPredio and dadosPredio.connectedGenerators then
+                            -- Adiciona todos os geradores deste prédio à fila de visitas
+                            for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                                local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                                if coordX then
+                                    local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                                    if not visitados[idGerador] then
+                                        local proximoGerador = gerenciadorEstado.GetGenerator(idGerador)
+                                        if proximoGerador then
+                                            table.insert(aVisitar, proximoGerador)
                                         end
                                     end
                                 end
                             end
-                        elseif not bd then
-                            -- Building not in state - pool BFS cannot traverse; will cause pool split
+                        elseif not dadosPredio then
+                            -- Prédio não está no estado - BFS de pool não consegue atravessar; causará divisão de pool
                             Logger.Warn(string.format(
-                                "[PoolBFS] gen=%s: building %s not in state - pool traversal broken",
-                                currentGen.id, bid), "Fuel")
+                                "[PoolBFS] gen=%s: prédio %s não está no estado - travessia de pool interrompida",
+                                geradorAtual.id, idPredio), "Fuel")
                         end
                     end
                 end
             end
         end
         
-        -- DEBUG: Log discovered pool
-        local genCount = 0
-        for _ in pairs(poolGenerators) do genCount = genCount + 1 end
-        -- print(string.format("[PoolDebug] gen=%s discovered %d generators in pool", generatorData.id, genCount))
-        
-        -- Step 2: Collect buildings from ALL generators in pool (active OR inactive).
-        -- When a generator is deactivated, the remaining active generator(s) must
-        -- carry the full pool load – so we count ALL buildings, then divide by
-        -- the number of currently-active generators (poolActive, done below).
-        -- Deduplicate by physical location (x_y_z): if the same building exists under
-        -- both a canonical (bld_X_Y_Z) and a stale legacy (bld_def_...) ID, only count
-        -- it once to avoid doubling appliance/heating/strain calculations.
-        local _poolBuildingLocations = {}  -- "x_y_z" -> true  (dedup guard)
-        for genId, _ in pairs(poolGenerators) do
-            local gd = StateManager.GetGenerator(genId)
-            if gd and gd.connectedBuildings then
-                -- connectedBuildings is Kahlua-deserialized (string numeric keys)
-                for _, bid in pairs(gd.connectedBuildings) do
-                    local bd = StateManager.GetBuilding(bid)
-                    if bd then
-                        local locKey = (bd.x or 0) .. "_" .. (bd.y or 0) .. "_" .. (bd.z or 0)
-                        if not _poolBuildingLocations[locKey] then
-                            _poolBuildingLocations[locKey] = true
-                            poolBuildings[bid] = true
+        -- Passo 2: Coleta prédios de TODOS os geradores no pool (ativos OU inativos).
+        -- Quando um gerador é desativado, o(s) gerador(es) ativos restantes devem assumir
+        -- a carga total do pool – portanto, contamos TODOS os prédios, então dividimos pelo
+        -- número de geradores ativos atualmente (ativosPool, feito abaixo).
+        -- Deduplica por localização física (x_y_z): se o mesmo prédio existe sob um ID canônico
+        -- (bld_X_Y_Z) e um ID obsoleto legado (bld_def_...), apenas o conta uma vez para evitar
+        -- duplicar cálculos de aparelhos/aquecimento/sobrecarga.
+        local _localizacoesPrediosPool = {} -- "x_y_z" -> true (guarda de dedup)
+        for idGerador, _ in pairs(geradoresPool) do
+            local dadosGen = gerenciadorEstado.GetGenerator(idGerador)
+            if dadosGen and dadosGen.connectedBuildings then
+                -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string)
+                for _, idPredio in pairs(dadosGen.connectedBuildings) do
+                    local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+                    if dadosPredio then
+                        local chaveLocalizacao = (dadosPredio.x or 0) .. "_" .. (dadosPredio.y or 0) .. "_" .. (dadosPredio.z or 0)
+                        if not _localizacoesPrediosPool[chaveLocalizacao] then
+                            _localizacoesPrediosPool[chaveLocalizacao] = true
+                            prediosPool[idPredio] = true
                         end
                     else
-                        poolBuildings[bid] = true  -- location unknown, include anyway
+                        prediosPool[idPredio] = true -- localização desconhecida, inclui mesmo assim
                     end
                 end
             end
         end
         
-        local bldCount = 0
-        for _ in pairs(poolBuildings) do bldCount = bldCount + 1 end
-        -- print(string.format("[PoolDebug] gen=%s: total %d poolBuildings collected", generatorData.id, bldCount))
-        
-        -- Step 3: Sum consumers across all pool buildings from active generators
-        local anyBuildingFound = false
-        for poolBid, _ in pairs(poolBuildings) do
-            local bd = StateManager.GetBuilding(poolBid)
-            if bd then
-                anyBuildingFound = true
-                if bd.powerConsumers then
-                -- powerConsumers is Kahlua-deserialized (string numeric keys); pairs required
-                for _, c in pairs(bd.powerConsumers) do
-                    if c.isActive then
-                        -- Use type-specific rate (L/h), convert to L/s
-                        local rateLph = c.fuelConsumptionLph or Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH
-                        -- print(string.format("[PoolConsumers] gen=%s consumer type=%s fuelLph=%.6f isActive=%s", 
-                        --     generatorData.id, c.applianceType or "unknown", rateLph, tostring(c.isActive)))
-                        baseFuelRate = baseFuelRate + (rateLph / 3600)
-                        activeCount = activeCount + 1
+        -- Passo 3: Soma consumidores em todos os prédios do pool vindos de geradores ativos
+        local algumPredioEncontrado = false
+        for idPredioPool, _ in pairs(prediosPool) do
+            local dadosPredio = gerenciadorEstado.GetBuilding(idPredioPool)
+            if dadosPredio then
+                algumPredioEncontrado = true
+                if dadosPredio.powerConsumers then
+                    -- powerConsumers é desserializado pelo Kahlua (chaves numéricas string); exige pairs
+                    for _, consumidor in pairs(dadosPredio.powerConsumers) do
+                        if consumidor.isActive then
+                            -- Usa consumo específico por tipo (L/h), converte para L/s
+                            local taxaLph = consumidor.fuelConsumptionLph or Constantes.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH
+                            taxaBaseCombustivel = taxaBaseCombustivel + (taxaLph / 3600)
+                            contagemAtivos = contagemAtivos + 1
+                        end
                     end
-                end
                 end
             end
         end
 
-        -- Compute pool heating from BUILDINGS (pool-level attribute, not per-generator).
-        -- Heating sources (space heaters, radiators) belong to a building, so a single
-        -- building's sourceCount is authoritative for the whole pool – no double-counting
-        -- across generators in the same pool.
-        -- Falls back to per-generator fields (heatingEnabled/heatingSourceCount) for saves
-        -- that pre-date the building-level heating fields (backward compat).
-        local totalHeatingLoad   = 0
-        local heatingPerSource   = (Constants.FUEL.CONSUMPTION_RATE_HEATING_PER_SOURCE_LPH or 0.02)  / 3600
-        local heatingPerDegree   = (Constants.FUEL.CONSUMPTION_RATE_HEATING_PER_DEGREE_LPH or 0.002) / 3600
-        local buildingHeatingFound = false
+        -- Computa aquecimento do pool a partir dos PRÉDIOS (atributo em nível de pool, não por gerador).
+        -- Fontes de aquecimento pertencem a um prédio, portanto a contagem de fontes de um único prédio
+        -- é autoridade para o pool inteiro – sem dupla contagem em geradores no mesmo pool.
+        -- Fallback para campos individuais de geradores (heatingEnabled/heatingSourceCount) para
+        -- salvamentos anteriores à criação desses campos em nível de prédio (compatibilidade reversa).
+        local cargaAquecimentoTotal = 0
+        local aquecimentoPorFonte = (Constantes.FUEL.CONSUMPTION_RATE_HEATING_PER_SOURCE_LPH or 0.02) / 3600
+        local aquecimentoPorGrau = (Constantes.FUEL.CONSUMPTION_RATE_HEATING_PER_DEGREE_LPH or 0.002) / 3600
+        local aquecimentoPredioEncontrado = false
 
-        for poolBid, _ in pairs(poolBuildings) do
-            local bd = StateManager.GetBuilding(poolBid)
-            if bd and bd.heatingEnabled and bd.heatingSourceCount and bd.heatingSourceCount > 0 then
-                buildingHeatingFound = true
-                local targetTemp  = bd.heatingTargetTemp or 22
-                local ratePerSrc  = heatingPerSource + heatingPerDegree * math.max(0, targetTemp - 20)
-                local bldHeating  = ratePerSrc * bd.heatingSourceCount
-                totalHeatingLoad  = totalHeatingLoad + bldHeating
+        for idPredioPool, _ in pairs(prediosPool) do
+            local dadosPredio = gerenciadorEstado.GetBuilding(idPredioPool)
+            if dadosPredio and dadosPredio.heatingEnabled and dadosPredio.heatingSourceCount and dadosPredio.heatingSourceCount > 0 then
+                aquecimentoPredioEncontrado = true
+                local tempAlvo = dadosPredio.heatingTargetTemp or 22
+                local taxaPorFonte = aquecimentoPorFonte + aquecimentoPorGrau * math.max(0, tempAlvo - 20)
+                local aquecimentoPredio = taxaPorFonte * dadosPredio.heatingSourceCount
+                cargaAquecimentoTotal = cargaAquecimentoTotal + aquecimentoPredio
                 Logger.Debug(
-                    string.format("[PoolHeating] building=%s sources=%d temp=%.1f heating=%.8f L/s (%.4f L/h)",
-                        poolBid, bd.heatingSourceCount, targetTemp, bldHeating, bldHeating * 3600),
+                    string.format("[PoolHeating] prédio=%s fontes=%d temp=%.1f aquecimento=%.8f L/s (%.4f L/h)",
+                        idPredioPool, dadosPredio.heatingSourceCount, tempAlvo, aquecimentoPredio, aquecimentoPredio * 3600),
                     "Fuel"
                 )
             end
         end
 
-        -- Backward-compat: if no building-level heating data found, fall back to
-        -- per-generator heatingSourceCount (written by pre-B58 Heating.SyncToGenerators).
-        -- Risk of double-counting is avoided because this path is only used when buildings
-        -- don't yet have the heatingSourceCount field (cold migration from older saves).
-        if not buildingHeatingFound then
-            for genId, _ in pairs(poolGenerators) do
-                local gd = StateManager.GetGenerator(genId)
-                if gd and gd.heatingEnabled and gd.heatingSourceCount and gd.heatingSourceCount > 0 then
-                    local targetTemp = gd.heatingTargetTemp or 22
-                    local ratePerSrc = heatingPerSource + heatingPerDegree * math.max(0, targetTemp - 20)
-                    local genHeating = ratePerSrc * gd.heatingSourceCount
-                    totalHeatingLoad = totalHeatingLoad + genHeating
+        -- Compatibilidade reversa: se não houver dados de aquecimento em nível de prédio,
+        -- recai sobre heatingSourceCount por gerador (gravado por Heating.SyncToGenerators da V1).
+        -- O risco de contagem dupla é evitado porque este caminho é usado apenas quando prédios
+        -- não possuem o campo heatingSourceCount (migração fria de salvamentos antigos).
+        if not aquecimentoPredioEncontrado then
+            for idGerador, _ in pairs(geradoresPool) do
+                local dadosGen = gerenciadorEstado.GetGenerator(idGerador)
+                if dadosGen and dadosGen.heatingEnabled and dadosGen.heatingSourceCount and dadosGen.heatingSourceCount > 0 then
+                    local tempAlvo = dadosGen.heatingTargetTemp or 22
+                    local taxaPorFonte = aquecimentoPorFonte + aquecimentoPorGrau * math.max(0, tempAlvo - 20)
+                    local aquecimentoGerador = taxaPorFonte * dadosGen.heatingSourceCount
+                    cargaAquecimentoTotal = cargaAquecimentoTotal + aquecimentoGerador
                     Logger.Debug(
-                        string.format("[PoolHeating][GenFallback] gen=%s sources=%d temp=%.1f heating=%.8f L/s (%.4f L/h)",
-                            gd.id, gd.heatingSourceCount, targetTemp, genHeating, genHeating * 3600),
+                        string.format("[PoolHeating][GenFallback] gen=%s fontes=%d temp=%.1f aquecimento=%.8f L/s (%.4f L/h)",
+                            dadosGen.id, dadosGen.heatingSourceCount, tempAlvo, aquecimentoGerador, aquecimentoGerador * 3600),
                         "Fuel"
                     )
                 end
             end
         end
 
-        -- Full pool total = appliances (baseFuelRate) + heating
-        local fullPoolTotal = baseFuelRate + totalHeatingLoad
+        -- Total do pool completo = aparelhos (taxaBaseCombustivel) + aquecimento
+        local totalPoolCompleto = taxaBaseCombustivel + cargaAquecimentoTotal
 
-        -- PoolFallback: if buildings were expected (poolBuildings not empty) but NONE were
-        -- found in state, use the cached pool total from the last live session.
-        -- The cache stores appliances + heating together so the fallback is complete.
-        -- NOTE: next() is not available in Kahlua (PZ's Lua VM) - use pairs to check emptiness
-        local anyBuildingsExpected = false
-        for _ in pairs(poolBuildings) do anyBuildingsExpected = true; break end
-        if not anyBuildingFound and anyBuildingsExpected and generatorData.cachedRealPoolTotalLps then
+        -- PoolFallback: se prédios era esperado (prediosPool não vazio) mas NENHUM foi
+        -- encontrado no estado, usa o total do pool em cache da última sessão em tempo real.
+        -- O cache armazena aparelhos + aquecimento juntos para que o fallback seja completo.
+        local algumPredioEsperado = false
+        for _ in pairs(prediosPool) do algumPredioEsperado = true; break end
+        if not algumPredioEncontrado and algumPredioEsperado and generatorData.cachedRealPoolTotalLps then
             Logger.Info(
-                string.format("[PoolFallback] gen=%s buildings not in state yet – using cached pool total %.8f L/s (%.4f L/h), cachedPoolActive=%d",
+                string.format("[PoolFallback] gen=%s prédios não estão no estado ainda – usando total de pool em cache %.8f L/s (%.4f L/h), cachedPoolActive=%d",
                     generatorData.id, generatorData.cachedRealPoolTotalLps, generatorData.cachedRealPoolTotalLps * 3600,
                     generatorData.cachedPoolActive or 1),
                 "Fuel")
-            baseFuelRate = generatorData.cachedRealPoolTotalLps
-            usedPoolFallback = true  -- skip CountActivePoolGenerators below (it would also fail BFS)
+            taxaBaseCombustivel = generatorData.cachedRealPoolTotalLps
+            utilizouPoolFallback = true -- pula CountActivePoolGenerators abaixo (também falharia no BFS)
         else
-            -- Use the freshly computed total and persist it for future restarts.
-            baseFuelRate = fullPoolTotal
+            -- Usa o total recém-calculado e persiste-o para reinicializações futuras.
+            taxaBaseCombustivel = totalPoolCompleto
 
-            -- Cache the FULL pool total (appliances + heating) so PoolFallback on the next
-            -- restart includes both components.  Flush via AddGenerator (not just MarkDirty)
-            -- to write into LKS_EletricidadeConstrucaoV2_GeneratorIndex, the only GlobalModData key
-            -- that reliably survives PZ exit.
-            if anyBuildingFound or totalHeatingLoad > 0 then
-                local newCache = fullPoolTotal
-                local oldCache = generatorData.cachedRealPoolTotalLps or 0
-                generatorData.cachedRealPoolTotalLps = newCache
-                if math.abs(newCache - oldCache) / math.max(oldCache, 1e-9) > 0.05 then
-                    StateManager.AddGenerator(generatorData)
+            -- Salva em cache o total COMPLETO do pool (aparelhos + aquecimento) para que o PoolFallback na próxima
+            -- inicialização inclua ambos os componentes. Envia via AddGenerator (not just MarkDirty)
+            -- para gravar em LKS_EletricidadeConstrucaoV2_GeneratorIndex, o único ModData global
+            -- que sobrevive confiavelmente à saída do PZ.
+            if algumPredioEncontrado or cargaAquecimentoTotal > 0 then
+                local novoCache = totalPoolCompleto
+                local antigoCache = generatorData.cachedRealPoolTotalLps or 0
+                generatorData.cachedRealPoolTotalLps = novoCache
+                if math.abs(novoCache - antigoCache) / math.max(antigoCache, 1e-9) > 0.05 then
+                    gerenciadorEstado.AddGenerator(generatorData)
                 else
-                    StateManager.MarkDirty()
+                    gerenciadorEstado.MarkDirty()
                 end
             end
         end
     end
     
-    -- Minimum: idle motor consumption when running but no active consumers.
-    -- Use the dedicated idle constant (0.0002 L/h), NOT the appliance default,
-    -- to avoid inflating low-load buildings (e.g. 1 light = 0.002 L/h, not 0.04).
-    local idleRatePerSec = (Constants.FUEL.CONSUMPTION_IDLE_LPH or 0.0002) / 3600
-    if baseFuelRate < idleRatePerSec then
-        baseFuelRate = idleRatePerSec
+    -- Mínimo: consumo do motor ocioso quando funcionando mas sem consumidores ativos.
+    -- Usa a constante dedicada para inatividade (0.0002 L/h) para não inflar prédios leves.
+    local taxaOciosoPorSegundo = (Constantes.FUEL.CONSUMPTION_IDLE_LPH or 0.0002) / 3600
+    if taxaBaseCombustivel < taxaOciosoPorSegundo then
+        taxaBaseCombustivel = taxaOciosoPorSegundo
     end
 
-    -- Heating and appliances were already summed inside the StateManager block above.
-    -- baseFuelRate now contains the full pool total (appliances + heating) or the
-    -- PoolFallback cached value, whichever applied.
-
     Logger.Debug(
-        string.format("[PoolTotal] gen=%s appliances+heating=%.8f L/s (%.4f L/h) before pool division",
-            generatorData.id, baseFuelRate, baseFuelRate * 3600),
+        string.format("[PoolTotal] gen=%s aparelhos+aquecimento=%.8f L/s (%.4f L/h) antes da divisão do pool",
+            generatorData.id, taxaBaseCombustivel, taxaBaseCombustivel * 3600),
         "Fuel"
     )
     
-    -- NOW divide the total pool load (appliances + heating) by active generators.
-    -- When PoolFallback fired, CountActivePoolGenerators would fail BFS for the same reason
-    -- (buildings not in state yet) and return 1, charging each generator the full pool rate.
-    -- Use cachedPoolActive (saved from the last in-chunk tick) instead.
-    local poolActive
-    if usedPoolFallback then
-        poolActive = generatorData.cachedPoolActive or 1
+    -- AGORA divide a carga total do pool (aparelhos + aquecimento) pelos geradores ativos.
+    -- Se o PoolFallback disparou, CountActivePoolGenerators falharia no BFS pelo mesmo motivo
+    -- (prédios sem estado ainda) e retornaria 1, cobrando de cada gerador a taxa total do pool.
+    -- Usa cachedPoolActive (salvo do último tick em chunk) como alternativa.
+    local ativosPool
+    if utilizouPoolFallback then
+        ativosPool = generatorData.cachedPoolActive or 1
     else
-        poolActive = CountActivePoolGenerators(generatorData)
-        -- Persist the live pool size so it's available if a restart happens off-chunk.
-        -- (anyBuildingFound is block-scoped inside `if StateManager then`; if we reached
-        --  this branch, PoolFallback did NOT fire, meaning fresh BFS data was used.)
-        if StateManager and poolActive >= 1 then
-            if (generatorData.cachedPoolActive or 0) ~= poolActive then
-                generatorData.cachedPoolActive = poolActive
-                StateManager.MarkDirty()
+        ativosPool = CountActivePoolGenerators(generatorData)
+        -- Persiste a quantidade de ativos do pool para ficar disponível caso uma reinicialização ocorra fora de chunk.
+        if gerenciadorEstado and ativosPool >= 1 then
+            if (generatorData.cachedPoolActive or 0) ~= ativosPool then
+                generatorData.cachedPoolActive = ativosPool
+                gerenciadorEstado.MarkDirty()
             end
         end
     end
-    -- B-102: Capture pool-level total before per-gen division; store in tick cache so
-    -- sibling generators can skip their own BFS + consumer scan this tick.
-    local totalPoolRate_ForCache = baseFuelRate
-    baseFuelRate = baseFuelRate / poolActive
+    -- B-102: Captura o total em nível de pool antes da divisão por gerador; armazena no cache do tick
+    -- para os geradores irmãos pularem seu próprio BFS + varredura de consumidores neste tick.
+    local totalTaxaPoolParaCache = taxaBaseCombustivel
+    taxaBaseCombustivel = taxaBaseCombustivel / ativosPool
 
-    _perTickPoolCache[generatorData.id] = {
-        totalPoolRate = totalPoolRate_ForCache,
-        poolActive    = poolActive,
-        poolBuildings = poolBuildings,  -- B-103: shared with StrainCalculator to avoid stale-ID BFS
+    _cachePoolPorTick[generatorData.id] = {
+        totalPoolRate = totalTaxaPoolParaCache,
+        poolActive = ativosPool,
+        poolBuildings = prediosPool, -- B-103: compartilhado com StrainCalculator para evitar BFS com IDs obsoletos
     }
-    for gid in pairs(poolGenerators) do
-        _perTickGenToPool[gid] = generatorData.id
+    for gid in pairs(geradoresPool) do
+        _geradorParaPoolPorTick[gid] = generatorData.id
     end
 
     Logger.Debug(
-        string.format("[PoolDivision] gen=%s poolActive=%d afterDivision=%.8f L/s (%.4f L/h)",
-            generatorData.id, poolActive, baseFuelRate, baseFuelRate * 3600),
+        string.format("[PoolDivision] gen=%s ativosPool=%d depoisDivisao=%.8f L/s (%.4f L/h)",
+            generatorData.id, ativosPool, taxaBaseCombustivel, taxaBaseCombustivel * 3600),
         "Fuel"
     )
 
-    -- Sprite-specific fuel/strain modifiers
-    -- Cache sprite data in generatorData for chunk-independent calculations
-    local genObj = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    local fuelMult = 1.0
-    local strainMultType = 1.0
-    local sameSpriteCount = 1
+    -- Multiplicadores de combustível/sobrecarga específicos por sprite
+    -- Salva dados de sprite no cache de generatorData para cálculos fora de chunk
+    local objetoGerador = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    local multCombustivel = 1.0
+    local multSobrecargaTipo = 1.0
+    local quantidadeMesmoSprite = 1
     
-    if genObj then
-        -- Chunk is loaded - get fresh sprite data and cache it
-        local sprite = genObj.getSpriteName and genObj:getSpriteName() or (genObj.getSprite() and genObj:getSprite() and genObj:getSprite():getName())
+    if objetoGerador then
+        -- Chunk carregado - obtém dados do sprite em tempo real e os salva em cache
+        local sprite = objetoGerador.getSpriteName and objetoGerador:getSpriteName() or (objetoGerador.getSprite() and objetoGerador:getSprite() and objetoGerador:getSprite():getName())
         generatorData.cachedSprite = sprite
         
-        local mods = GENERATOR_TYPE_MODIFIERS[sprite or ""]
-        if mods then
-            fuelMult = mods.fuel or fuelMult
-            strainMultType = mods.strain or strainMultType
+        local modificadores = MODIFICADORES_TIPO_GERADOR[sprite or ""]
+        if modificadores then
+            multCombustivel = modificadores.fuel or multCombustivel
+            multSobrecargaTipo = modificadores.strain or multSobrecargaTipo
         end
         
-        -- Cache base multipliers (before diminishing) for offchunk use
-        generatorData.cachedFuelMult = fuelMult
-        generatorData.cachedStrainMult = strainMultType
+        -- Salva multiplicadores base (antes dos retornos decrescentes) para uso fora de chunk
+        generatorData.cachedFuelMult = multCombustivel
+        generatorData.cachedStrainMult = multSobrecargaTipo
         
-        -- Apply diminishing returns for multiple generators of the same sprite
-        sameSpriteCount = CountSameSpriteGenerators(genObj, generatorData)
-        fuelMult = ApplyDiminishing(fuelMult, sameSpriteCount)
-        strainMultType = ApplyDiminishing(strainMultType, sameSpriteCount)
+        -- Aplica retornos decrescentes para múltiplos geradores com o mesmo sprite
+        quantidadeMesmoSprite = contarGeradoresMesmoSprite(objetoGerador, generatorData)
+        multCombustivel = aplicarRetornosDecrescentes(multCombustivel, quantidadeMesmoSprite)
+        multSobrecargaTipo = aplicarRetornosDecrescentes(multSobrecargaTipo, quantidadeMesmoSprite)
     else
-        -- Chunk not loaded - use cached values (no diminishing, we don't know sameSpriteCount offchunk)
-        fuelMult = generatorData.cachedFuelMult or 1.0
-        strainMultType = generatorData.cachedStrainMult or 1.0
+        -- Chunk não carregado - usa valores em cache (sem retornos decrescentes, não sabemos a quantidade fora de chunk)
+        multCombustivel = generatorData.cachedFuelMult or 1.0
+        multSobrecargaTipo = generatorData.cachedStrainMult or 1.0
     end
 
     if generatorData.customFuelRate then
-        baseFuelRate = generatorData.customFuelRate
+        taxaBaseCombustivel = generatorData.customFuelRate
     end
 
-    -- Strain multiplier (caching handled internally by StrainCalculator)
-    -- Pass poolBuildings so StrainCalculator uses the same lazy-Xref-repaired topology
-    -- instead of doing its own BFS (which would diverge for generators with stale IDs).
-    local strainMultiplier = 1.0
+    -- Multiplicador de sobrecarga (cache gerenciado internamente pelo StrainCalculator)
+    local multiplicadorSobrecarga = 1.0
     if Config.StrainSystemEnabled then
-        strainMultiplier = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, poolBuildings, poolActive)
+        multiplicadorSobrecarga = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, prediosPool, ativosPool)
     end
 
-    local effectiveFuelRate = baseFuelRate * fuelMult * strainMultiplier
-    local fuelConsumed = effectiveFuelRate * deltaSeconds
-    local fuelRateLph = effectiveFuelRate * 3600
+    local taxaCombustivelEfetiva = taxaBaseCombustivel * multCombustivel * multiplicadorSobrecarga
+    local combustivelConsumido = taxaCombustivelEfetiva * deltaSeconds
+    local taxaLph = taxaCombustivelEfetiva * 3600
 
-    -- Calculate TOTAL pool consumption including all multipliers
-    -- effectiveFuelRate is per-generator after division, so multiply by poolActive to get pool total
-    -- This gives an accurate total if all generators are identical, or an average-based total if they differ
-    local poolTotalRateLph = effectiveFuelRate * poolActive * 3600
+    -- Calcula o consumo TOTAL do pool incluindo todos os multiplicadores
+    -- taxaCombustivelEfetiva é por gerador após divisão, então multiplica por ativosPool para obter o total do pool
+    local taxaTotalPoolLph = taxaCombustivelEfetiva * ativosPool * 3600
 
-    -- Write TOTAL pool consumption to ModData for UI display (NOT per-generator rate)
-    -- This shows the total fuel consumption of the entire pool, regardless of how many generators are active
-    if genObj then
-        local gmd = genObj:getModData()
-        gmd.Gen_Stats_FuelRateLph = poolTotalRateLph
+    -- Grava o consumo TOTAL do pool no ModData para exibição de interface (NÃO a taxa por gerador)
+    -- Isso exibe o consumo total de combustível do pool completo, independentemente de quantos geradores estejam ativos
+    if objetoGerador then
+        local modDataObj = objetoGerador:getModData()
+        modDataObj.Gen_Stats_FuelRateLph = taxaTotalPoolLph
         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-            genObj:transmitModData()
+            objetoGerador:transmitModData()
         end
     end
 
     Logger.Debug(
-        string.format("[FuelCalc] gen=%s poolActive=%d base=%.6f fuelMult=%.3f strainMult=%.3f eff=%.6f effLph=%.3f poolTotalLph=%.3f consumed=%.6f",
-            generatorData.id or "?", poolActive, baseFuelRate, fuelMult, strainMultiplier, effectiveFuelRate, fuelRateLph, poolTotalRateLph, fuelConsumed),
+        string.format("[FuelCalc] gen=%s ativosPool=%d base=%.6f multCombustivel=%.3f multSobrecarga=%.3f efetivo=%.6f efetivoLph=%.3f totalPoolLph=%.3f consumido=%.6f",
+            generatorData.id or "?", ativosPool, taxaBaseCombustivel, multCombustivel, multiplicadorSobrecarga, taxaCombustivelEfetiva, taxaLph, taxaTotalPoolLph, combustivelConsumido),
         "Fuel"
     )
-    --print(calcMsg)
 
-    -- Apply strain-based condition damage to generator (>100% overload only)
+    -- Aplica danos à integridade baseados em sobrecarga (>100% de sobrecarga apenas)
     if Config.StrainSystemEnabled and LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage then
-        local failed = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage(generatorData, deltaSeconds)
-        if failed then
-            -- Generator physically failed — return -1 sentinel so UpdateGenerator can
-            -- update state, deactivate IsoObject, and trigger ForceUpdateBuilding
+        local falhou = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage(generatorData, deltaSeconds)
+        if falhou then
+            -- Gerador falhou fisicamente — retorna sentinela -1 para UpdateGenerator tratar
             return -1
         end
     end
 
-    return fuelConsumed
+    return combustivelConsumido
 end
 
---- Compute the current effective fuel rate for a generator and write it to its
---- ModData immediately.  Called by the Distributor on ForceUpdateBuilding so
---- the Info Window shows a value the very first time it opens.
---- @param generatorData GeneratorData
---[[ DEPRECATED: Gen_Stats_FuelRateLph is now written directly in CalculateFuelConsumption()
-       from the actual calculated fuel rate. This separate calculation was error-prone
-       and only worked in loaded chunks (getGeneratorFromSquare).
-function LKS_EletricidadeConstrucao.Fuel.Manager.WriteCurrentFuelRate(generatorData)
-    if not generatorData then return end
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local Config    = LKS_EletricidadeConstrucao.Config
-    local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not StateManager then return end
-
-    -- Reuse GetRemainingHours to compute the effective rate (it already has full
-    -- pool + heating + strain logic).  We just need the rate, not the hours.
-    -- Temporarily ensure fuelAmount is set so IsRunning passes.
-    local genObj = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    if not genObj or not genObj:isActivated() then return end
-
-    -- Quick-compute: replicate baseFuelRate from pool consumers (same as
-    -- CalculateFuelConsumption but read-only, no side effects).
-    local poolBuildings = {}
-    local poolGenCoords = {}
-    local _rhBuildingLocations = {}  -- "x_y_z" -> true  (dedup guard)
-    do
-        local toVisit = {generatorData}
-        local visited = {}
-        while #toVisit > 0 do
-            local cg = table.remove(toVisit)
-            if cg and cg.id and not visited[cg.id] then
-                visited[cg.id] = true
-                table.insert(poolGenCoords, {x=cg.x, y=cg.y, z=cg.z})
-                if cg.connectedBuildings then
-                    for _, bid in pairs(cg.connectedBuildings) do
-                        local bd = StateManager.GetBuilding(bid)
-                        if bd then
-                            local locKey = (bd.x or 0) .. "_" .. (bd.y or 0) .. "_" .. (bd.z or 0)
-                            if not _rhBuildingLocations[locKey] then
-                                _rhBuildingLocations[locKey] = true
-                                poolBuildings[bid] = true
-                            end
-                        else
-                            poolBuildings[bid] = true
-                        end
-                        if bd and bd.connectedGenerators then
-                            for _, gk in pairs(bd.connectedGenerators) do
-                                local gx2, gy2, gz2 = string.match(gk, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                                if gx2 then
-                                    local gid2 = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(gx2), tonumber(gy2), tonumber(gz2))
-                                    if not visited[gid2] then
-                                        local ng = StateManager.GetGenerator(gid2)
-                                        if ng then table.insert(toVisit, ng) end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    local activePoolGens = 0
-    for _, coords in ipairs(poolGenCoords) do
-        local go2 = getGeneratorFromSquare(coords.x, coords.y, coords.z)
-        if go2 and go2:isActivated() and (go2:getFuel() or 0) > 0 then
-            activePoolGens = activePoolGens + 1
-        end
-    end
-    if activePoolGens < 1 then activePoolGens = 1 end
-
-    local baseFuelRate = 0.0
-    for bid, _ in pairs(poolBuildings) do
-        local bd = StateManager.GetBuilding(bid)
-        if bd and bd.powerConsumers then
-            -- powerConsumers is Kahlua-deserialized (string numeric keys); pairs required
-            for _, c in pairs(bd.powerConsumers) do
-                if c.isActive then
-                    local rateLph = c.fuelConsumptionLph or Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH
-                    baseFuelRate = baseFuelRate + (rateLph / 3600)
-                end
-            end
-        end
-    end
-    if baseFuelRate < (Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH / 3600) then
-        baseFuelRate = Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH / 3600
-    end
-
-    -- Collect heating from ACTIVE generators in pool only
-    -- Heating is a pool-wide cost, not divided per-generator
-    local heatingPerSource = (Constants.FUEL.CONSUMPTION_RATE_HEATING_PER_SOURCE_LPH or 0.02) / 3600
-    local heatingPerDegree = (Constants.FUEL.CONSUMPTION_RATE_HEATING_PER_DEGREE_LPH or 0.002) / 3600
-    local totalHeatingLoad = 0.0
-    
-    for _, coords in ipairs(poolGenCoords) do
-        local go2 = getGeneratorFromSquare(coords.x, coords.y, coords.z)
-        if go2 and go2:isActivated() then
-            local gmd2 = go2:getModData()
-            if gmd2 and gmd2.HeatingEnabled == true and type(gmd2.HeatingPositions) == "table" then
-                local srcCount = 0
-                for _, grp in ipairs(gmd2.HeatingPositions) do
-                    if type(grp.positions) == "table" then srcCount = srcCount + #grp.positions end
-                end
-                if srcCount > 0 then
-                    local targetTemp = tonumber(gmd2.HeatingTargetTemp) or 22
-                    local ratePerSrc = heatingPerSource + heatingPerDegree * math.max(0, targetTemp - 20)
-                    totalHeatingLoad = totalHeatingLoad + (ratePerSrc * srcCount)
-                end
-            end
-        end
-    end
-
-    -- Calculate TOTAL pool consumption by summing each generator's actual consumption
-    -- This mirrors the logic in CalculateFuelConsumption: (appliances + heating) / activeGens * multipliers
-    local basePoolRate = baseFuelRate + totalHeatingLoad  -- Appliances + heating (before division)
-    local totalPoolLph = 0.0
-    
-    -- Sum each active generator's share of total load (appliances + heating) with their multipliers
-    for _, coords in ipairs(poolGenCoords) do
-        local go2 = getGeneratorFromSquare(coords.x, coords.y, coords.z)
-        if go2 and go2:isActivated() and (go2:getFuel() or 0) > 0 then
-            local gd2 = StateManager.GetGenerator(LKS_EletricidadeConstrucao.Data.Generator.MakeId(coords.x, coords.y, coords.z))
-            if gd2 then
-                -- Each active generator's share of total pool load (appliances + heating divided)
-                local genBaseShare = basePoolRate / activePoolGens
-                
-                -- Get sprite-specific modifiers for this generator
-                local genFuelMult = 1.0
-                local genStrainMultType = 1.0
-                local sprite = go2.getSpriteName and go2:getSpriteName() or (go2.getSprite() and go2:getSprite() and go2:getSprite():getName())
-                local mods = GENERATOR_TYPE_MODIFIERS[sprite or ""]
-                if mods then
-                    genFuelMult = mods.fuel or genFuelMult
-                    genStrainMultType = mods.strain or genStrainMultType
-                end
-
-                -- Apply diminishing returns
-                local sameSpriteCount = CountSameSpriteGenerators(go2, gd2)
-                genFuelMult = ApplyDiminishing(genFuelMult, sameSpriteCount)
-                genStrainMultType = ApplyDiminishing(genStrainMultType, sameSpriteCount)
-
-                -- Get strain multiplier
-                local genStrainMult = 1.0
-                if Config.StrainSystemEnabled then
-                    genStrainMult = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(gd2, nil, activePoolGens)
-                end
-
-                -- Calculate this generator's actual consumption with multipliers
-                local genEffective = genBaseShare * genFuelMult * genStrainMult
-                local genLph = genEffective * 3600
-                totalPoolLph = totalPoolLph + genLph
-            end
-        end
-    end
-    
-    -- Store TOTAL pool rate for UI display
-    local gmd = genObj:getModData()
-    gmd.Gen_Stats_FuelRateLph = totalPoolLph
-
-    -- Sync to clients in MP (no-op in SP)
-    if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-        genObj:transmitModData()
-    end
-end
---]]
-
---- Get estimated remaining runtime for generator
---- @param generatorData GeneratorData Generator data
---- @return number Hours remaining
+--- Obtém estimativa de horas de funcionamento restantes do gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @return number Horas restantes
 function LKS_EletricidadeConstrucao.Fuel.Manager.GetRemainingHours(generatorData)
     local Config = LKS_EletricidadeConstrucao.Config
-    local Constants = LKS_EletricidadeConstrucao.Constants
+    local Constantes = LKS_EletricidadeConstrucao.Constants
     
     if not LKS_EletricidadeConstrucao.Data.Generator.IsRunning(generatorData) then
         return 0
     end
 
-    -- Sum type-specific fuel consumption from all active consumers
-    local baseIdleRate = Constants.FUEL.BASE_CONSUMPTION_RATE or 0.0001
-    local baseFuelRate = 0.0
+    -- Soma consumo de combustível de todos os consumidores ativos
+    local taxaConsumoInativo = Constantes.FUEL.BASE_CONSUMPTION_RATE or 0.0001
+    local taxaBaseCombustivel = 0.0
     
-    -- Sum fuel consumption from ALL buildings in the pool (recursively discover all generators)
-    local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    -- Soma consumo de combustível de TODOS os prédios no pool
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
     
-    -- Step 1: Recursively discover ALL generators in this pool
-    local poolGenerators = {}
-    local poolBuildings = {}
+    -- Passo 1: Descobre todos os geradores neste pool
+    local geradoresPool = {}
+    local prediosPool = {}
     
-    if StateManager then
-        local toVisit = {generatorData}  -- Start with current generator data directly
-        local visited = {}
+    if gerenciadorEstado then
+        local aVisitar = {generatorData}
+        local visitados = {}
         
-        while #toVisit > 0 do
-            local currentGen = table.remove(toVisit)
-            if currentGen and currentGen.id and not visited[currentGen.id] then
-                visited[currentGen.id] = true
-                poolGenerators[currentGen.id] = true
+        while #aVisitar > 0 do
+            local geradorAtual = table.remove(aVisitar)
+            if geradorAtual and geradorAtual.id and not visitados[geradorAtual.id] then
+                visitados[geradorAtual.id] = true
+                geradoresPool[geradorAtual.id] = true
                 
-                if currentGen.connectedBuildings then
-                    for _, bid in pairs(currentGen.connectedBuildings) do
-                        local bd = StateManager.GetBuilding(bid)
-                        if bd and bd.connectedGenerators then
-                            for _, genKey in pairs(bd.connectedGenerators) do
-                                local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                                if gx then
-                                    local gid = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(gx), tonumber(gy), tonumber(gz))
-                                    if not visited[gid] then
-                                        local nextGen = StateManager.GetGenerator(gid)
-                                        if nextGen then
-                                            table.insert(toVisit, nextGen)
+                if geradorAtual.connectedBuildings then
+                    for _, idPredio in pairs(geradorAtual.connectedBuildings) do
+                        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+                        if dadosPredio and dadosPredio.connectedGenerators then
+                            for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                                local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                                if coordX then
+                                    local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                                    if not visitados[idGerador] then
+                                        local proximoGerador = gerenciadorEstado.GetGenerator(idGerador)
+                                        if proximoGerador then
+                                            table.insert(aVisitar, proximoGerador)
                                         end
                                     end
                                 end
@@ -1393,272 +1185,265 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.GetRemainingHours(generatorData
             end
         end
         
-        -- Step 2: Collect buildings from ACTIVE generators only.
-        -- Deduplicate by physical location to avoid counting the same building twice
-        -- when it exists under both a canonical and a stale bld_def_... ID.
-        local _cbLocations = {}  -- "x_y_z" -> true  (dedup guard)
-        for genId, _ in pairs(poolGenerators) do
-            local gd = StateManager.GetGenerator(genId)
-            if gd and LKS_EletricidadeConstrucao.Data.Generator.IsRunning(gd) and gd.connectedBuildings then
-                for _, bid in pairs(gd.connectedBuildings) do
-                    local bd = StateManager.GetBuilding(bid)
-                    if bd then
-                        local locKey = (bd.x or 0) .. "_" .. (bd.y or 0) .. "_" .. (bd.z or 0)
-                        if not _cbLocations[locKey] then
-                            _cbLocations[locKey] = true
-                            poolBuildings[bid] = true
+        -- Passo 2: Coleta prédios apenas de geradores ATIVOS.
+        -- Deduplica por localização física para evitar contar o mesmo prédio duas vezes
+        local _localizacoesVistas = {}
+        for idGerador, _ in pairs(geradoresPool) do
+            local dadosGen = gerenciadorEstado.GetGenerator(idGerador)
+            if dadosGen and LKS_EletricidadeConstrucao.Data.Generator.IsRunning(dadosGen) and dadosGen.connectedBuildings then
+                for _, idPredio in pairs(dadosGen.connectedBuildings) do
+                    local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+                    if dadosPredio then
+                        local chaveLocalizacao = (dadosPredio.x or 0) .. "_" .. (dadosPredio.y or 0) .. "_" .. (dadosPredio.z or 0)
+                        if not _localizacoesVistas[chaveLocalizacao] then
+                            _localizacoesVistas[chaveLocalizacao] = true
+                            prediosPool[idPredio] = true
                         end
                     else
-                        poolBuildings[bid] = true
+                        prediosPool[idPredio] = true
                     end
                 end
             end
         end
         
-        -- Step 3: Sum consumers across all pool buildings from active generators
-        for poolBid, _ in pairs(poolBuildings) do
-            local bd = StateManager.GetBuilding(poolBid)
-            if bd and bd.powerConsumers then
-                -- powerConsumers is Kahlua-deserialized (string numeric keys); pairs required
-                for _, c in pairs(bd.powerConsumers) do
-                    if c.isActive then
-                        -- Use type-specific rate (L/h), convert to L/s
-                        local rateLph = c.fuelConsumptionLph or Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH
-                        baseFuelRate = baseFuelRate + (rateLph / 3600)
+        -- Passo 3: Soma consumidores em todos os prédios do pool vindos de geradores ativos
+        for idPredioPool, _ in pairs(prediosPool) do
+            local dadosPredio = gerenciadorEstado.GetBuilding(idPredioPool)
+            if dadosPredio and dadosPredio.powerConsumers then
+                for _, consumidor in pairs(dadosPredio.powerConsumers) do
+                    if consumidor.isActive then
+                        local taxaLph = consumidor.fuelConsumptionLph or Constantes.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH
+                        taxaBaseCombustivel = taxaBaseCombustivel + (taxaLph / 3600)
                     end
                 end
             end
         end
     end
     
-    -- Minimum: ensure generator uses some fuel even if no active consumers
-    if baseFuelRate < (Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH / 3600) then
-        baseFuelRate = Constants.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH / 3600
+    -- Mínimo: garante que o gerador gaste combustível mesmo se não houver consumidores ativos
+    if taxaBaseCombustivel < (Constantes.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH / 3600) then
+        taxaBaseCombustivel = Constantes.FUEL.CONSUMPTION_APPLIANCE_DEFAULT_LPH / 3600
     end
 
-    -- Add heating consumption: per placed heat source, scaled by target temperature
-    local heatingPerSource2  = (Constants.FUEL.CONSUMPTION_RATE_HEATING_PER_SOURCE_LPH or 0.02)  / 3600
-    local heatingPerDegree2  = (Constants.FUEL.CONSUMPTION_RATE_HEATING_PER_DEGREE_LPH or 0.002) / 3600
-    local genObj2 = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    if genObj2 then
-        local gmd2 = genObj2:getModData()
-        if gmd2.HeatingEnabled == true then
-            local targetTemp2  = tonumber(gmd2.HeatingTargetTemp) or 22
-            local ratePerSrc2  = heatingPerSource2 + heatingPerDegree2 * math.max(0, targetTemp2 - 20)
-            local srcCount2 = 0
-            if type(gmd2.HeatingPositions) == "table" then
-                for _, grp in ipairs(gmd2.HeatingPositions) do
-                    if type(grp.positions) == "table" then srcCount2 = srcCount2 + #grp.positions end
+    -- Adiciona consumo de aquecimento: por fonte instalada, escalado pela temperatura alvo
+    local aquecimentoPorFonte = (Constantes.FUEL.CONSUMPTION_RATE_HEATING_PER_SOURCE_LPH or 0.02) / 3600
+    local aquecimentoPorGrau = (Constantes.FUEL.CONSUMPTION_RATE_HEATING_PER_DEGREE_LPH or 0.002) / 3600
+    local objetoGerador2 = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    if objetoGerador2 then
+        local modDataObj2 = objetoGerador2:getModData()
+        if modDataObj2.HeatingEnabled == true then
+            local tempAlvo = tonumber(modDataObj2.HeatingTargetTemp) or 22
+            local taxaPorFonte = aquecimentoPorFonte + aquecimentoPorGrau * math.max(0, tempAlvo - 20)
+            local totalFontes = 0
+            if type(modDataObj2.HeatingPositions) == "table" then
+                for _, grupo in ipairs(modDataObj2.HeatingPositions) do
+                    if type(grupo.positions) == "table" then totalFontes = totalFontes + #grupo.positions end
                 end
             end
-            if srcCount2 < 1 then srcCount2 = 1 end
-            baseFuelRate = baseFuelRate + ratePerSrc2 * srcCount2
+            if totalFontes < 1 then totalFontes = 1 end
+            taxaBaseCombustivel = taxaBaseCombustivel + taxaPorFonte * totalFontes
         end
     end
 
     if generatorData.customFuelRate then
-        baseFuelRate = generatorData.customFuelRate
+        taxaBaseCombustivel = generatorData.customFuelRate
     end
 
-    -- Share load across all active generators in the same pool (matches CalculateFuelConsumption)
-    local poolActive = CountActivePoolGenerators(generatorData)
-    baseFuelRate = baseFuelRate / poolActive
+    -- Divide a carga por todos os geradores ativos no mesmo pool
+    local ativosPool = CountActivePoolGenerators(generatorData)
+    taxaBaseCombustivel = taxaBaseCombustivel / ativosPool
 
-    -- Sprite-specific fuel/strain modifiers (must match CalculateFuelConsumption)
-    -- Use cached values if chunk not loaded
-    local fuelMult = 1.0
-    local strainMultType = 1.0
+    -- Multiplicadores de combustível/sobrecarga por sprite (deve corresponder ao CalculateFuelConsumption)
+    local multCombustivel = 1.0
+    local multSobrecargaTipo = 1.0
     
-    if genObj2 then
-        -- Chunk loaded - get and cache sprite data
-        local sprite = genObj2.getSpriteName and genObj2:getSpriteName() or (genObj2.getSprite() and genObj2:getSprite() and genObj2:getSprite():getName())
+    if objetoGerador2 then
+        local sprite = objetoGerador2.getSpriteName and objetoGerador2:getSpriteName() or (objetoGerador2.getSprite() and objetoGerador2:getSprite() and objetoGerador2:getSprite():getName())
         generatorData.cachedSprite = sprite
         
-        local mods = GENERATOR_TYPE_MODIFIERS[sprite or ""]
-        if mods then
-            fuelMult = mods.fuel or fuelMult
-            strainMultType = mods.strain or strainMultType
+        local modificadores = MODIFICADORES_TIPO_GERADOR[sprite or ""]
+        if modificadores then
+            multCombustivel = modificadores.fuel or multCombustivel
+            multSobrecargaTipo = modificadores.strain or multSobrecargaTipo
         end
         
-        generatorData.cachedFuelMult = fuelMult
-        generatorData.cachedStrainMult = strainMultType
+        generatorData.cachedFuelMult = multCombustivel
+        generatorData.cachedStrainMult = multSobrecargaTipo
         
-        -- Apply diminishing returns
-        local sameSpriteCount = CountSameSpriteGenerators(genObj2, generatorData)
-        fuelMult = ApplyDiminishing(fuelMult, sameSpriteCount)
-        strainMultType = ApplyDiminishing(strainMultType, sameSpriteCount)
+        -- Aplica retornos decrescentes
+        local quantidadeMesmoSprite = contarGeradoresMesmoSprite(objetoGerador2, generatorData)
+        multCombustivel = aplicarRetornosDecrescentes(multCombustivel, quantidadeMesmoSprite)
+        multSobrecargaTipo = aplicarRetornosDecrescentes(multSobrecargaTipo, quantidadeMesmoSprite)
     else
-        -- Chunk not loaded - use cached values
-        fuelMult = generatorData.cachedFuelMult or 1.0
-        strainMultType = generatorData.cachedStrainMult or 1.0
+        multCombustivel = generatorData.cachedFuelMult or 1.0
+        multSobrecargaTipo = generatorData.cachedStrainMult or 1.0
     end
 
-    -- Strain multiplier (caching handled internally by StrainCalculator)
-    local strainMultiplier = 1.0
+    -- Multiplicador de sobrecarga
+    local multiplicadorSobrecarga = 1.0
     if Config.StrainSystemEnabled then
-        strainMultiplier = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, nil, poolActive)
+        multiplicadorSobrecarga = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, nil, ativosPool)
     end
 
-    local effectiveFuelRate = baseFuelRate * fuelMult * strainMultiplier
+    local taxaCombustivelEfetiva = taxaBaseCombustivel * multCombustivel * multiplicadorSobrecarga
 
-    if effectiveFuelRate <= 0 then
-        return 999999  -- Infinite
+    if taxaCombustivelEfetiva <= 0 then
+        return 999999 -- Infinito
     end
 
-    local fuelRatePerHour = effectiveFuelRate * 3600
+    local taxaCombustivelPorHora = taxaCombustivelEfetiva * 3600
 
-    -- Write rate to ModData immediately so the UI doesn't show 0 before the
-    -- first CalculateFuelConsumption tick (which only runs every game minute).
-    local genObjRH = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    if genObjRH then
-        local mdRH = genObjRH:getModData()
-        if (mdRH.Gen_Stats_FuelRateLph or 0) == 0 then
-            mdRH.Gen_Stats_FuelRateLph = fuelRatePerHour
+    -- Grava a taxa no ModData imediatamente para que a interface não mostre 0 antes do primeiro tick
+    local objetoGeradorRH = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    if objetoGeradorRH then
+        local modDataRH = objetoGeradorRH:getModData()
+        if (modDataRH.Gen_Stats_FuelRateLph or 0) == 0 then
+            modDataRH.Gen_Stats_FuelRateLph = taxaCombustivelPorHora
             if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                genObjRH:transmitModData()
+                objetoGeradorRH:transmitModData()
             end
         end
     end
 
-    return generatorData.fuelAmount / fuelRatePerHour
+    return generatorData.fuelAmount / taxaCombustivelPorHora
 end
 
 -- ============================================================================
--- MANUAL OPERATIONS
+-- OPERAÇÕES MANUAIS DO JOGADOR
 -- ============================================================================
 
---- Manually consume fuel from generator
---- @param generatorData GeneratorData Generator data
---- @param amount number Fuel amount to consume
---- @return boolean True if successful
+--- Consome combustível manualmente do gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @param amount number Quantidade de combustível a consumir
+--- @return boolean True se a operação foi bem-sucedida
 function LKS_EletricidadeConstrucao.Fuel.Manager.ConsumeFuel(generatorData, amount)
     if amount <= 0 then
         return false
     end
     
-    local genObject = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    local objetoGerador = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
     
-    if not genObject then
+    if not objetoGerador then
         return false
     end
     
-    local newFuel = genObject:getFuel() - amount
+    local novoCombustivel = objetoGerador:getFuel() - amount
     
-    if newFuel < 0 then
-        newFuel = 0
+    if novoCombustivel < 0 then
+        novoCombustivel = 0
     end
     
-    genObject:setFuel(newFuel)
-    generatorData.fuelAmount = newFuel
-    generatorData.lastSyncedFuel = newFuel
+    objetoGerador:setFuel(novoCombustivel)
+    generatorData.fuelAmount = novoCombustivel
+    generatorData.lastSyncedFuel = novoCombustivel
     
-    -- Record statistics
+    -- Registra estatísticas
     LKS_EletricidadeConstrucao.Core.StateManager.RecordFuelConsumption(amount)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
-    if newFuel <= 0 and generatorData.activated then
-        genObject:setActivated(false)
+    if novoCombustivel <= 0 and generatorData.activated then
+        objetoGerador:setActivated(false)
         generatorData.activated = false
         LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorFuelEmpty(generatorData)
         
-        -- Immediately update power state for all connected buildings
+        -- Atualiza imediatamente o estado de energia para todos os prédios conectados
         if generatorData.connectedBuildings and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
-            local _updCount = 0
-            for _, buildingId in pairs(generatorData.connectedBuildings) do
-                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(buildingId)
-                _updCount = _updCount + 1
+            local totalAtualizados = 0
+            for _, idPredio in pairs(generatorData.connectedBuildings) do
+                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(idPredio)
+                totalAtualizados = totalAtualizados + 1
             end
-            Logger.Debug(string.format("Updated %d buildings after fuel removed from generator %s",
-                _updCount, generatorData.id), "Fuel")
+            Logger.Debug(string.format("Atualizados %d prédio(s) após remoção de combustível do gerador %s",
+                totalAtualizados, generatorData.id), "Fuel")
         end
     end
     
     return true
 end
 
---- Add fuel to generator
---- @param generatorData GeneratorData Generator data
---- @param amount number Fuel amount to add
---- @return boolean True if successful
+--- Adiciona combustível ao gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @param amount number Quantidade de combustível a adicionar
+--- @return boolean True se a operação foi bem-sucedida
 function LKS_EletricidadeConstrucao.Fuel.Manager.AddFuel(generatorData, amount)
     if amount <= 0 then
         return false
     end
     
-    local genObject = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    local objetoGerador = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
     
-    if not genObject then
+    if not objetoGerador then
         return false
     end
     
-    local newFuel = genObject:getFuel() + amount
+    local novoCombustivel = objetoGerador:getFuel() + amount
     
-    if newFuel > 100 then
-        newFuel = 100
+    if novoCombustivel > 100 then
+        novoCombustivel = 100
     end
     
-    genObject:setFuel(newFuel)
-    generatorData.fuelAmount = newFuel
-    generatorData.lastSyncedFuel = newFuel
+    objetoGerador:setFuel(novoCombustivel)
+    generatorData.fuelAmount = novoCombustivel
+    generatorData.lastSyncedFuel = novoCombustivel
     
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Added %.2f fuel to generator %s (total: %.2f)", 
-            amount, generatorData.id, newFuel),
+        string.format("Adicionado %.2f de combustível ao gerador %s (total: %.2f)", 
+            amount, generatorData.id, novoCombustivel),
         "Fuel"
     )
     
     return true
 end
 
---- Set custom fuel consumption rate for generator
---- @param generatorData GeneratorData Generator data
---- @param fuelRate number|nil Custom fuel rate (nil to use default)
+--- Define uma taxa de consumo de combustível personalizada para o gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @param fuelRate number|nil Taxa de combustível personalizada (nil para usar padrão)
 function LKS_EletricidadeConstrucao.Fuel.Manager.SetCustomFuelRate(generatorData, fuelRate)
     generatorData.customFuelRate = fuelRate
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
     if fuelRate then
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("Set custom fuel rate for %s: %.6f", generatorData.id, fuelRate),
+            string.format("Definida taxa de combustível personalizada para %s: %.6f", generatorData.id, fuelRate),
             "Fuel"
         )
     else
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("Cleared custom fuel rate for %s", generatorData.id),
+            string.format("Limpa taxa de combustível personalizada para %s", generatorData.id),
             "Fuel"
         )
     end
 end
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- FUNÇÕES AUXILIARES PÚBLICAS
 -- ============================================================================
 
---- Get generator object from coordinates
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate
---- @return IsoGenerator|nil Generator object
+--- Obtém o objeto IsoGenerator a partir de coordenadas no mapa
+--- @param x number Coordenada X
+--- @param y number Coordenada Y
+--- @param z number Coordenada Z
+--- @return IsoGenerator|nil Objeto gerador
 function getGeneratorFromSquare(x, y, z)
-    local square = getSquare(x, y, z)
+    local quadrado = getSquare(x, y, z)
     
-    if not square then
+    if not quadrado then
         return nil
     end
     
-    -- Check for generator on square
-    local objects = square:getObjects()
+    -- Verifica por gerador no quadrado
+    local objetos = quadrado:getObjects()
     
-    if not objects then
+    if not objetos then
         return nil
     end
     
-    for i = 0, objects:size() - 1 do
-        local obj = objects:get(i)
-        if obj and instanceof(obj, "IsoGenerator") then
-            return obj
+    for indice = 0, objetos:size() - 1 do
+        local objeto = objetos:get(indice)
+        if objeto and instanceof(objeto, "IsoGenerator") then
+            return objeto
         end
     end
     
@@ -1666,28 +1451,27 @@ function getGeneratorFromSquare(x, y, z)
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAR / DEBUG
 -- ============================================================================
 
---- Print fuel manager status
+--- Exibe o status do gerenciador de combustível no console
 function LKS_EletricidadeConstrucao.Fuel.Manager.PrintStatus()
-    LKS_EletricidadeConstrucao.Print("=== Fuel Manager Status ===")
-    LKS_EletricidadeConstrucao.Print("Initialized: " .. tostring(_isInitialized))
-    LKS_EletricidadeConstrucao.Print("Update Interval: " .. _updateInterval .. "ms")
-    LKS_EletricidadeConstrucao.Print("Last Update: " .. _lastUpdateTime .. "ms")
+    LKS_EletricidadeConstrucao.Print("=== Status do Gerenciador de Combustível ===")
+    LKS_EletricidadeConstrucao.Print("Inicializado: " .. tostring(_inicializado))
+    LKS_EletricidadeConstrucao.Print("Intervalo de Atualização: " .. _intervaloAtualizacao .. "ms")
     
-    local activeGenerators = LKS_EletricidadeConstrucao.Core.StateManager.GetActiveGenerators()
-    LKS_EletricidadeConstrucao.Print("Active Generators: " .. #activeGenerators)
+    local geradoresAtivos = LKS_EletricidadeConstrucao.Core.StateManager.GetActiveGenerators()
+    LKS_EletricidadeConstrucao.Print("Geradores Ativos: " .. #geradoresAtivos)
     
-    for _, genData in ipairs(activeGenerators) do
-        local hours = LKS_EletricidadeConstrucao.Fuel.Manager.GetRemainingHours(genData)
-        LKS_EletricidadeConstrucao.Print(string.format("  %s: %.2f fuel, %.1fh remaining, %.1f%% strain",
-            genData.id, genData.fuelAmount, hours, genData.strain))
+    for _, dadosGerador in ipairs(geradoresAtivos) do
+        local horasRestantes = LKS_EletricidadeConstrucao.Fuel.Manager.GetRemainingHours(dadosGerador)
+        LKS_EletricidadeConstrucao.Print(string.format("  %s: %.2f combustível, %.1fh restantes, %.1f%% sobrecarga",
+            dadosGerador.id, dadosGerador.fuelAmount, horasRestantes, dadosGerador.strain))
     end
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Fuel.Manager", "2.0.0")

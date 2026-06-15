@@ -6,87 +6,86 @@
 -- ============================================================================
 
 -- LKS_EletricidadeConstrucao_Fuel_StrainCalculator.lua
--- LKS_EletricidadeConstrucao V2 - Strain Calculator
--- Calculates load-based fuel consumption modifiers
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- LKS_EletricidadeConstrucao V2 - Calculadora de Sobrecarga
+-- Calcula modificadores de consumo de combustível baseados na carga
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
-
--- Ensure namespace exists
+-- Garante que o namespace existe
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Fuel_StrainCalculator] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Fuel_StrainCalculator] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- STRAIN CALCULATION
+-- CÁLCULO DE SOBRECARGA
 -- ============================================================================
 
--- Variant generator tuning lives in shared constants so fuel + strain stay aligned.
-local GENERATOR_TYPE_MODIFIERS =
+-- Os modificadores de tipo de gerador residem nos constantes compartilhados para manter combustível + sobrecarga alinhados.
+local MODIFICADORES_TIPO_GERADOR =
     (LKS_EletricidadeConstrucao.Constants.GENERATOR_TYPES and LKS_EletricidadeConstrucao.Constants.GENERATOR_TYPES.MODIFIERS) or {}
 
--- Tracks how long (in game-seconds) each generator has been in overload (>100% strain)
--- Reset when strain drops back to <= 100%
-local _overloadDuration = {}  -- [generatorId] = accumulatedSeconds
+-- Rastreia por quanto tempo (em segundos de jogo) cada gerador esteve em sobrecarga (>100% de carga)
+-- Redefinido quando a sobrecarga cai para <= 100%
+local _duracaoSobrecarga = {} -- [idGerador] = segundosAcumulados
 
--- 1 in-game hour of overload must pass before fail-chance is active
-local OVERLOAD_GRACE_SECONDS = 3600  -- 1 hour (game-time)
+-- 1 hora de sobrecarga em jogo deve passar antes que a chance de falha seja ativada
+local SEGUNDOS_CARENCIA_SOBRECARGA = 3600 -- 1 hora (tempo do jogo)
 
--- Helper: get generator sprite name
-local function GetGeneratorSpriteName(gen)
-    if not gen then return nil end
-    local sprite = gen.getSpriteName and gen:getSpriteName()
-    if not sprite and gen.getSprite and gen:getSprite() then
-        sprite = gen:getSprite():getName()
+-- Auxiliar: obter nome do sprite do gerador
+local function obterNomeSpriteGerador(gerador)
+    if not gerador then return nil end
+    local nomeSprite = gerador.getSpriteName and gerador:getSpriteName()
+    if not nomeSprite and gerador.getSprite and gerador:getSprite() then
+        nomeSprite = gerador:getSprite():getName()
     end
-    return sprite
+    return nomeSprite
 end
 
--- Helper: diminish a bonus/malus toward 1.0 as more of the same type are present
-local function ApplyDiminishing(mult, count)
-    if not mult then return 1.0 end
-    if mult == 1.0 or not count or count <= 1 then return mult end
-    return 1.0 + ((mult - 1.0) / (2 ^ (count - 1)))
+-- Auxiliar: diminui um bônus/malus em direção a 1.0 conforme mais geradores do mesmo tipo estão presentes
+local function aplicarRetornosDecrescentes(multiplicador, quantidade)
+    if not multiplicador then return 1.0 end
+    if multiplicador == 1.0 or not quantidade or quantidade <= 1 then return multiplicador end
+    return 1.0 + ((multiplicador - 1.0) / (2 ^ (quantidade - 1)))
 end
 
--- Helper: count generators with the same sprite connected across the same building pool
-local function CountSameSpriteGenerators(genObj, generatorData)
-    local sprite = GetGeneratorSpriteName(genObj)
-    if not sprite then return 1 end
+-- Auxiliar: conta geradores com o mesmo sprite conectados no mesmo pool de prédios
+local function contarGeradoresMesmoSprite(objetoGerador, dadosGerador)
+    local nomeSprite = obterNomeSpriteGerador(objetoGerador)
+    if not nomeSprite then return 1 end
 
-    local seen = {}
-    local count = 0
+    local visitados = {}
+    local contagem = 0
 
-    local function addIfSame(gen)
-        if not gen then return end
-        local key = string.format("%d,%d,%d", gen:getX(), gen:getY(), gen:getZ())
-        if seen[key] then return end
-        seen[key] = true
-        if GetGeneratorSpriteName(gen) == sprite then
-            count = count + 1
+    local function adicionarSeIgual(gerador)
+        if not gerador then return end
+        local chave = string.format("%d,%d,%d", gerador:getX(), gerador:getY(), gerador:getZ())
+        if visitados[chave] then return end
+        visitados[chave] = true
+        if obterNomeSpriteGerador(gerador) == nomeSprite then
+            contagem = contagem + 1
         end
     end
 
-    addIfSame(genObj)
+    adicionarSeIgual(objetoGerador)
 
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local cell = getCell()
-    if cell and generatorData and generatorData.connectedBuildings and StateManager and StateManager.GetBuilding then
-        -- connectedBuildings / connectedGenerators are Kahlua-deserialized (string numeric keys)
-        for _, bid in pairs(generatorData.connectedBuildings) do
-            local bd = StateManager.GetBuilding(bid)
-            if bd and bd.connectedGenerators then
-                for _, genKey in pairs(bd.connectedGenerators) do
-                    local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                    if gx then
-                        local sq = cell:getGridSquare(tonumber(gx), tonumber(gy), tonumber(gz))
-                        if sq then
-                            local objs = sq:getObjects()
-                            for i = 0, objs:size() - 1 do
-                                local obj = objs:get(i)
-                                if obj and instanceof(obj, "IsoGenerator") then
-                                    addIfSame(obj)
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local celula = getCell()
+    if celula and dadosGerador and dadosGerador.connectedBuildings and gerenciadorEstado and gerenciadorEstado.GetBuilding then
+        -- connectedBuildings / connectedGenerators são desserializados pelo Kahlua (chaves numéricas string)
+        for _, idPredio in pairs(dadosGerador.connectedBuildings) do
+            local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+            if dadosPredio and dadosPredio.connectedGenerators then
+                for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                    local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                    if coordX then
+                        local quadrado = celula:getGridSquare(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                        if quadrado then
+                            local objetos = quadrado:getObjects()
+                            for indice = 0, objetos:size() - 1 do
+                                local objeto = objetos:get(indice)
+                                if objeto and instanceof(objeto, "IsoGenerator") then
+                                    adicionarSeIgual(objeto)
                                     break
                                 end
                             end
@@ -97,37 +96,38 @@ local function CountSameSpriteGenerators(genObj, generatorData)
         end
     end
 
-    if count < 1 then return 1 end
-    return count
+    if contagem < 1 then return 1 end
+    return contagem
 end
 
-local function CountActivePoolGeneratorsFromBuildings(poolBuildings)
-    if type(poolBuildings) ~= "table" then
+-- Auxiliar: conta geradores ativos a partir de uma lista de prédios do pool
+local function contarGeradoresPoolAtivosDosPredios(prediosPool)
+    if type(prediosPool) ~= "table" then
         return 1
     end
 
-    local StateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    local GeneratorData = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
-    if not StateManager or not StateManager.GetBuilding or not StateManager.GetGenerator
-            or not GeneratorData or not GeneratorData.MakeId then
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    local dadosClasseGerador = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
+    if not gerenciadorEstado or not gerenciadorEstado.GetBuilding or not gerenciadorEstado.GetGenerator
+            or not dadosClasseGerador or not dadosClasseGerador.MakeId then
         return 1
     end
 
-    local seenGenKeys = {}
-    local activeCount = 0
+    local chavesGeradoresVistas = {}
+    local contagemAtivos = 0
 
-    for buildingId in pairs(poolBuildings) do
-        local buildingData = StateManager.GetBuilding(buildingId)
-        if buildingData and buildingData.connectedGenerators then
-            for _, genKey in pairs(buildingData.connectedGenerators) do
-                if not seenGenKeys[genKey] then
-                    seenGenKeys[genKey] = true
-                    local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                    if gx then
-                        local genId = GeneratorData.MakeId(tonumber(gx), tonumber(gy), tonumber(gz))
-                        local genData = StateManager.GetGenerator(genId)
-                        if genData and (genData.fuelAmount or 0) > 0 and genData.activated ~= false then
-                            activeCount = activeCount + 1
+    for idPredio in pairs(prediosPool) do
+        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+        if dadosPredio and dadosPredio.connectedGenerators then
+            for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                if not chavesGeradoresVistas[chaveGerador] then
+                    chavesGeradoresVistas[chaveGerador] = true
+                    local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                    if coordX then
+                        local idGerador = dadosClasseGerador.MakeId(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                        local dadosGerador = gerenciadorEstado.GetGenerator(idGerador)
+                        if dadosGerador and (dadosGerador.fuelAmount or 0) > 0 and dadosGerador.activated ~= false then
+                            contagemAtivos = contagemAtivos + 1
                         end
                     end
                 end
@@ -135,137 +135,129 @@ local function CountActivePoolGeneratorsFromBuildings(poolBuildings)
         end
     end
 
-    if activeCount < 1 then return 1 end
-    return activeCount
+    if contagemAtivos < 1 then return 1 end
+    return contagemAtivos
 end
 
-local function ResolveActivePoolCount(generatorData, poolBuildingsOverride, activePoolOverride)
-    if type(activePoolOverride) == "number" and activePoolOverride >= 1 then
-        return math.max(1, math.floor(activePoolOverride + 0.5))
+-- Auxiliar: resolve a contagem de geradores ativos do pool
+local function resolverQuantidadePoolAtivo(dadosGerador, prediosPoolSobrescrito, ativosPoolSobrescrito)
+    if type(ativosPoolSobrescrito) == "number" and ativosPoolSobrescrito >= 1 then
+        return math.max(1, math.floor(ativosPoolSobrescrito + 0.5))
     end
 
-    local Runtime = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
-    if type(poolBuildingsOverride) == "table"
-            and Runtime and Runtime.IsSingleplayer and Runtime.IsSingleplayer() then
-        return CountActivePoolGeneratorsFromBuildings(poolBuildingsOverride)
+    local tempoExecucao = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
+    if type(prediosPoolSobrescrito) == "table"
+            and tempoExecucao and tempoExecucao.IsSingleplayer and tempoExecucao.IsSingleplayer() then
+        return contarGeradoresPoolAtivosDosPredios(prediosPoolSobrescrito)
     end
 
-    local activePoolGens = 1
+    local ativosPoolGens = 1
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager
        and LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators then
-        activePoolGens = LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators(generatorData)
+        ativosPoolGens = LKS_EletricidadeConstrucao.Fuel.Manager.CountActivePoolGenerators(dadosGerador)
     end
 
-    if activePoolGens < 1 and type(poolBuildingsOverride) == "table" then
-        activePoolGens = CountActivePoolGeneratorsFromBuildings(poolBuildingsOverride)
+    if ativosPoolGens < 1 and type(prediosPoolSobrescrito) == "table" then
+        ativosPoolGens = contarGeradoresPoolAtivosDosPredios(prediosPoolSobrescrito)
     end
 
-    if activePoolGens < 1 then return 1 end
-    return activePoolGens
+    if ativosPoolGens < 1 then return 1 end
+    return ativosPoolGens
 end
 
---- Calculate strain multiplier for generator (tiered system)
---- @param generatorData GeneratorData Generator data
---- @param poolBuildingsOverride table|nil Pre-computed set of buildingIDs from FuelManager BFS.
----   When provided, CalculateStrain skips its own BFS and uses this set directly, which avoids
----   the stale-ID divergence and eliminates redundant traversal (B-102 / B-103 fix).
---- @param activePoolOverride number|nil Pre-computed active generator count for this pool.
---- @return number Strain multiplier (1.0 = normal, >1.0 = increased consumption)
+--- Calcula o multiplicador de sobrecarga para o gerador (sistema em níveis)
+--- @param generatorData GeneratorData Dados do gerador
+--- @param poolBuildingsOverride table|nil Lista pré-calculada de IDs de prédios vindos do BFS do FuelManager.
+--- @param activePoolOverride number|nil Contagem pré-calculada de geradores ativos do pool.
+--- @return number Multiplicador de sobrecarga (1.0 = normal, >1.0 = consumo aumentado)
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData, poolBuildingsOverride, activePoolOverride)
     if not generatorData then
         return 1.0
     end
 
-    -- Update strain value in generator data (caching handled internally)
+    -- Atualiza o valor de sobrecarga nos dados do gerador
     LKS_EletricidadeConstrucao.Fuel.StrainCalculator.CalculateStrain(generatorData, poolBuildingsOverride, activePoolOverride)
     
-    local strain = generatorData.strain
+    local sobrecarga = generatorData.strain
     
-    -- No strain = no modifier
-    if strain <= 0 then
+    -- Sem sobrecarga = sem modificador
+    if sobrecarga <= 0 then
         return 1.0
     end
     
-    -- TIERED STRAIN SYSTEM:
-    -- 0-50%: No extra fuel consumption (1.0x)
-    -- 51-75%: Linear increase from 1.0x to 1.25x (1-25% extra)
-    -- 76-100%: Linear increase from 1.26x to 1.75x (26-75% extra) + damage
-    -- 101-200%: Linear increase up to 3.0x + heavy damage + fail chance
+    -- SISTEMA DE SOBRECARGA EM NÍVEIS:
+    -- 0-50%: Sem consumo extra de combustível (1.0x)
+    -- 51-75%: Aumento linear de 1.0x a 1.25x (1-25% extra)
+    -- 76-100%: Aumento linear de 1.26x a 1.75x (26-75% extra) + danos
+    -- 101-200%: Aumento linear até 3.0x + danos pesados + chance de falha
     
-    local multiplier = 1.0
+    local multiplicador = 1.0
     
-    if strain <= 50 then
-        -- No penalty in safe zone
-        multiplier = 1.0
-        print(string.format("[STRAIN_DEBUG] Strain %.1f%% <= 50%% -> multiplier = 1.0 (no penalty)", strain))
-    elseif strain <= 75 then
-        -- 51-75%: Linear interpolation from 1.0 to 1.25
-        local t = (strain - 50) / 25  -- 0.0 at 50%, 1.0 at 75%
-        multiplier = 1.0 + (t * 0.25)
-        print(string.format("[STRAIN_DEBUG] Strain %.1f%% in 51-75%% range -> t=%.3f, multiplier = %.3f", strain, t, multiplier))
-    elseif strain <= 100 then
-        -- 76-100%: Linear interpolation from 1.26 to 1.75
-        local t = (strain - 75) / 25  -- 0.0 at 75%, 1.0 at 100%
-        multiplier = 1.26 + (t * 0.49)
-        print(string.format("[STRAIN_DEBUG] Strain %.1f%% in 76-100%% range -> t=%.3f, multiplier = %.3f", strain, t, multiplier))
+    if sobrecarga <= 50 then
+        multiplicador = 1.0
+        print(string.format("[STRAIN_DEBUG] Sobrecarga %.1f%% <= 50%% -> multiplicador = 1.0 (sem penalidade)", sobrecarga))
+    elseif sobrecarga <= 75 then
+        local interpolacao = (sobrecarga - 50) / 25 -- 0.0 em 50%, 1.0 em 75%
+        multiplicador = 1.0 + (interpolacao * 0.25)
+        print(string.format("[STRAIN_DEBUG] Sobrecarga %.1f%% no intervalo 51-75%% -> interpolacao=%.3f, multiplicador = %.3f", sobrecarga, interpolacao, multiplicador))
+    elseif sobrecarga <= 100 then
+        local interpolacao = (sobrecarga - 75) / 25 -- 0.0 em 75%, 1.0 em 100%
+        multiplicador = 1.26 + (interpolacao * 0.49)
+        print(string.format("[STRAIN_DEBUG] Sobrecarga %.1f%% no intervalo 76-100%% -> interpolacao=%.3f, multiplicador = %.3f", sobrecarga, interpolacao, multiplicador))
     else
-        -- 101-200%: Linear interpolation from 1.75 to 3.0
-        local t = math.min((strain - 100) / 100, 1.0)  -- 0.0 at 100%, 1.0 at 200%
-        multiplier = 1.75 + (t * 1.25)
-        print(string.format("[STRAIN_DEBUG] Strain %.1f%% > 100%% -> t=%.3f, multiplier = %.3f", strain, t, multiplier))
+        local interpolacao = math.min((sobrecarga - 100) / 100, 1.0) -- 0.0 em 100%, 1.0 em 200%
+        multiplicador = 1.75 + (interpolacao * 1.25)
+        print(string.format("[STRAIN_DEBUG] Sobrecarga %.1f%% > 100%% -> interpolacao=%.3f, multiplicador = %.3f", sobrecarga, interpolacao, multiplicador))
     end
     
-    -- Cap at maximum (default 3.0x)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local maxMultiplier = Constants.FUEL.MAX_STRAIN_MULTIPLIER or 3.0
-    if multiplier > maxMultiplier then
-        multiplier = maxMultiplier
+    -- Limita ao máximo (padrão 3.0x)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    local multiplicadorMaximo = Constantes.FUEL.MAX_STRAIN_MULTIPLIER or 3.0
+    if multiplicador > multiplicadorMaximo then
+        multiplicador = multiplicadorMaximo
     end
     
-    return multiplier
+    return multiplicador
 end
 
---- Calculate current strain for generator
---- @param generatorData GeneratorData Generator data
---- @param poolBuildingsOverride table|nil Pre-computed {[buildingId]=true} set from FuelManager.
----   When supplied, the internal BFS is skipped entirely so CalculateStrain uses the same
----   (lazy-Xref-repaired) pool topology that FuelManager already discovered this tick.
---- @param activePoolOverride number|nil Pre-computed active generator count for this pool.
---- @return number Strain percentage (0-100+)
+--- Calcula a sobrecarga atual do gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @param poolBuildingsOverride table|nil Lista pré-calculada de prédios do pool.
+--- @param activePoolOverride number|nil Contagem pré-calculada de geradores ativos para este pool.
+--- @return number Porcentagem de sobrecarga (0-100+)
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.CalculateStrain(generatorData, poolBuildingsOverride, activePoolOverride)
     if not generatorData then
         return 0
     end
 
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
 
-    -- Collect ALL buildings reachable through the full generator pool.
-    -- If FuelManager already did this BFS (and repaired stale IDs via lazy Xref), use its
-    -- result directly to guarantee consistent pool topology and avoid duplicate traversal.
-    local poolBuildings
+    -- Coleta TODOS os prédios alcançáveis através do pool de geradores.
+    -- Se o FuelManager já tiver feito essa busca BFS, reutiliza o resultado.
+    local prediosPool
     if poolBuildingsOverride then
-        poolBuildings = poolBuildingsOverride  -- B-103: skip BFS, use caller's set
+        prediosPool = poolBuildingsOverride
     else
-        poolBuildings = {}  -- set of buildingIDs
+        prediosPool = {}
         do
-            local toVisit = {generatorData}
-            local visited = {}
-            while #toVisit > 0 do
-                local cg = table.remove(toVisit)
-                if cg and cg.id and not visited[cg.id] then
-                    visited[cg.id] = true
-                    if cg.connectedBuildings then
-                        for _, bid in pairs(cg.connectedBuildings) do
-                            poolBuildings[bid] = true
-                            local bd = StateManager.GetBuilding(bid)
-                            if bd and bd.connectedGenerators then
-                                for _, gk in pairs(bd.connectedGenerators) do
-                                    local gx2, gy2, gz2 = string.match(gk, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                                    if gx2 then
-                                        local gid2 = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(gx2), tonumber(gy2), tonumber(gz2))
-                                        if not visited[gid2] then
-                                            local ng = StateManager.GetGenerator(gid2)
-                                            if ng then table.insert(toVisit, ng) end
+            local aVisitar = {generatorData}
+            local visitados = {}
+            while #aVisitar > 0 do
+                local geradorC = table.remove(aVisitar)
+                if geradorC and geradorC.id and not visitados[geradorC.id] then
+                    visitados[geradorC.id] = true
+                    if geradorC.connectedBuildings then
+                        for _, idPredio in pairs(geradorC.connectedBuildings) do
+                            prediosPool[idPredio] = true
+                            local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+                            if dadosPredio and dadosPredio.connectedGenerators then
+                                for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+                                    local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                                    if coordX then
+                                        local idGerador2 = LKS_EletricidadeConstrucao.Data.Generator.MakeId(tonumber(coordX), tonumber(coordY), tonumber(coordZ))
+                                        if not visitados[idGerador2] then
+                                            local proximoGen = gerenciadorEstado.GetGenerator(idGerador2)
+                                            if proximoGen then table.insert(aVisitar, proximoGen) end
                                         end
                                     end
                                 end
@@ -277,170 +269,159 @@ function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.CalculateStrain(genera
         end
     end
 
-    -- Count active generators pool-wide using chunk-independent GlobalModData
-    -- Uses the same logic as fuel calculation (CountActivePoolGenerators)
-    local activePoolGens = ResolveActivePoolCount(generatorData, poolBuildingsOverride, activePoolOverride)
+    -- Conta geradores ativos no pool de forma independente de chunk
+    local ativosPoolGens = resolverQuantidadePoolAtivo(generatorData, poolBuildingsOverride, activePoolOverride)
 
-    -- Sum total power draw across ALL pool buildings using cached powered value.
-    -- When offchunk the building becomes "unpowered" and consumers go inactive,
-    -- reducing totalPowerDraw. strainTotalPowerDraw preserves the last powered state.
-    -- Deduplicate by physical location to avoid double-counting when the same building
-    -- exists under both a canonical (bld_X_Y_Z) and a stale legacy (bld_def_...) ID.
-    local totalPoolDraw = 0
-    local _seenStrainLocations = {}  -- "x_y_z" -> true  (dedup guard)
-    for bid, _ in pairs(poolBuildings) do
-        local buildingData = StateManager.GetBuilding(bid)
-        if buildingData then
-            local locKey = (buildingData.x or 0) .. "_" .. (buildingData.y or 0) .. "_" .. (buildingData.z or 0)
-            if not _seenStrainLocations[locKey] then
-                _seenStrainLocations[locKey] = true
-                local draw = buildingData.strainTotalPowerDraw
-                          or buildingData.totalPowerDraw
-                          or 0
-                totalPoolDraw = totalPoolDraw + draw
+    -- Soma a carga de energia total de todos os prédios do pool
+    local cargaTotalPool = 0
+    local _localizacoesVistasSobrecarga = {}
+    for idPredio, _ in pairs(prediosPool) do
+        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
+        if dadosPredio then
+            local chaveLocalizacao = (dadosPredio.x or 0) .. "_" .. (dadosPredio.y or 0) .. "_" .. (dadosPredio.z or 0)
+            if not _localizacoesVistasSobrecarga[chaveLocalizacao] then
+                _localizacoesVistasSobrecarga[chaveLocalizacao] = true
+                local carga = dadosPredio.strainTotalPowerDraw
+                           or dadosPredio.totalPowerDraw
+                           or 0
+                cargaTotalPool = cargaTotalPool + carga
             end
         end
     end
-    local sharedPowerDraw = totalPoolDraw / activePoolGens
+    local cargaCompartilhada = cargaTotalPool / ativosPoolGens
 
-    if sharedPowerDraw <= 0 then
+    if cargaCompartilhada <= 0 then
         generatorData.strain = 0
         return 0
     end
 
-    -- Convert shared power draw to strain percentage
-    local strain = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.PowerDrawToStrain(sharedPowerDraw)
+    -- Converte a carga compartilhada para porcentagem de sobrecarga
+    local sobrecarga = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.PowerDrawToStrain(cargaCompartilhada)
 
-    -- Apply sprite-specific strain capacity (lower = can handle more before % climbs)
-    -- Use cached values if chunk not loaded (chunk-independent)
-    local genObj = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    local strainMult = 1.0
+    -- Aplica capacidade de sobrecarga específica por tipo (menor = tolera mais carga)
+    local objetoGerador = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    local multSobrecarga = 1.0
     
-    if genObj then
-        -- Chunk loaded - get and cache sprite data
-        local sprite = GetGeneratorSpriteName(genObj)
+    if objetoGerador then
+        local sprite = obterNomeSpriteGerador(objetoGerador)
         generatorData.cachedSprite = sprite
         
-        local mods = GENERATOR_TYPE_MODIFIERS[sprite or ""]
-        if mods and mods.strain then
-            strainMult = mods.strain
+        local modificadores = MODIFICADORES_TIPO_GERADOR[sprite or ""]
+        if modificadores and modificadores.strain then
+            multSobrecarga = modificadores.strain
         end
-        generatorData.cachedStrainMult = strainMult
+        generatorData.cachedStrainMult = multSobrecarga
         
-        -- Diminish bonus/malus when stacking multiple of the same sprite
-        local sameCount = CountSameSpriteGenerators(genObj, generatorData)
-        strainMult = ApplyDiminishing(strainMult, sameCount)
+        -- Diminui o bônus/malus ao agrupar múltiplos do mesmo sprite
+        local quantidadeMesmo = contarGeradoresMesmoSprite(objetoGerador, generatorData)
+        multSobrecarga = aplicarRetornosDecrescentes(multSobrecarga, quantidadeMesmo)
     else
-        -- Chunk not loaded - use cached base value (no diminishing, we don't know count offchunk)
-        strainMult = generatorData.cachedStrainMult or 1.0
+        multSobrecarga = generatorData.cachedStrainMult or 1.0
     end
 
-    strain = strain * strainMult
+    sobrecarga = sobrecarga * multSobrecarga
 
-    -- Clamp tiny values to zero to avoid lingering 1% noise
-    if strain < 0.5 then
-        strain = 0
+    -- Ignora ruídos ínfimos abaixo de 0.5%
+    if sobrecarga < 0.5 then
+        sobrecarga = 0
     end
     
-    -- Update generator data
-    generatorData.strain = strain
+    -- Atualiza os dados do gerador
+    generatorData.strain = sobrecarga
     
-    return strain
+    return sobrecarga
 end
 
---- Convert power draw to strain percentage
---- @param powerDraw number Total power draw
---- @return number Strain percentage
+--- Converte carga elétrica para porcentagem de sobrecarga
+--- @param powerDraw number Carga elétrica total
+--- @return number Porcentagem de sobrecarga
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.PowerDrawToStrain(powerDraw)
     if powerDraw <= 0 then
         return 0
     end
     
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    
-    local fuelConstants = Constants.FUEL or {}
-    local baseLoadCapacity = fuelConstants.BASE_LOAD_CAPACITY
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    local constantesCombustivel = Constantes.FUEL or {}
+    local capacidadeCargaBase = constantesCombustivel.BASE_LOAD_CAPACITY
 
-    if type(baseLoadCapacity) ~= "number" or baseLoadCapacity <= 0 then
-        local legacyBaseStrain = fuelConstants.BASE_STRAIN_PER_LIGHT or 1.0
-        if type(legacyBaseStrain) == "number" and legacyBaseStrain > 0 then
-            baseLoadCapacity = 100 / legacyBaseStrain
+    if type(capacidadeCargaBase) ~= "number" or capacidadeCargaBase <= 0 then
+        local sobrecargaBaseLegada = constantesCombustivel.BASE_STRAIN_PER_LIGHT or 1.0
+        if type(sobrecargaBaseLegada) == "number" and sobrecargaBaseLegada > 0 then
+            capacidadeCargaBase = 100 / sobrecargaBaseLegada
         else
-            baseLoadCapacity = 100.0
+            capacidadeCargaBase = 100.0
         end
     end
 
-    -- Example: 120 load at 120 capacity = 100% strain
-    local strain = (powerDraw / baseLoadCapacity) * 100
+    local sobrecarga = (powerDraw / capacidadeCargaBase) * 100
     
-    return strain
+    return sobrecarga
 end
 
---- Get strain level category
---- @param strain number Strain percentage
---- @return string Strain level ("none", "low", "medium", "high", "critical")
+--- Obtém a categoria do nível de sobrecarga
+--- @param strain number Porcentagem de sobrecarga
+--- @return string Nível de sobrecarga ("none", "low", "medium", "high", "critical")
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainLevel(strain)
-    local Constants = LKS_EletricidadeConstrucao.Constants
+    local Constantes = LKS_EletricidadeConstrucao.Constants
     
     if strain <= 0 then
         return "none"
-    elseif strain < (Constants.FUEL.STRAIN_THRESHOLD_LOW or 25) then
+    elseif strain < (Constantes.FUEL.STRAIN_THRESHOLD_LOW or 25) then
         return "low"
-    elseif strain < (Constants.FUEL.STRAIN_THRESHOLD_MEDIUM or 50) then
+    elseif strain < (Constantes.FUEL.STRAIN_THRESHOLD_MEDIUM or 50) then
         return "medium"
-    elseif strain < (Constants.FUEL.STRAIN_THRESHOLD_HIGH or 75) then
+    elseif strain < (Constantes.FUEL.STRAIN_THRESHOLD_HIGH or 75) then
         return "high"
     else
         return "critical"
     end
 end
 
---- Check if generator is overloaded
---- @param generatorData GeneratorData Generator data
---- @return boolean True if overloaded
+--- Verifica se o gerador está em sobrecarga
+--- @param generatorData GeneratorData Dados do gerador
+--- @return boolean True se estiver em sobrecarga
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.IsOverloaded(generatorData)
     if not generatorData then
         return false
     end
     
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local overloadThreshold = Constants.FUEL.OVERLOAD_THRESHOLD or 100
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    local limiteSobrecarga = Constantes.FUEL.OVERLOAD_THRESHOLD or 100
     
-    return generatorData.strain >= overloadThreshold
+    return generatorData.strain >= limiteSobrecarga
 end
 
 -- ============================================================================
--- STRAIN EFFECTS
+-- EFEITOS DA SOBRECARGA
 -- ============================================================================
 
---- Get efficiency percentage based on strain
---- @param strain number Strain percentage
---- @return number Efficiency percentage (100 = normal, <100 = reduced efficiency)
+--- Obtém a porcentagem de eficiência com base na sobrecarga
+--- @param strain number Porcentagem de sobrecarga
+--- @return number Porcentagem de eficiência (100 = normal, <100 = eficiência reduzida)
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetEfficiency(strain)
     if strain <= 0 then
         return 100
     end
     
-    local Constants = LKS_EletricidadeConstrucao.Constants
+    local Constantes = LKS_EletricidadeConstrucao.Constants
     
-    -- Efficiency decreases with strain
-    -- Example: 50% strain = 75% efficiency
-    local efficiencyLoss = strain * (Constants.FUEL.EFFICIENCY_LOSS_RATE or 0.5)
-    local efficiency = 100 - efficiencyLoss
+    -- A eficiência diminui linearmente com a sobrecarga
+    local perdaEficiencia = strain * (Constantes.FUEL.EFFICIENCY_LOSS_RATE or 0.5)
+    local eficiencia = 100 - perdaEficiencia
     
-    -- Minimum efficiency
-    local minEfficiency = Constants.FUEL.MIN_EFFICIENCY or 25
-    if efficiency < minEfficiency then
-        efficiency = minEfficiency
+    -- Eficiência mínima permitida
+    local eficienciaMinima = Constantes.FUEL.MIN_EFFICIENCY or 25
+    if eficiencia < eficienciaMinima then
+        eficiencia = eficienciaMinima
     end
     
-    return efficiency
+    return eficiencia
 end
 
---- Check if generator should fail due to overload
---- @param generatorData GeneratorData Generator data
---- @return boolean True if should fail
---- @return string|nil Failure reason
+--- Verifica se o gerador deve falhar devido à sobrecarga
+--- @param generatorData GeneratorData Dados do gerador
+--- @return boolean True se deve falhar
+--- @return string|nil Motivo da falha
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ShouldFailFromOverload(generatorData)
     if not generatorData then
         return false, nil
@@ -448,26 +429,26 @@ function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ShouldFailFromOverload
     
     local Config = LKS_EletricidadeConstrucao.Config
     
-    -- Check if overload failure is enabled
+    -- Verifica se a falha por sobrecarga está ativada
     if not Config.OverloadFailureEnabled then
         return false, nil
     end
     
-    -- Check if critically overloaded
+    -- Verifica se está em sobrecarga crítica
     if not LKS_EletricidadeConstrucao.Fuel.StrainCalculator.IsOverloaded(generatorData) then
         return false, nil
     end
     
-    local Constants = LKS_EletricidadeConstrucao.Constants
+    local Constantes = LKS_EletricidadeConstrucao.Constants
     
-    -- Random chance of failure based on strain level
-    local failureChance = (generatorData.strain - 100) * (Constants.FUEL.OVERLOAD_FAILURE_RATE or 0.01)
+    -- Chance randômica de falha baseada no nível de sobrecarga
+    local chanceFalha = (generatorData.strain - 100) * (Constantes.FUEL.OVERLOAD_FAILURE_RATE or 0.01)
     
-    if failureChance > 0 then
-        local roll = ZombRand(10000) / 100  -- 0-100 with 2 decimal precision
+    if chanceFalha > 0 then
+        local jogadaDados = ZombRand(10000) / 100 -- 0-100 com precisão de 2 decimais
         
-        if roll < failureChance then
-            return true, "Overload failure"
+        if jogadaDados < chanceFalha then
+            return true, "Falha por sobrecarga"
         end
     end
     
@@ -475,261 +456,255 @@ function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ShouldFailFromOverload
 end
 
 -- ============================================================================
--- BUILDING ANALYSIS
+-- ANÁLISE DE PRÉDIO
 -- ============================================================================
 
---- Calculate total power draw for generator
---- @param generatorData GeneratorData Generator data
---- @return number Total power draw
---- @return number Active consumers count
+--- Calcula a carga elétrica total para o gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @return number Carga elétrica total
+--- @return number Quantidade de consumidores ativos
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetTotalPowerDraw(generatorData)
     if not generatorData then
         return 0, 0
     end
     
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local totalPowerDraw = 0
-    local activeConsumers = 0
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local cargaTotal = 0
+    local consumidoresAtivos = 0
     
-    -- connectedBuildings is Kahlua-deserialized (string numeric keys); use pairs
-    for _, buildingId in pairs(generatorData.connectedBuildings) do
-        local buildingData = StateManager.GetBuilding(buildingId)
+    -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string); use pairs
+    for _, idPredio in pairs(generatorData.connectedBuildings) do
+        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
         
-        if buildingData then
-            -- Use cached powered draw so strain damage doesn't drop offchunk
-            local draw = buildingData.strainTotalPowerDraw or buildingData.totalPowerDraw or 0
-            totalPowerDraw = totalPowerDraw + draw
-            activeConsumers = activeConsumers + LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(buildingData)
+        if dadosPredio then
+            local carga = dadosPredio.strainTotalPowerDraw or dadosPredio.totalPowerDraw or 0
+            cargaTotal = cargaTotal + carga
+            consumidoresAtivos = consumidoresAtivos + LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(dadosPredio)
         end
     end
     
-    return totalPowerDraw, activeConsumers
+    return cargaTotal, consumidoresAtivos
 end
 
---- Get breakdown of power consumption by building
---- @param generatorData GeneratorData Generator data
---- @return table Array of {buildingId, powerDraw, consumers}
+--- Obtém o detalhamento do consumo de energia por prédio conectado
+--- @param generatorData GeneratorData Dados do gerador
+--- @return table Array contendo tabelas {buildingId, powerDraw, consumers}
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetPowerBreakdown(generatorData)
     if not generatorData then
         return {}
     end
     
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local breakdown = {}
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local detalhamento = {}
     
-    -- connectedBuildings is Kahlua-deserialized (string numeric keys); use pairs
-    for _, buildingId in pairs(generatorData.connectedBuildings) do
-        local buildingData = StateManager.GetBuilding(buildingId)
+    -- connectedBuildings é desserializado pelo Kahlua (chaves numéricas string); use pairs
+    for _, idPredio in pairs(generatorData.connectedBuildings) do
+        local dadosPredio = gerenciadorEstado.GetBuilding(idPredio)
         
-        if buildingData then
-            table.insert(breakdown, {
-                buildingId = buildingId,
-                powerDraw = buildingData.strainTotalPowerDraw or buildingData.totalPowerDraw or 0,
-                consumers = LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(buildingData),
-                totalConsumers = LKS_EletricidadeConstrucao.Data.Building.GetTotalConsumerCount(buildingData)
+        if dadosPredio then
+            table.insert(detalhamento, {
+                buildingId = idPredio,
+                powerDraw = dadosPredio.strainTotalPowerDraw or dadosPredio.totalPowerDraw or 0,
+                consumers = LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(dadosPredio),
+                totalConsumers = LKS_EletricidadeConstrucao.Data.Building.GetTotalConsumerCount(dadosPredio)
             })
         end
     end
     
-    -- Sort by power draw (highest first)
-    table.sort(breakdown, function(a, b)
-        return a.powerDraw > b.powerDraw
+    -- Ordena por carga elétrica (maior primeiro)
+    table.sort(detalhamento, function(elementoA, elementoB)
+        return elementoA.powerDraw > elementoB.powerDraw
     end)
     
-    return breakdown
+    return detalhamento
 end
 
 -- ============================================================================
--- OPTIMIZATION SUGGESTIONS
+-- SUGESTÕES DE OTIMIZAÇÃO
 -- ============================================================================
 
---- Get optimization suggestions for generator
---- @param generatorData GeneratorData Generator data
---- @return table Array of suggestion strings
+--- Obtém sugestões de otimização para o gerador
+--- @param generatorData GeneratorData Dados do gerador
+--- @return table Array contendo strings com sugestões
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetOptimizationSuggestions(generatorData)
     if not generatorData then
         return {}
     end
     
-    local suggestions = {}
-    local strain = generatorData.strain
-    local strainLevel = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainLevel(strain)
+    local sugestoes = {}
+    local sobrecarga = generatorData.strain
+    local nivelSobrecarga = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainLevel(sobrecarga)
     
-    if strainLevel == "critical" then
-        table.insert(suggestions, "CRITICAL: Generator is severely overloaded!")
-        table.insert(suggestions, "Consider adding more generators or reducing power consumption")
-    elseif strainLevel == "high" then
-        table.insert(suggestions, "Generator is heavily loaded - fuel consumption increased by " .. 
+    if nivelSobrecarga == "critical" then
+        table.insert(sugestoes, "CRITICO: O gerador esta severamente sobrecarregado!")
+        table.insert(sugestoes, "Considere adicionar mais geradores ou reduzir o consumo de energia")
+    elseif nivelSobrecarga == "high" then
+        table.insert(sugestoes, "O gerador esta muito carregado - o consumo de combustivel aumentou em " .. 
             string.format("%.0f%%", (LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData) - 1.0) * 100))
-        table.insert(suggestions, "Turn off unnecessary lights to reduce load")
-    elseif strainLevel == "medium" then
-        table.insert(suggestions, "Generator load is moderate")
-    elseif strainLevel == "low" then
-        table.insert(suggestions, "Generator load is light - operating efficiently")
+        table.insert(sugestoes, "Desligue luzes desnecessarias para reduzir a carga")
+    elseif nivelSobrecarga == "medium" then
+        table.insert(sugestoes, "A carga do gerador esta moderada")
+    elseif nivelSobrecarga == "low" then
+        table.insert(sugestoes, "A carga do gerador esta leve - operando com eficiencia")
     else
-        table.insert(suggestions, "Generator is idle - no power consumption")
+        table.insert(sugestoes, "O gerador esta ocioso - sem consumo de energia")
     end
     
-    -- Add fuel-specific suggestions
+    -- Adiciona sugestões específicas de combustível
     if LKS_EletricidadeConstrucao.Data.Generator.NeedsRefuel(generatorData, 20) then
-        table.insert(suggestions, "Fuel level low - refuel soon")
+        table.insert(sugestoes, "Nivel de combustivel baixo - reabastecer em breve")
     end
     
-    return suggestions
+    return sugestoes
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAR / DEBUG
 -- ============================================================================
 
---- Print strain calculator status for generator
---- @param generatorData GeneratorData Generator data
+--- Exibe informações da sobrecarga do gerador no console
+--- @param generatorData GeneratorData Dados do gerador
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.PrintGeneratorStrain(generatorData)
     if not generatorData then
-        LKS_EletricidadeConstrucao.Print("No generator data provided")
+        LKS_EletricidadeConstrucao.Print("Nenhum dado de gerador fornecido")
         return
     end
     
-    local powerDraw, consumers = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetTotalPowerDraw(generatorData)
-    local strain = generatorData.strain
-    local multiplier = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData)
-    local efficiency = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetEfficiency(strain)
-    local strainLevel = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainLevel(strain)
+    local cargaEletrica, consumidores = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetTotalPowerDraw(generatorData)
+    local sobrecarga = generatorData.strain
+    local multiplicador = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainMultiplier(generatorData)
+    local eficiencia = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetEfficiency(sobrecarga)
+    local nivelSobrecarga = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetStrainLevel(sobrecarga)
     
-    LKS_EletricidadeConstrucao.Print("=== Generator Strain: " .. generatorData.id .. " ===")
-    LKS_EletricidadeConstrucao.Print("Power Draw: " .. powerDraw)
-    LKS_EletricidadeConstrucao.Print("Active Consumers: " .. consumers)
-    LKS_EletricidadeConstrucao.Print("Strain: " .. string.format("%.1f%%", strain) .. " (" .. strainLevel .. ")")
-    LKS_EletricidadeConstrucao.Print("Fuel Multiplier: " .. string.format("%.2fx", multiplier))
-    LKS_EletricidadeConstrucao.Print("Efficiency: " .. string.format("%.0f%%", efficiency))
-    local _cbCount = 0
+    LKS_EletricidadeConstrucao.Print("=== Sobrecarga do Gerador: " .. generatorData.id .. " ===")
+    LKS_EletricidadeConstrucao.Print("Carga Eletrica: " .. cargaEletrica)
+    LKS_EletricidadeConstrucao.Print("Consumidores Ativos: " .. consumidores)
+    LKS_EletricidadeConstrucao.Print("Sobrecarga: " .. string.format("%.1f%%", sobrecarga) .. " (" .. nivelSobrecarga .. ")")
+    LKS_EletricidadeConstrucao.Print("Multiplicador de Combustivel: " .. string.format("%.2fx", multiplicador))
+    LKS_EletricidadeConstrucao.Print("Eficiencia: " .. string.format("%.0f%%", eficiencia))
+    local totalPredios = 0
     if generatorData.connectedBuildings then
-        for _ in pairs(generatorData.connectedBuildings) do _cbCount = _cbCount + 1 end
+        for _ in pairs(generatorData.connectedBuildings) do totalPredios = totalPredios + 1 end
     end
-    LKS_EletricidadeConstrucao.Print("Buildings Connected: " .. _cbCount)
+    LKS_EletricidadeConstrucao.Print("Predios Conectados: " .. totalPredios)
     
-    -- Print breakdown
-    local breakdown = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetPowerBreakdown(generatorData)
-    if #breakdown > 0 then
-        LKS_EletricidadeConstrucao.Print("Power Breakdown:")
-        for i, entry in ipairs(breakdown) do
-            LKS_EletricidadeConstrucao.Print(string.format("  %d. %s: %.1f power, %d/%d consumers active",
-                i, entry.buildingId, entry.powerDraw, entry.consumers, entry.totalConsumers))
+    -- Exibe detalhamento
+    local detalhamento = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetPowerBreakdown(generatorData)
+    if #detalhamento > 0 then
+        LKS_EletricidadeConstrucao.Print("Detalhamento de Carga:")
+        for indice, entrada in ipairs(detalhamento) do
+            LKS_EletricidadeConstrucao.Print(string.format("  %d. %s: %.1f energia, %d/%d consumidores ativos",
+                indice, entrada.buildingId, entrada.powerDraw, entrada.consumers, entrada.totalConsumers))
         end
     end
     
-    -- Print suggestions
-    local suggestions = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetOptimizationSuggestions(generatorData)
-    if #suggestions > 0 then
-        LKS_EletricidadeConstrucao.Print("Suggestions:")
-        for _, suggestion in ipairs(suggestions) do
-            LKS_EletricidadeConstrucao.Print("  - " .. suggestion)
+    -- Exibe sugestões
+    local sugestoes = LKS_EletricidadeConstrucao.Fuel.StrainCalculator.GetOptimizationSuggestions(generatorData)
+    if #sugestoes > 0 then
+        LKS_EletricidadeConstrucao.Print("Sugestoes:")
+        for _, sugestao in ipairs(sugestoes) do
+            LKS_EletricidadeConstrucao.Print("  - " .. sugestao)
         end
     end
 end
 
 -- ============================================================================
--- STRAIN-BASED DAMAGE SYSTEM
+-- SISTEMA DE DANOS POR SOBRECARGA
 -- ============================================================================
 
---- Apply strain-based damage to generator
---- Called each fuel consumption tick
---- @param generatorData GeneratorData Generator data
---- @param deltaSeconds number Time delta since last update
---- @return boolean True if generator failed (turned off)
+--- Aplica danos de sobrecarga ao gerador
+--- Chamado a cada tick de consumo de combustível
+--- @param generatorData GeneratorData Dados do gerador
+--- @param deltaSeconds number Variação de tempo desde o último cálculo
+--- @return boolean True se o gerador falhou catastroficamente (foi desligado)
 function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage(generatorData, deltaSeconds)
     if not generatorData or not generatorData.strain or generatorData.strain <= 100 then
-        -- Reset overload timer if strain is at or below 100% (no damage below overload)
-        -- 76-100% strain only incurs the fuel consumption penalty, NOT condition damage.
+        -- Redefine o temporizador de sobrecarga se a carga estiver abaixo de 100% (sem danos abaixo de 100%)
         if generatorData and generatorData.id then
-            _overloadDuration[generatorData.id] = nil
+            _duracaoSobrecarga[generatorData.id] = nil
         end
-        return false  -- No damage below 100% overload threshold
+        return false -- Sem danos abaixo do limite de 100% de sobrecarga
     end
     
-    local genObj = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
-    if not genObj then
+    local objetoGerador = getGeneratorFromSquare(generatorData.x, generatorData.y, generatorData.z)
+    if not objetoGerador then
         return false
     end
     
-    local strain = generatorData.strain
-    local damageMultiplier = 0
-    local failChance = 0
+    local sobrecarga = generatorData.strain
+    local multiplicadorDano = 0
+    local chanceFalha = 0
     
-    -- DAMAGE TIERS:
-    -- 0-100%:  No condition damage (only fuel multiplier applies)
-    -- 101-200% (grace active, < 1 hr overload): 1x vanilla damage, no fail chance
-    -- 101-200% (grace expired):                 1x to 5x vanilla damage + fail chance
+    -- NÍVEIS DE DANOS:
+    -- 0-100%:   Sem danos à integridade (apenas multiplicador de consumo se aplica)
+    -- 101-200% (com carência ativa, < 1 hora): 1x dano vanilla, sem chance de falha catastrófica
+    -- 101-200% (carência expirada):            1x a 5x dano vanilla + chance de falha catastrófica
     
-    -- Accumulate overload time; damage AND fail chance only after grace period
-    -- Cap accumulation to prevent instant grace expiry during catch-up periods.
-    -- After being offchunk for hours, deltaSeconds might be 7200+ seconds, which would
-    -- instantly expire the 3600-second grace period even if overload just started.
-    local currentElapsed = _overloadDuration[generatorData.id] or 0
-    local incrementCapped = math.min(deltaSeconds, 600)  -- Max 10 minutes per tick
-    local elapsed = currentElapsed + incrementCapped
-    _overloadDuration[generatorData.id] = elapsed
+    -- Acumula tempo de sobrecarga; dano AND chance de falha apenas após o período de carência.
+    -- Limita o incremento para evitar expiração instantânea da carência durante compensações longas.
+    local decorridoAtual = _duracaoSobrecarga[generatorData.id] or 0
+    local incrementoLimitado = math.min(deltaSeconds, 600) -- Máximo de 10 minutos por tick
+    local decorrido = decorridoAtual + incrementoLimitado
+    _duracaoSobrecarga[generatorData.id] = decorrido
 
-    -- 101-200%: Linear from 1x to 5x damage
-    local t = math.min((strain - 100) / 100, 1.0)  -- 0.0 at 100%, 1.0 at 200%
+    -- 101-200%: Linear de 1x a 5x dano
+    local interpolacao = math.min((sobrecarga - 100) / 100, 1.0) -- 0.0 em 100%, 1.0 em 200%
 
-    if elapsed >= OVERLOAD_GRACE_SECONDS then
-        -- Grace expired: scaled penalty (1x-5x) + fail chance
-        damageMultiplier = 1.0 + (t * 4.0)
+    if decorrido >= SEGUNDOS_CARENCIA_SOBRECARGA then
+        -- Carência expirada: dano escalado (1x-5x) + chance de falha catastrófica
+        multiplicadorDano = 1.0 + (interpolacao * 4.0)
 
-        -- Fail chance increases from 0% at 101% to 10% per minute at 200%
-        -- Cap per-tick fail chance to prevent instant failure during catch-up periods.
-        -- At 200% strain, max 5% chance per check regardless of deltaSeconds.
-        local failChancePerMinute = t * 0.10  -- 0% at 101%, 10% at 200%
-        local failChanceUncapped = failChancePerMinute * (deltaSeconds / 60)
-        failChance = math.min(failChanceUncapped, t * 0.05)  -- Cap at 5% per tick at 200% strain
+        -- Chance de falha aumenta de 0% em 101% para 10% por minuto em 200% de carga
+        -- Limita a chance por tick para evitar desligamentos instantâneos pós-compensações.
+        local chanceFalhaPorMinuto = interpolacao * 0.10 -- 0% em 101%, 10% em 200%
+        local chanceFalhaSemLimite = chanceFalhaPorMinuto * (deltaSeconds / 60)
+        chanceFalha = math.min(chanceFalhaSemLimite, interpolacao * 0.05) -- Máximo de 5% por tick em 200%
     else
-        -- Grace period active: minimal vanilla damage rate (1x), no fail chance
-        damageMultiplier = 1.0
+        -- Período de carência ativo: danos mínimos equivalentes ao vanilla (1x), sem chance de falha
+        multiplicadorDano = 1.0
     end
     
-    -- Base condition loss per game-hour under overload.
-    -- deltaSeconds is game-seconds (derived from getWorldAgeHours() × 3600), so this
-    -- rate is independent of the sandbox time-multiplier / real-world clock.
-    -- At 1x (101% overload, grace expired): 0.02 condition per game-hour → breaks after ~5000 game-hours.
-    -- At 5x (200% overload, grace expired): 0.10 condition per game-hour → breaks after ~1000 game-hours.
-    local vanillaDamagePerHour = 0.02
-    local strainDamagePerHour = vanillaDamagePerHour * damageMultiplier
-    local damage = strainDamagePerHour * (deltaSeconds / 3600)
+    -- Perda de integridade base por hora de jogo sob sobrecarga.
+    -- Taxa independente do multiplicador de tempo da sandbox.
+    -- Em 1x (101% sobrecarga, carência expirada): 0.02 de dano por hora de jogo → quebra em ~5000 horas de jogo.
+    -- Em 5x (200% sobrecarga, carência expirada): 0.10 de dano por hora de jogo → quebra em ~1000 horas de jogo.
+    local danoVanillaPorHora = 0.02
+    local danoSobrecargaPorHora = danoVanillaPorHora * multiplicadorDano
+    local dano = danoSobrecargaPorHora * (deltaSeconds / 3600)
     
-    -- Apply damage
-    local currentCondition = genObj:getCondition()
-    local newCondition = math.max(0, currentCondition - damage)
-    genObj:setCondition(newCondition)
+    -- Aplica o dano à integridade do gerador
+    local condicaoAtual = objetoGerador:getCondition()
+    local novaCondicao = math.max(0, condicaoAtual - dano)
+    objetoGerador:setCondition(novaCondicao)
     
-    -- Log damage if significant
-    if damage > 0.001 then
-        local overloadInfo = ""
-        if elapsed < OVERLOAD_GRACE_SECONDS then
-            overloadInfo = string.format(" [grace: %.0f/3600s]", elapsed)
+    -- Registra danos significativos no log
+    if dano > 0.001 then
+        local infoCarencia = ""
+        if decorrido < SEGUNDOS_CARENCIA_SOBRECARGA then
+            infoCarencia = string.format(" [carencia: %.0f/3600s]", decorrido)
         else
-            overloadInfo = " [grace: EXPIRED]"
+            infoCarencia = " [carencia: EXPIRADA]"
         end
         LKS_EletricidadeConstrucao.Print(string.format(
-            "[StrainDamage] gen=%s strain=%.1f%% damage=%.4f (%.1fx) condition: %.1f -> %.1f%s",
-            generatorData.id, strain, damage, damageMultiplier, currentCondition, newCondition, overloadInfo))
+            "[StrainDamage] gen=%s sobrecarga=%.1f%% dano=%.4f (%.1fx) integridade: %.1f -> %.1f%s",
+            generatorData.id, sobrecarga, dano, multiplicadorDano, condicaoAtual, novaCondicao, infoCarencia))
     end
     
-    -- Check for catastrophic failure at extreme strain
-    if failChance > 0 then
-        local roll = ZombRand(10000) / 10000  -- 0.0000 to 0.9999
-        if roll < failChance then
+    -- Verifica por falha catastrófica sob sobrecarga extrema
+    if chanceFalha > 0 then
+        local rolarDados = ZombRand(10000) / 10000 -- 0.0000 a 0.9999
+        if rolarDados < chanceFalha then
             LKS_EletricidadeConstrucao.Print(string.format(
-                "[StrainFailure] gen=%s FAILED due to extreme strain (%.1f%%)! Generator shut down.",
-                generatorData.id, strain))
+                "[StrainFailure] gen=%s FALHOU devido a sobrecarga extrema (%.1f%%)! Gerador desligado.",
+                generatorData.id, sobrecarga))
             return true
         end
     end
     
-    -- If condition reaches 0, generator breaks
-    if newCondition <= 0 then
+    -- Se a integridade chegar a 0, o gerador quebra definitivamente
+    if novaCondicao <= 0 then
         LKS_EletricidadeConstrucao.Print(string.format(
-            "[StrainFailure] gen=%s BROKEN due to strain damage! Condition: 0",
+            "[StrainFailure] gen=%s QUEBROU devido a danos de sobrecarga! Condicao: 0",
             generatorData.id))
         return true
     end
@@ -738,7 +713,7 @@ function LKS_EletricidadeConstrucao.Fuel.StrainCalculator.ApplyStrainDamage(gene
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Fuel.StrainCalculator", "2.0.0")

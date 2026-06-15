@@ -1,35 +1,34 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_ServerInit.lua
--- LKS_EletricidadeConstrucao V2 - Server Initialization
--- Loads and initializes all server-side modules
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_ServerInit.lua
+-- OBJETIVO: Inicialização do lado do servidor e gerenciamento dos eventos periódicos.
+-- LOCALIZAÇÃO: server
 
--- Ensure namespace exists
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_ServerInit] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 if LKS_EletricidadeConstrucao.Config and not LKS_EletricidadeConstrucao.Config.ModEnabled then
-    print("[LKS_EletricidadeConstrucao_ServerInit] Eletricidade realista desativada no sandbox - pulando módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Eletricidade realista desativada no sandbox - pulando módulo")
     return
 end
 
 -- ============================================================================
--- LOAD SERVER MODULES
+-- CARREGAMENTO DE MÓDULOS DO SERVIDOR
 -- ============================================================================
 
--- Force-reload all server modules (they may have early-returned during
--- PZ's initial scan pass before shared/0_LKS_EletricidadeConstrucao_Init.lua had run).
--- Clearing package.loaded ensures require() re-executes each file.
-local serverModules = {
+local modulosServidor = {
     "server/fuel/LKS_EletricidadeConstrucao_Fuel_StrainCalculator",
     "server/fuel/LKS_EletricidadeConstrucao_Fuel_Manager",
     "server/fuel/LKS_EletricidadeConstrucao_Fuel_ChunkTracker",
@@ -42,123 +41,114 @@ local serverModules = {
 }
 
 if not LKS_EletricidadeConstrucao.Config or LKS_EletricidadeConstrucao.Config.HeatingSystemEnabled then
-    table.insert(serverModules, "server/heating/LKS_EletricidadeConstrucao_Heating_Manager")
+    table.insert(modulosServidor, "server/heating/LKS_EletricidadeConstrucao_Heating_Manager")
 end
 
 if not LKS_EletricidadeConstrucao.Config or LKS_EletricidadeConstrucao.Config.BarrelSystemEnabled then
-    table.insert(serverModules, "server/fuel/LKS_EletricidadeConstrucao_Fuel_Barrels")
+    table.insert(modulosServidor, "server/fuel/LKS_EletricidadeConstrucao_Fuel_Barrels")
 end
 
 if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.DebugMode then
-    table.insert(serverModules, "server/LKS_EletricidadeConstrucao_DebugCommands")
+    table.insert(modulosServidor, "server/LKS_EletricidadeConstrucao_DebugCommands")
 end
 
-for _, mod in ipairs(serverModules) do
+for _, modulo in ipairs(modulosServidor) do
     if package and package.loaded then
-        package.loaded[mod] = nil
+        package.loaded[modulo] = nil
     end
-    local ok, err = pcall(require, mod)
-    if not ok then
-        print(string.format("[LKS_EletricidadeConstrucao_ServerInit] ERROR loading %s: %s", mod, tostring(err)))
+    local sucesso, erro = pcall(require, modulo)
+    if not sucesso then
+        print(string.format("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] ERRO ao carregar %s: %s", modulo, tostring(erro)))
     end
 end
 
--- TODO: Load other server modules
--- require "server/heating/LKS_EletricidadeConstrucao_Heating_Manager"
-
 -- ============================================================================
--- INITIALIZE SERVER SYSTEMS
+-- INICIALIZAÇÃO DE SISTEMAS DO SERVIDOR
 -- ============================================================================
 
---- Initialize all server systems
-local function InitializeServerSystems()
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Initializing server systems...", "Core")
+--- Inicializa todos os subsistemas do lado do servidor.
+local function InicializarSistemasServidor()
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Inicializando sistemas do servidor...", "Core")
     
-    -- Initialize state manager (loads ModData)
+    -- Inicializa o gerenciador de estado (carrega o ModData)
     if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
         if not LKS_EletricidadeConstrucao.Core.StateManager.IsInitialized() then
             LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
         end
     else
-        print("[LKS_EletricidadeConstrucao_ServerInit] WARNING: StateManager not loaded")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: StateManager não carregado")
     end
     
-    -- Initialize fuel system
+    -- Inicializa o sistema de combustível
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and LKS_EletricidadeConstrucao.Fuel.Manager.Initialize then
         LKS_EletricidadeConstrucao.Fuel.Manager.Initialize()
     else
-        print("[LKS_EletricidadeConstrucao_ServerInit] WARNING: Fuel.Manager not loaded")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Fuel.Manager não carregado")
     end
     
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.ChunkTracker and LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize then
         LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize()
     else
-        print("[LKS_EletricidadeConstrucao_ServerInit] WARNING: Fuel.ChunkTracker not loaded")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Fuel.ChunkTracker não carregado")
     end
     
-    -- Initialize building detection
+    -- Inicializa o escaneamento de construções
     if LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and LKS_EletricidadeConstrucao.Building.Scanner.Initialize then
         LKS_EletricidadeConstrucao.Building.Scanner.Initialize()
     else
-        print("[LKS_EletricidadeConstrucao_ServerInit] WARNING: Building.Scanner not loaded")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Building.Scanner não carregado")
     end
     
-    -- Initialize power distribution
+    -- Inicializa a distribuição de energia
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and LKS_EletricidadeConstrucao.Power.Manager.Initialize then
         LKS_EletricidadeConstrucao.Power.Manager.Initialize()
     else
-        print("[LKS_EletricidadeConstrucao_ServerInit] WARNING: Power.Manager not loaded")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Power.Manager não carregado")
     end
     
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.Initialize then
         LKS_EletricidadeConstrucao.Power.Distributor.Initialize()
     else
-        print("[LKS_EletricidadeConstrucao_ServerInit] WARNING: Power.Distributor not loaded")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Power.Distributor não carregado")
     end
     
-    -- TODO: Initialize other server systems
-    -- LKS_EletricidadeConstrucao.Heating.Manager.Initialize()
-    
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Server systems initialized", "Core")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Sistemas do servidor inicializados", "Core")
     LKS_EletricidadeConstrucao._InitStatus.ServerSystemsInitialized = true
 end
 
 -- ============================================================================
--- EVENT HANDLERS
+-- MANIPULADORES DE EVENTOS
 -- ============================================================================
 
---- Handle OnGameBoot event (called once when server starts)
-local function OnGameBoot()
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Server booting...", "Core")
+--- Manipula o evento OnGameBoot (chamado uma vez ao iniciar o servidor).
+local function AoIniciarJogo()
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Servidor iniciando...", "Core")
     
-    -- Initialize systems
-    InitializeServerSystems()
+    -- Inicializa os sistemas
+    InicializarSistemasServidor()
 
-    -- Immediately refresh distribution stats so client UI has data on first open
+    -- Atualiza imediatamente as estatísticas de distribuição para que a interface gráfica dos clientes tenha dados no primeiro acesso
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
         LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Server boot complete", "Core")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Inicialização do servidor concluída", "Core")
 end
 
---- Handle EveryOneMinute event (periodic updates)
-local function EveryOneMinute()
-    -- Safety check: ensure systems are initialized before running updates
+--- Manipula o evento EveryOneMinute (atualizações de loop periódico).
+local function ACadaUmMinuto()
+    -- Confirmação de segurança: garante que os sistemas estejam inicializados antes de rodar atualizações
     if not LKS_EletricidadeConstrucao._InitStatus or not LKS_EletricidadeConstrucao._InitStatus.ServerSystemsInitialized then
         return
     end
 
-    local currentTime = os.time()
+    local tempoAtual = os.time()
 
-    -- Confirm world ID and load GlobalModData if still pending from boot.
-    -- ConfirmAndLoadState() is a no-op (returns false) after the first success,
-    -- so this block has zero overhead in normal steady-state operation.
+    -- Confirma o ID do mapa e carrega os dados globais do ModData se ainda estiver pendente do boot
     if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
             and LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState then
         if LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState() then
-            -- First confirmed load just completed - force distribution so the UI
-            -- reflects the now-correct state immediately.
+            -- Primeiro carregamento confirmado concluído - força a distribuição imediata para a interface refletir o estado correto
             if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
                     and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                 LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
@@ -166,120 +156,103 @@ local function EveryOneMinute()
         end
     end
 
-    -- Auto-refuel generators from linked barrels BEFORE fuel drain.
-    -- Must run first so barrels top up generators before the drain tick
-    -- calculates how much fuel was consumed.
+    -- Reabastece automaticamente os geradores a partir de barris acoplados ANTES do consumo de combustível
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Barrels and LKS_EletricidadeConstrucao.Fuel.Barrels.UpdateAll then
         LKS_EletricidadeConstrucao.Fuel.Barrels.UpdateAll()
     end
 
-    -- Update fuel system (drain after barrel refuel)
+    -- Atualiza o sistema de combustível (consumo após o abastecimento do barril)
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and LKS_EletricidadeConstrucao.Fuel.Manager.Update then
         LKS_EletricidadeConstrucao.Fuel.Manager.Update()
     end
     
-    -- Process building scan queue
+    -- Processa a fila de escaneamento de construções
     if LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and LKS_EletricidadeConstrucao.Building.Scanner.ProcessQueue then
         LKS_EletricidadeConstrucao.Building.Scanner.ProcessQueue()
     end
     
-    -- Update power connections (finds generators, validates connections)
+    -- Atualiza conexões de energia (localiza geradores e valida acoplamentos)
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and LKS_EletricidadeConstrucao.Power.Manager.Update then
-        LKS_EletricidadeConstrucao.Power.Manager.Update(currentTime)
+        LKS_EletricidadeConstrucao.Power.Manager.Update(tempoAtual)
     end
     
-    -- Update power distribution (applies power states to consumers)
+    -- Atualiza a distribuição elétrica (aplica estados elétricos nos contêineres/consumidores)
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.Update then
-        LKS_EletricidadeConstrucao.Power.Distributor.Update(currentTime)
+        LKS_EletricidadeConstrucao.Power.Distributor.Update(tempoAtual)
     end
 
-    -- Retry any ForceUpdateBuilding calls that failed because the building was not
-    -- yet in StateManager (e.g. right after teleporting close to a building).
+    -- Tenta executar novamente atualizações de prédios que falharam porque a construção ainda não existia no StateManager
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.ProcessRetryQueue then
         LKS_EletricidadeConstrucao.Power.Distributor.ProcessRetryQueue()
     end
 
-    -- Update heating positions
+    -- Atualiza o sistema de aquecimento virtual
     if LKS_EletricidadeConstrucao.Heating and LKS_EletricidadeConstrucao.Heating.Manager and LKS_EletricidadeConstrucao.Heating.Manager.Update then
         LKS_EletricidadeConstrucao.Heating.Manager.Update()
     end
 end
 
---- Handle EveryTenMinutes event (auto-save with 2-minute interval)
-local _lastAutoSave = 0
-local function EveryTenMinutes()
-    local currentTime = os.time()
+--- Manipula o evento EveryTenMinutes (salvamento automático com intervalo personalizado de 2 minutos).
+local _ultimoSalvamentoAutomatico = 0
+local function ACadaDezMinutos()
+    local tempoAtual = os.time()
     
-    -- Auto-save every 2 minutes (120 seconds) instead of every minute
-    -- Reduces save frequency from 60/hour to 30/hour (-50%)
-    if currentTime - _lastAutoSave >= 120 then
+    -- Realiza o salvamento automático a cada 2 minutos (120 segundos) em vez de a cada minuto
+    if tempoAtual - _ultimoSalvamentoAutomatico >= 120 then
         if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
             if LKS_EletricidadeConstrucao.Core.StateManager.IsDirty and LKS_EletricidadeConstrucao.Core.StateManager.IsDirty() then
-                -- Auto-saves without backup (frequent, low importance)
-                -- OnSave and OnServerShutdown still create backups
+                -- Salva sem criar backups redundantes
                 if LKS_EletricidadeConstrucao.Core.StateManager.Save then
                     LKS_EletricidadeConstrucao.Core.StateManager.Save(false, false)
                 end
-                _lastAutoSave = currentTime
+                _ultimoSalvamentoAutomatico = tempoAtual
             end
         end
     end
 end
 
---- Handle OnServerShutdown event
-local function OnServerShutdown()
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Server shutting down - saving state...", "Core")
+--- Manipula o desligamento do servidor.
+local function AoDesligarServidor()
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Servidor desligando - salvando estado...", "Core")
     
-    -- Force save state WITH backup (critical save)
+    -- Força o salvamento crítico com proteção de backup
     if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager and LKS_EletricidadeConstrucao.Core.StateManager.Save then
         LKS_EletricidadeConstrucao.Core.StateManager.Save(true, true)
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Server shutdown complete", "Core")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Desligamento do servidor concluído", "Core")
 end
 
---- Handle OnSave event (backup-protected save)
-local function OnSave()
-    -- OnSave fires every ~5 minutes - these saves get backup protection
+--- Manipula o evento OnSave regular (salvamento com proteção de backup a cada ~5 minutos).
+local function AoSalvar()
     if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager and LKS_EletricidadeConstrucao.Core.StateManager.Save then
         LKS_EletricidadeConstrucao.Core.StateManager.Save(true, true)
-        LKS_EletricidadeConstrucao.Core.Logger.Debug("OnSave: State saved with backup", "Core")
+        LKS_EletricidadeConstrucao.Core.Logger.Debug("AoSalvar: Estado salvo com backup", "Core")
     end
 end
 
 -- ============================================================================
--- REGISTER EVENT HANDLERS
+-- REGISTRO DE MANIPULADORES DE EVENTOS
 -- ============================================================================
 
--- Register events safely (only events that exist in both SP and dedicated server)
-if Events.OnGameBoot then Events.OnGameBoot.Add(OnGameBoot) end
-if Events.EveryOneMinute then Events.EveryOneMinute.Add(EveryOneMinute) end
-if Events.EveryTenMinutes then Events.EveryTenMinutes.Add(EveryTenMinutes) end
-if Events.OnServerShutdown then Events.OnServerShutdown.Add(OnServerShutdown) end
--- OnSave fires immediately before PZ serializes GlobalModData (SP + MP).
--- This ensures LKS_EletricidadeConstrucao state is flushed even if the session ends
--- before the first EveryOneMinute tick and OnServerShutdown is absent.
-if Events.OnSave then Events.OnSave.Add(OnSave) end
--- NOTE: OnObjectAdded / OnObjectAboutToBeRemoved are registered in
---       shared/LKS_EletricidadeConstrucao_Shared_ConsumerEvents.lua so they fire in the client Lua
---       context (where PZ actually dispatches these events in singleplayer).
+if Events.OnGameBoot then Events.OnGameBoot.Add(AoIniciarJogo) end
+if Events.EveryOneMinute then Events.EveryOneMinute.Add(ACadaUmMinuto) end
+if Events.EveryTenMinutes then Events.EveryTenMinutes.Add(ACadaDezMinutos) end
+if Events.OnServerShutdown then Events.OnServerShutdown.Add(AoDesligarServidor) end
+if Events.OnSave then Events.OnSave.Add(AoSalvar) end
 
--- Also register OnGameStart for singleplayer (OnGameBoot may not fire in SP)
+-- Suporte para Singleplayer (onde OnGameBoot pode não disparar)
 if Events.OnGameStart then
     Events.OnGameStart.Add(function()
         if not LKS_EletricidadeConstrucao._InitStatus.ServerSystemsInitialized then
-            LKS_EletricidadeConstrucao.Core.Logger.Info("OnGameStart - initializing server systems...", "Core")
-            InitializeServerSystems()
+            LKS_EletricidadeConstrucao.Core.Logger.Info("OnGameStart - inicializando sistemas do servidor...", "Core")
+            InicializarSistemasServidor()
         end
 
-        -- OnGameBoot booted with empty state because getWorld() was unavailable.
-        -- Try to confirm and load now; if the world ID is still unavailable,
-        -- EveryOneMinute will keep retrying once a minute until it succeeds.
         if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
                 and LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState then
-            local loaded = LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
-            if loaded then
-                -- Load completed immediately (world was ready at OnGameStart).
+            local carregado = LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
+            if carregado then
                 if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
                         and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                     LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
@@ -287,43 +260,40 @@ if Events.OnGameStart then
             end
         end
 
-        -- Schedule deferred ForceUpdates after game start so consumer active
-        -- states are refreshed once the world has settled.
-        --   Pass 1 at  5 s: catches nearby buildings (player spawn area).
-        --   Pass 2 at 15 s: catches buildings whose chunks loaded a bit later
-        --                   (e.g. player walked toward their base during load).
-        local _t1 = getTimestampMs() + 5000
-        local _t2 = getTimestampMs() + 15000
-        local _pass1done = false
-        local function _startupRefresh()
-            local now = getTimestampMs()
-            if not _pass1done and now >= _t1 then
-                _pass1done = true
+        -- Agenda atualizações pós-inicialização para garantir que os estados ativos dos consumidores se assentem no mapa
+        local _tempoLimite1 = getTimestampMs() + 5000
+        local _tempoLimite2 = getTimestampMs() + 15000
+        local _etapa1Concluida = false
+        
+        local function _atualizacaoInicial()
+            local agora = getTimestampMs()
+            if not _etapa1Concluida and agora >= _tempoLimite1 then
+                _etapa1Concluida = true
                 if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                     LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
-                    LKS_EletricidadeConstrucao.Core.Logger.Info("Startup consumer state refresh (pass 1) complete", "Core")
+                    LKS_EletricidadeConstrucao.Core.Logger.Info("Atualização inicial do estado dos consumidores (etapa 1) concluída", "Core")
                 end
             end
-            if _pass1done and now >= _t2 then
-                Events.OnTick.Remove(_startupRefresh)
+            if _etapa1Concluida and agora >= _tempoLimite2 then
+                Events.OnTick.Remove(_atualizacaoInicial)
                 if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                     LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
-                    LKS_EletricidadeConstrucao.Core.Logger.Info("Startup consumer state refresh (pass 2) complete", "Core")
+                    LKS_EletricidadeConstrucao.Core.Logger.Info("Atualização inicial do estado dos consumidores (etapa 2) concluída", "Core")
                 end
             end
         end
-        Events.OnTick.Add(_startupRefresh)
+        Events.OnTick.Add(_atualizacaoInicial)
     end)
 end
 
-LKS_EletricidadeConstrucao.Core.Logger.Info("Server event handlers registered", "Core")
+LKS_EletricidadeConstrucao.Core.Logger.Info("Manipuladores de eventos do servidor registrados", "Core")
 
 -- ============================================================================
--- INITIALIZATION COMPLETE
+-- FINALIZAÇÃO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao._InitStatus.ServerModulesLoaded = true
 
-print("[LKS_EletricidadeConstrucao_ServerInit] Server initialization complete")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Inicialização do servidor concluída com sucesso!")
 
 return true

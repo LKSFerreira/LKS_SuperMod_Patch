@@ -1,61 +1,61 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Building_BorderDetector.lua
--- LKS_EletricidadeConstrucao V2 - Building Border Detector
--- Detects building boundaries using tile-by-tile wall/door scanning
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Building_BorderDetector.lua
+-- OBJETIVO: Detecta os limites das construções físicas no mapa usando escaneamento de cômodos e paredes.
+-- LOCALIZAÇÃO: server/building
 
-
--- Ensure namespace exists
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Building_BorderDetector] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_Building_BorderDetector.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
--- Initialize sub-namespace
 LKS_EletricidadeConstrucao.Building = LKS_EletricidadeConstrucao.Building or {}
 LKS_EletricidadeConstrucao.Building.BorderDetector = LKS_EletricidadeConstrucao.Building.BorderDetector or {}
 
 -- ============================================================================
--- CONSTANTS
+-- CONSTANTES
 -- ============================================================================
 
-local DIRECTIONS = {
-    {x =  0, y = -1},  -- North
-    {x =  1, y =  0},  -- East
-    {x =  0, y =  1},  -- South
-    {x = -1, y =  0}   -- West
+local DIRECOES = {
+    {x =  0, y = -1},  -- Norte
+    {x =  1, y =  0},  -- Leste
+    {x =  0, y =  1},  -- Sul
+    {x = -1, y =  0}   -- Oeste
 }
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- FUNÇÕES AUXILIARES
 -- ============================================================================
 
---- Check if a specific Z-level has at least one light switch in the given room bounds
---- @param room BuildingDef Room definition
---- @param z number Z-level to check
---- @return boolean True if at least one light switch exists on this level
-local function HasLightSwitchOnLevel(room, z)
-    local rx1 = room:getX() - 2
-    local ry1 = room:getY() - 2
-    local rx2 = room:getX2() + 2
-    local ry2 = room:getY2() + 2
+--- Verifica se um nível Z específico possui pelo menos um interruptor de luz nos limites do cômodo.
+--- @param comodo any O objeto BuildingDef do cômodo.
+--- @param coordenadaZ number O nível Z.
+--- @return boolean Retorna true se houver pelo menos um interruptor.
+local function TemInterruptorDeLuzNoNivel(comodo, coordenadaZ)
+    local comodoX1 = comodo:getX() - 2
+    local comodoY1 = comodo:getY() - 2
+    local comodoX2 = comodo:getX2() + 2
+    local comodoY2 = comodo:getY2() + 2
     
-    for x = rx1, rx2 do
-        for y = ry1, ry2 do
-            local sq = getSquare(x, y, z)
-            if sq then
-                local objects = sq:getObjects()
-                if objects then
-                    for i = 0, objects:size() - 1 do
-                        local obj = objects:get(i)
-                        if obj and instanceof(obj, "IsoLightSwitch") then
+    for coordenadaX = comodoX1, comodoX2 do
+        for coordenadaY = comodoY1, comodoY2 do
+            local quadrado = getSquare(coordenadaX, coordenadaY, coordenadaZ)
+            if quadrado then
+                local objetos = quadrado:getObjects()
+                if objetos then
+                    for i = 0, objetos:size() - 1 do
+                        local objeto = objetos:get(i)
+                        if objeto and instanceof(objeto, "IsoLightSwitch") then
                             return true
                         end
                     end
@@ -66,23 +66,23 @@ local function HasLightSwitchOnLevel(room, z)
     return false
 end
 
---- Check if a Z-level has at least one light switch in the given rectangular bounds
---- @param x1 number Min X coordinate
---- @param y1 number Min Y coordinate
---- @param x2 number Max X coordinate
---- @param y2 number Max Y coordinate
---- @param z number Z-level to check
---- @return boolean True if at least one light switch exists on this level
-local function HasLightSwitchInBounds(x1, y1, x2, y2, z)
-    for x = x1, x2 do
-        for y = y1, y2 do
-            local sq = getSquare(x, y, z)
-            if sq then
-                local objects = sq:getObjects()
-                if objects then
-                    for i = 0, objects:size() - 1 do
-                        local obj = objects:get(i)
-                        if obj and instanceof(obj, "IsoLightSwitch") then
+--- Verifica se um nível Z possui pelo menos um interruptor nos limites retangulares dados.
+--- @param limiteX1 number Coordenada X mínima.
+--- @param limiteY1 number Coordenada Y mínima.
+--- @param limiteX2 number Coordenada X máxima.
+--- @param limiteY2 number Coordenada Y máxima.
+--- @param coordenadaZ number O nível Z.
+--- @return boolean Retorna true se houver pelo menos um interruptor.
+local function TemInterruptorDeLuzNosLimites(limiteX1, limiteY1, limiteX2, limiteY2, coordenadaZ)
+    for coordenadaX = limiteX1, limiteX2 do
+        for coordenadaY = limiteY1, limiteY2 do
+            local quadrado = getSquare(coordenadaX, coordenadaY, coordenadaZ)
+            if quadrado then
+                local objetos = quadrado:getObjects()
+                if objetos then
+                    for i = 0, objetos:size() - 1 do
+                        local objeto = objetos:get(i)
+                        if objeto and instanceof(objeto, "IsoLightSwitch") then
                             return true
                         end
                     end
@@ -93,168 +93,155 @@ local function HasLightSwitchInBounds(x1, y1, x2, y2, z)
     return false
 end
 
---- Determine which Z-levels to scan based on light switch presence.
---- Starts at startZ (ground floor), scans basement levels downward,
---- then scans upward until a level without light switches is found (early termination).
---- @param room BuildingDef Room definition
---- @param startZ number Starting Z-level (light switch position)
---- @return table Array of Z-levels to scan
-local function GetZLevelsToScan(room, startZ)
-    local rx1 = room:getX() - 2
-    local ry1 = room:getY() - 2
-    local rx2 = room:getX2() + 2
-    local ry2 = room:getY2() + 2
+--- Determina quais níveis Z devem ser escaneados baseando-se na presença de interruptores.
+--- @param comodo any O objeto BuildingDef do cômodo.
+--- @param inicioZ number O nível Z inicial.
+--- @return table Uma lista com os níveis Z para escaneamento.
+local function ObterNiveisZParaEscanear(comodo, inicioZ)
+    local comodoX1 = comodo:getX() - 2
+    local comodoY1 = comodo:getY() - 2
+    local comodoX2 = comodo:getX2() + 2
+    local comodoY2 = comodo:getY2() + 2
     
-    local zLevels = {}
+    local niveisZ = {}
     
-    -- Always scan ground floor (Z=0)
-    table.insert(zLevels, startZ)
+    -- Sempre escaneia o andar inicial
+    table.insert(niveisZ, inicioZ)
     
-    -- Scan basement levels (downward from -1 to -3)
-    for z = -1, -3, -1 do
-        if HasLightSwitchInBounds(rx1, ry1, rx2, ry2, z) then
-            table.insert(zLevels, z)
+    -- Escaneia subsolos (de -1 a -3)
+    for coordenadaZ = -1, -3, -1 do
+        if TemInterruptorDeLuzNosLimites(comodoX1, comodoY1, comodoX2, comodoY2, coordenadaZ) then
+            table.insert(niveisZ, coordenadaZ)
         end
     end
     
-    -- Scan upper levels (upward from +1 to +10)
-    -- STOP at first level without light switch (early termination)
-    for z = 1, 10 do
-        if HasLightSwitchInBounds(rx1, ry1, rx2, ry2, z) then
-            table.insert(zLevels, z)
-        else
-            -- No light switch on this level → stop scanning upward
-            break
-        end
-    end
-    
-    return zLevels
-end
-
---- Get Z-levels to scan for bounds-based detection (no rooms).
---- @param x1 number Min X bound
---- @param y1 number Min Y bound
---- @param x2 number Max X bound
---- @param y2 number Max Y bound
---- @param startZ number Starting Z-level
---- @return table Array of Z-levels to scan
-local function GetZLevelsToScanBounds(x1, y1, x2, y2, startZ)
-    local zLevels = {}
-    
-    -- Always scan ground floor
-    table.insert(zLevels, startZ)
-    
-    -- Scan basement levels (downward)
-    for z = -1, -3, -1 do
-        if HasLightSwitchInBounds(x1, y1, x2, y2, z) then
-            table.insert(zLevels, z)
-        end
-    end
-    
-    -- Scan upper levels (upward with early termination)
-    for z = 1, 10 do
-        if HasLightSwitchInBounds(x1, y1, x2, y2, z) then
-            table.insert(zLevels, z)
+    -- Escaneia andares superiores (de +1 a +10), interrompendo se encontrar um andar sem interruptores
+    for coordenadaZ = 1, 10 do
+        if TemInterruptorDeLuzNosLimites(comodoX1, comodoY1, comodoX2, comodoY2, coordenadaZ) then
+            table.insert(niveisZ, coordenadaZ)
         else
             break
         end
     end
     
-    return zLevels
+    return niveisZ
+end
+
+--- Determina quais níveis Z devem ser escaneados baseando-se em limites geométricos (sem cômodos associados).
+--- @param limiteX1 number Coordenada X mínima.
+--- @param limiteY1 number Coordenada Y mínima.
+--- @param limiteX2 number Coordenada X máxima.
+--- @param limiteY2 number Coordenada Y máxima.
+--- @param inicioZ number O nível Z inicial.
+--- @return table Uma lista com os níveis Z para escaneamento.
+local function ObterNiveisZParaEscanearLimites(limiteX1, limiteY1, limiteX2, limiteY2, inicioZ)
+    local niveisZ = {}
+    
+    -- Sempre escaneia o andar inicial
+    table.insert(niveisZ, inicioZ)
+    
+    -- Escaneia subsolos (de -1 a -3)
+    for coordenadaZ = -1, -3, -1 do
+        if TemInterruptorDeLuzNosLimites(limiteX1, limiteY1, limiteX2, limiteY2, coordenadaZ) then
+            table.insert(niveisZ, coordenadaZ)
+        end
+    end
+    
+    -- Escaneia andares superiores (de +1 a +10)
+    for coordenadaZ = 1, 10 do
+        if TemInterruptorDeLuzNosLimites(limiteX1, limiteY1, limiteX2, limiteY2, coordenadaZ) then
+            table.insert(niveisZ, coordenadaZ)
+        else
+            break
+        end
+    end
+    
+    return niveisZ
 end
 
 -- ============================================================================
--- BORDER DETECTION
+-- DETECÇÃO DE BORDAS
 -- ============================================================================
 
---- Detect ALL tiles belonging to the same IsoBuilding as the light switch.
---- Returns every floor tile so the consumer scanner finds appliances anywhere
---- in the building, not just on the perimeter.
---- @param startX     number  Starting X coordinate (light switch position)
---- @param startY     number  Starting Y coordinate
---- @param startZ     number  Starting Z coordinate
---- @param radius     number  Kept for API compatibility; used only in fallback
---- @param buildingId string  Optional building ID – used to identify player-built
----                           structures ("bld_X_Y_Z") and skip nearby-building search
---- @return table  Array of tiles {x, y, z, type}
-function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(startX, startY, startZ, radius, buildingId)
+--- Detecta todos os quadrados (tiles) pertencentes ao mesmo IsoBuilding do interruptor de luz.
+--- @param inicioX number Coordenada X inicial.
+--- @param inicioY number Coordenada Y inicial.
+--- @param inicioZ number Coordenada Z inicial.
+--- @param raio number Raio de recuo utilizado apenas em fallbacks.
+--- @param idConstrucao string|nil ID opcional da construção (identifica construções feitas por jogadores).
+--- @return table Lista contendo os quadrados identificados.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicioX, inicioY, inicioZ, raio, idConstrucao)
     LKS_EletricidadeConstrucao.Core.Logger.StartTimer("BorderDetection")
 
-    local startSq       = getSquare(startX, startY, startZ)
-    local startBuilding = startSq and startSq:getBuilding()
+    local quadradoInicial = getSquare(inicioX, inicioY, inicioZ)
+    local construcaoInicial = quadradoInicial and quadradoInicial:getBuilding()
 
-    -- Detect player-built buildings by their coordinate-based ID ("bld_X_Y_Z").
-    -- Player-placed tiles never belong to an IsoBuilding, so we must not scan
-    -- nearby vanilla buildings – they are unrelated and would produce wrong consumer data.
-    local isPlayerBuilt = buildingId and string.match(buildingId, "^bld_%-?%d+_%-?%d+_%-?%d+$") ~= nil
+    -- Verifica se é uma construção criada pelo jogador (ID no formato "bld_X_Y_Z")
+    local construidoPeloJogador = idConstrucao and string.match(idConstrucao, "^bld_%-?%d+_%-?%d+_%-?%d+$") ~= nil
 
-    if not startBuilding then
-        if isPlayerBuilt then
-            -- Player-built: no IsoBuilding expected. Use the stored border radius
-            -- directly so we scan only the actual footprint of the player structure.
-            local fallbackRadius = radius or 30
+    if not construcaoInicial then
+        if construidoPeloJogador then
+            local raioRecuo = raio or 30
             print(string.format(
-                "[LKS_EletricidadeConstrucao_BorderDetect] Player-built building %s at (%d,%d,%d) – using radius %d fallback",
-                buildingId or "?", startX, startY, startZ, fallbackRadius))
-            local fallback = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
-                startX, startY, startZ, fallbackRadius)
+                "[LKS PATCH - BorderDetector] Construção criada pelo jogador %s em (%d,%d,%d) – usando raio fallback de %d",
+                idConstrucao or "?", inicioX, inicioY, inicioZ, raioRecuo))
+            local recuo = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
+                inicioX, inicioY, inicioZ, raioRecuo)
             LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)
-            return fallback
+            return recuo
         end
 
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("BorderDetector: no IsoBuilding at (%d,%d,%d), searching nearby buildings...",
-                startX, startY, startZ),
+            string.format("Detector de Bordas: nenhuma IsoBuilding em (%d,%d,%d), buscando construções próximas...",
+                inicioX, inicioY, inicioZ),
             "Building"
         )
         
-        -- Search for IsoBuildings in nearby area (light switch might be in garage/annex)
-        local nearbyBuildings = {}
-        local searchRadius = 10
-        for dx = -searchRadius, searchRadius do
-            for dy = -searchRadius, searchRadius do
-                local sq = getSquare(startX + dx, startY + dy, startZ)
-                if sq then
-                    local bld = sq:getBuilding()
-                    if bld and not nearbyBuildings[bld] then
-                        nearbyBuildings[bld] = true
-                        print(string.format("[LKS_EletricidadeConstrucao_BorderDetect] Found nearby building at offset (%d,%d)", dx, dy))
+        -- Busca por construções vizinhas
+        local construcoesProximas = {}
+        local raioBusca = 10
+        for dx = -raioBusca, raioBusca do
+            for dy = -raioBusca, raioBusca do
+                local quadrado = getSquare(inicioX + dx, inicioY + dy, inicioZ)
+                if quadrado then
+                    local construcao = quadrado:getBuilding()
+                    if construcao and not construcoesProximas[construcao] then
+                        construcoesProximas[construcao] = true
+                        print(string.format("[LKS PATCH - BorderDetector] Construção próxima encontrada no deslocamento (%d,%d)", dx, dy))
                     end
                 end
             end
         end
         
-        -- If we found buildings, scan all their rooms
-        local nearbyBuildingCount = 0
-        for bld in pairs(nearbyBuildings) do
-            nearbyBuildingCount = nearbyBuildingCount + 1
+        local totalConstrucoesProximas = 0
+        for _ in pairs(construcoesProximas) do
+            totalConstrucoesProximas = totalConstrucoesProximas + 1
         end
         
-        if nearbyBuildingCount > 0 then
-            print(string.format("[LKS_EletricidadeConstrucao_BorderDetect] Found %d nearby building(s), scanning their rooms...", nearbyBuildingCount))
+        if totalConstrucoesProximas > 0 then
+            print(string.format("[LKS PATCH - BorderDetector] Encontrada(s) %d construção(ões) próxima(s), escaneando seus cômodos...", totalConstrucoesProximas))
             
-            local tiles = {}
+            local quadrados = {}
             
-            for bld in pairs(nearbyBuildings) do
-                local def = bld:getDef()
-                if def then
-                    local rooms = def:getRooms()
-                    if rooms and rooms:size() > 0 then
-                        for roomIdx = 0, rooms:size() - 1 do
-                            local room = rooms:get(roomIdx)
-                            if room then
-                                local rx1 = room:getX()
-                                local ry1 = room:getY()
-                                local rx2 = room:getX2()
-                                local ry2 = room:getY2()
+            for construcao in pairs(construcoesProximas) do
+                local definicao = construcao:getDef()
+                if definicao then
+                    local comodos = definicao:getRooms()
+                    if comodos and comodos:size() > 0 then
+                        for roomIdx = 0, comodos:size() - 1 do
+                            local comodo = comodos:get(roomIdx)
+                            if comodo then
+                                local comodoX1 = comodo:getX()
+                                local comodoY1 = comodo:getY()
+                                local comodoX2 = comodo:getX2()
+                                local comodoY2 = comodo:getY2()
                                 
-                                -- Get Z-levels to scan with early termination
-                                local zLevels = GetZLevelsToScan(room, startZ)
+                                local niveisZ = ObterNiveisZParaEscanear(comodo, inicioZ)
                                 
-                                for _, z in ipairs(zLevels) do
-                                    for x = rx1 - 2, rx2 + 2 do
-                                        for y = ry1 - 2, ry2 + 2 do
-                                            table.insert(tiles, {x = x, y = y, z = z, type = "interior"})
+                                for _, z in ipairs(niveisZ) do
+                                    for x = comodoX1 - 2, comodoX2 + 2 do
+                                        for y = comodoY1 - 2, comodoY2 + 2 do
+                                            table.insert(quadrados, {x = x, y = y, z = z, type = "interior"})
                                         end
                                     end
                                 end
@@ -264,60 +251,53 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(startX
                 end
             end
             
-            if #tiles > 0 then
-                tiles = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(tiles)
-                print(string.format("[LKS_EletricidadeConstrucao_BorderDetect] Nearby building scan: %d tiles from %d buildings", 
-                    #tiles, nearbyBuildingCount))
+            if #quadrados > 0 then
+                quadrados = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(quadrados)
+                print(string.format("[LKS PATCH - BorderDetector] Varredura de construções próximas: %d quadrados em %d construções", 
+                    #quadrados, totalConstrucoesProximas))
                 LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)
-                return tiles
+                return quadrados
             end
         end
         
-        -- Final fallback: use radius scan
-        print("[LKS_EletricidadeConstrucao_BorderDetect] No nearby buildings with rooms, using radius fallback")
-        local fallback = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
-            startX, startY, startZ, radius or 80)
+        -- Fallback final por raio
+        print("[LKS PATCH - BorderDetector] Nenhuma construção com cômodos por perto, usando recuo por raio")
+        local recuo = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
+            inicioX, inicioY, inicioZ, raio or 80)
         LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)
-        return fallback
+        return recuo
     end
 
-    -- Use building definition bounds (with a small exterior border) and scan a tall Z range
-    -- to mirror the stable V1 Singleplayer behaviour that found lights/appliances across floors.
-    local def = startBuilding:getDef()
-    if not def then
-        local fallback = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(startX, startY, startZ, radius or 30)
+    local definicao = construcaoInicial:getDef()
+    if not definicao then
+        local recuo = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(inicioX, inicioY, inicioZ, raio or 30)
         LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)
-        return fallback
+        return recuo
     end
 
-    -- For complex buildings (fire stations, malls, etc.), scan ALL rooms in the BuildingDef
-    -- instead of just using the overall bounds which may be inaccurate
-    local tiles = {}
+    local quadrados = {}
+    local comodos = definicao:getRooms()
     
-    local rooms = def:getRooms()
-    if rooms and rooms:size() > 0 then
-
-        -- Scan every tile in every room with early termination (stops upward at first level without light switch)
-        for roomIdx = 0, rooms:size() - 1 do
-            local room = rooms:get(roomIdx)
-            if room then
-                local rx1 = room:getX()
-                local ry1 = room:getY()
-                local rx2 = room:getX2()
-                local ry2 = room:getY2()
+    if comodos and comodos:size() > 0 then
+        for roomIdx = 0, comodos:size() - 1 do
+            local comodo = comodos:get(roomIdx)
+            if comodo then
+                local comodoX1 = comodo:getX()
+                local comodoY1 = comodo:getY()
+                local comodoX2 = comodo:getX2()
+                local comodoY2 = comodo:getY2()
                 
-                -- Get Z-levels to scan with early termination
-                local zLevels = GetZLevelsToScan(room, startZ)
+                local niveisZ = ObterNiveisZParaEscanear(comodo, inicioZ)
                 
-                for _, z in ipairs(zLevels) do
-                    -- Add 2-tile border around each room to catch exterior wall fixtures
-                    for x = rx1 - 2, rx2 + 2 do
-                        for y = ry1 - 2, ry2 + 2 do
-                            local sq = getSquare(x, y, z)
-                            if sq then
-                                local sqBuilding = sq:getBuilding()
-                                if sqBuilding == startBuilding or sqBuilding == nil then
-                                    table.insert(tiles, {x = x, y = y, z = z, type = "interior"})
+                for _, z in ipairs(niveisZ) do
+                    -- Adiciona uma borda extra de 2 tiles para capturar interruptores/luzes nas paredes externas
+                    for x = comodoX1 - 2, comodoX2 + 2 do
+                        for y = comodoY1 - 2, comodoY2 + 2 do
+                            local quadrado = getSquare(x, y, z)
+                            if quadrado then
+                                local construcaoQuadrado = quadrado:getBuilding()
+                                if construcaoQuadrado == construcaoInicial or construcaoQuadrado == nil then
+                                    table.insert(quadrados, {x = x, y = y, z = z, type = "interior"})
                                 end
                             end
                         end
@@ -326,153 +306,146 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(startX
             end
         end
         
-        tiles = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(tiles)
+        quadrados = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(quadrados)
     else
-        -- Fallback to bounds-based scan if no rooms found
-        local bx = def:getX()
-        local by = def:getY()
-        local bw = def:getW()
-        local bh = def:getH()
-        local borderSize = 2
-        local extendedX = bx - borderSize
-        local extendedY = by - borderSize
-        local extendedW = bw + (borderSize * 2)
-        local extendedH = bh + (borderSize * 2)
+        -- Fallback geométrico por limites
+        local caixaX = definicao:getX()
+        local caixaY = definicao:getY()
+        local larguraConstrucao = definicao:getW()
+        local alturaConstrucao = definicao:getH()
+        local tamanhoBorda = 2
+        local extendidoX = caixaX - tamanhoBorda
+        local extendidoY = caixaY - tamanhoBorda
+        local extendidoLargura = larguraConstrucao + (tamanhoBorda * 2)
+        local extendidoAltura = alturaConstrucao + (tamanhoBorda * 2)
 
-        -- Get Z-levels to scan with early termination
-        local zLevels = GetZLevelsToScanBounds(extendedX, extendedY, extendedX + extendedW - 1, extendedY + extendedH - 1, startZ)
+        local niveisZ = ObterNiveisZParaEscanearLimites(extendidoX, extendidoY, extendidoX + extendidoLargura - 1, extendidoY + extendidoAltura - 1, inicioZ)
         
-        for _, z in ipairs(zLevels) do
-            for x = extendedX, extendedX + extendedW - 1 do
-                for y = extendedY, extendedY + extendedH - 1 do
-                    local sq = getSquare(x, y, z)
-                    if sq then
-                        local inBuilding = (sq:getBuilding() == startBuilding)
-                        local inBorder = (x < bx or x >= bx + bw or y < by or y >= by + bh)
-                        if inBuilding or (inBorder and sq:getBuilding() == nil) then
-                            table.insert(tiles, {x = x, y = y, z = z, type = "interior"})
+        for _, z in ipairs(niveisZ) do
+            for x = extendidoX, extendidoX + extendidoLargura - 1 do
+                for y = extendidoY, extendidoY + extendidoAltura - 1 do
+                    local quadrado = getSquare(x, y, z)
+                    if quadrado then
+                        local naConstrucao = (quadrado:getBuilding() == construcaoInicial)
+                        local naBorda = (x < caixaX or x >= caixaX + larguraConstrucao or y < caixaY or y >= caixaY + alturaConstrucao)
+                        if naConstrucao or (naBorda and quadrado:getBuilding() == nil) then
+                            table.insert(quadrados, {x = x, y = y, z = z, type = "interior"})
                         end
                     end
                 end
             end
         end
 
-        tiles = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(tiles)
+        quadrados = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(quadrados)
     end
 
     LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("BorderDetector: found %d tiles via bounds scan", #tiles),
+        string.format("Detector de Bordas: encontrados %d quadrados via varredura de limites", #quadrados),
         "Building"
     )
 
-    return tiles
+    return quadrados
 end
 
+--- Varredura de fallback por raio ao redor de um ponto central.
+--- @param cx number Centro X.
+--- @param cy number Centro Y.
+--- @param cz number Centro Z.
+--- @param r number Raio.
+--- @return table Lista de quadrados identificados.
 function LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(cx, cy, cz, r)
-    local tiles = {}
-    local radius = r or 45  -- enlarged fallback for detached/porch switches
-    local zMin   = math.max(0, cz - 3)
-    local zMax   = cz + 10  -- Limited to Z+10 to prevent data overflow
-    for dz = zMin, zMax do
-        for dx = -radius, radius do
-            for dy = -radius, radius do
+    local quadrados = {}
+    local raio = r or 45
+    local zMinimo = math.max(0, cz - 3)
+    local zMaximo = cz + 10
+    
+    for dz = zMinimo, zMaximo do
+        for dx = -raio, raio do
+            for dy = -raio, raio do
                 local sx, sy, sz = cx + dx, cy + dy, dz
-                local sq = getSquare(sx, sy, sz)
-                if sq then
-                    table.insert(tiles, {x = sx, y = sy, z = sz, type = "interior"})
+                local quadrado = getSquare(sx, sy, sz)
+                if quadrado then
+                    table.insert(quadrados, {x = sx, y = sy, z = sz, type = "interior"})
                 end
             end
         end
     end
-    return tiles
+    return quadrados
 end
---- Check if there is a barrier (wall/door) between two adjacent squares.
---- Uses IsoBuilding membership: squares sharing the same IsoBuilding reference
---- have no wall between them; a nil-vs-building or different-building mismatch
---- means a wall/perimeter boundary exists.
---- @param x1 number From X
---- @param y1 number From Y
---- @param z1 number From Z
---- @param x2 number To X
---- @param y2 number To Y
---- @param z2 number To Z
---- @return boolean True if barrier exists
+
+--- Verifica se há barreiras físicas (paredes/portas fechadas) entre dois quadrados adjacentes.
+--- @param x1 number X de origem.
+--- @param y1 number Y de origem.
+--- @param z1 number Z de origem.
+--- @param x2 number X de destino.
+--- @param y2 number Y de destino.
+--- @param z2 number Z de destino.
+--- @return boolean Retorna true se houver barreira.
 function LKS_EletricidadeConstrucao.Building.BorderDetector.HasBarrier(x1, y1, z1, x2, y2, z2)
-    local square1 = getSquare(x1, y1, z1)
-    local square2 = getSquare(x2, y2, z2)
+    local quadrado1 = getSquare(x1, y1, z1)
+    local quadrado2 = getSquare(x2, y2, z2)
 
-    if not square1 or not square2 then
-        return true  -- Missing squares = treat as barrier
+    if not quadrado1 or not quadrado2 then
+        return true  -- Quadrados descarregados atuam como barreira
     end
 
-    return square1:getBuilding() ~= square2:getBuilding()
+    return quadrado1:getBuilding() ~= quadrado2:getBuilding()
 end
 
---- Check if square has a wall/boundary towards target position.
---- Uses IsoBuilding membership comparison.
---- @param square IsoGridSquare Square to check
---- @param targetX number Target X coordinate
---- @param targetY number Target Y coordinate
---- @return boolean True if boundary exists
-function LKS_EletricidadeConstrucao.Building.BorderDetector.HasWallTowards(square, targetX, targetY)
-    local targetSquare = getSquare(targetX, targetY, square:getZ())
-    if not targetSquare then return true end
-    return square:getBuilding() ~= targetSquare:getBuilding()
+--- Verifica se o quadrado possui parede na direção do ponto de destino.
+--- @param quadrado any O GridSquare avaliado.
+--- @param targetX number Destino X.
+--- @param targetY number Destino Y.
+--- @return boolean Retorna true se houver parede.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.HasWallTowards(quadrado, targetX, targetY)
+    local quadradoDestino = getSquare(targetX, targetY, quadrado:getZ())
+    if not quadradoDestino then return true end
+    return quadrado:getBuilding() ~= quadradoDestino:getBuilding()
 end
 
---- Check if there's a door between two squares
---- @param square1 IsoGridSquare First square
---- @param square2 IsoGridSquare Second square
---- @param x1 number First X
---- @param y1 number First Y
---- @param x2 number Second X
---- @param y2 number Second Y
---- @return boolean True if door exists
-function LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorBetween(square1, square2, x1, y1, x2, y2)
-    -- Check for door on square1
-    if LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(square1, x2, y2) then
+--- Verifica se há uma porta conectando dois quadrados específicos.
+--- @param quadrado1 any Primeiro quadrado.
+--- @param quadrado2 any Segundo quadrado.
+--- @param x1 number X do primeiro quadrado.
+--- @param y1 number Y do primeiro quadrado.
+--- @param x2 number X do segundo quadrado.
+--- @param y2 number Y do segundo quadrado.
+--- @return boolean Retorna true se existir porta.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorBetween(quadrado1, quadrado2, x1, y1, x2, y2)
+    if LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(quadrado1, x2, y2) then
         return true
     end
-    
-    -- Check for door on square2
-    if LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(square2, x1, y1) then
+    if LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(quadrado2, x1, y1) then
         return true
     end
-    
     return false
 end
 
---- Check if square has door towards target position
---- @param square IsoGridSquare Square to check
---- @param targetX number Target X coordinate
---- @param targetY number Target Y coordinate
---- @return boolean True if door exists
-function LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(square, targetX, targetY)
-    local objects = square:getObjects()
-    
-    if not objects then
+--- Verifica se o quadrado possui um objeto IsoDoor na direção das coordenadas de destino.
+--- @param quadrado any O quadrado a ser avaliado.
+--- @param targetX number Destino X.
+--- @param targetY number Destino Y.
+--- @return boolean Retorna true se existir uma porta.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(quadrado, targetX, targetY)
+    local objetos = quadrado:getObjects()
+    if not objetos then
         return false
     end
     
-    local squareX = square:getX()
-    local squareY = square:getY()
+    local quadradoX = quadrado:getX()
+    local quadradoY = quadrado:getY()
     
-    for i = 0, objects:size() - 1 do
-        local obj = objects:get(i)
-        
-        if obj and instanceof(obj, "IsoDoor") then
-            -- Check door orientation
-            local north = obj:getNorth()
-            
-            -- North-facing door blocks north/south movement
+    for i = 0, objetos:size() - 1 do
+        local objeto = objetos:get(i)
+        if objeto and instanceof(objeto, "IsoDoor") then
+            local north = objeto:getNorth()
             if north then
-                if targetY ~= squareY then
+                if targetY ~= quadradoY then
                     return true
                 end
             else
-                -- East-facing door blocks east/west movement
-                if targetX ~= squareX then
+                if targetX ~= quadradoX then
                     return true
                 end
             end
@@ -482,67 +455,61 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.HasDoorTowards(squar
     return false
 end
 
---- Remove duplicate tiles from border list
---- @param tiles table Array of {x, y, z, type} tiles
---- @return table Unique tiles
+--- Remove duplicidades de uma lista de coordenadas de quadrados.
+--- @param tiles table Lista com chaves x, y, z.
+--- @return table Lista unificada sem duplicidades.
 function LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(tiles)
-    local seen = {}
-    local unique = {}
+    local vistos = {}
+    local unicos = {}
     
-    for _, tile in ipairs(tiles) do
-        local key = string.format("%d_%d_%d", tile.x, tile.y, tile.z)
-        
-        if not seen[key] then
-            seen[key] = true
-            table.insert(unique, tile)
+    for _, quadrado in ipairs(tiles) do
+        local key = string.format("%d_%d_%d", quadrado.x, quadrado.y, quadrado.z)
+        if not vistos[key] then
+            vistos[key] = true
+            table.insert(unicos, quadrado)
         end
     end
     
-    return unique
+    return unicos
 end
 
 -- ============================================================================
--- ALTERNATIVE DETECTION METHODS
+-- MÉTODOS DE DETECÇÃO ALTERNATIVOS
 -- ============================================================================
 
---- Detect borders using raycast method (faster but less accurate)
---- @param startX number Starting X coordinate
---- @param startY number Starting Y coordinate
---- @param startZ number Starting Z coordinate
---- @param radius number Maximum search radius
---- @return table Array of border tiles
-function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBordersRaycast(startX, startY, startZ, radius)
+--- Detecta limites usando algoritmo de Raycasting (mais veloz, porém menos preciso).
+--- @param startX number Início X.
+--- @param startY number Início Y.
+--- @param startZ number Início Z.
+--- @param raio number Raio limite.
+--- @return table Lista de quadrados de borda.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBordersRaycast(startX, startY, startZ, raio)
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Using raycast border detection at (%d,%d,%d) radius=%d",
-            startX, startY, startZ, radius),
+        string.format("Usando detecção de bordas por raycast em (%d,%d,%d) com raio=%d",
+            startX, startY, startZ, raio),
         "Building"
     )
     
-    local borderTiles = {}
-    local step = 1  -- Check every tile
+    local quadradosBorda = {}
+    local passo = 1
     
-    -- Cast rays in all directions
-    for angle = 0, 359, 15 do  -- 24 rays
-        local radians = math.rad(angle)
-        local dx = math.cos(radians)
-        local dy = math.sin(radians)
+    for angulo = 0, 359, 15 do
+        local radianos = math.rad(angulo)
+        local direcaoX = math.cos(radianos)
+        local direcaoY = math.sin(radianos)
         
-        -- March along ray until we hit a barrier or radius
-        for distance = 1, radius, step do
-            local x = math.floor(startX + (dx * distance) + 0.5)
-            local y = math.floor(startY + (dy * distance) + 0.5)
+        for distancia = 1, raio, passo do
+            local x = math.floor(startX + (direcaoX * distancia) + 0.5)
+            local y = math.floor(startY + (direcaoY * distancia) + 0.5)
+            local quadrado = getSquare(x, y, startZ)
             
-            local square = getSquare(x, y, startZ)
-            
-            if not square then
+            if not quadrado then
                 break
             end
             
-            -- Check if this square has a wall in the direction we came from
-            local hasWall = LKS_EletricidadeConstrucao.Building.BorderDetector.HasWallTowards(square, startX, startY)
-            
-            if hasWall then
-                table.insert(borderTiles, {
+            local temParede = LKS_EletricidadeConstrucao.Building.BorderDetector.HasWallTowards(quadrado, startX, startY)
+            if temParede then
+                table.insert(quadradosBorda, {
                     x = x,
                     y = y,
                     z = startZ,
@@ -553,104 +520,100 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBordersRaycast
         end
     end
     
-    return LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(borderTiles)
+    return LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(quadradosBorda)
 end
 
---- Get all tiles inside the same IsoBuilding as the given position.
---- Uses BFS bounded by IsoBuilding object identity (no radius cap).
---- @param startX number  X coordinate (light switch / generator adjacent sq)
---- @param startY number  Y coordinate
---- @param startZ number  Z coordinate
---- @param radius  number Fallback radius when no IsoBuilding is found
---- @return table  Array of {x, y, z} tiles
-function LKS_EletricidadeConstrucao.Building.BorderDetector.GetInteriorTiles(startX, startY, startZ, radius)
-    local startSq       = getSquare(startX, startY, startZ)
-    local startBuilding = startSq and startSq:getBuilding()
+--- Coleta todas as coordenadas de interior pertencentes ao mesmo IsoBuilding.
+--- @param startX number Início X.
+--- @param startY number Início Y.
+--- @param startZ number Início Z.
+--- @param raio number Raio de recuo caso não encontre IsoBuilding físico.
+--- @return table Lista de coordenadas dos quadrados internos.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.GetInteriorTiles(startX, startY, startZ, raio)
+    local quadradoInicial = getSquare(startX, startY, startZ)
+    local construcaoInicial = quadradoInicial and quadradoInicial:getBuilding()
 
-    if not startBuilding then
-        -- No building: radius fallback
+    if not construcaoInicial then
         return LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
-            startX, startY, startZ, radius or 30)
+            startX, startY, startZ, raio or 30)
     end
 
-    local def = startBuilding:getDef()
-    if not def then
-        return LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(startX, startY, startZ, radius or 30)
+    local definicao = construcaoInicial:getDef()
+    if not definicao then
+        return LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(startX, startY, startZ, raio or 30)
     end
 
-    local bx = def:getX()
-    local by = def:getY()
-    local bw = def:getW()
-    local bh = def:getH()
-    local borderSize = 2
-    local extendedX = bx - borderSize
-    local extendedY = by - borderSize
-    local extendedW = bw + (borderSize * 2)
-    local extendedH = bh + (borderSize * 2)
+    local caixaX = definicao:getX()
+    local caixaY = definicao:getY()
+    local larguraConstrucao = definicao:getW()
+    local alturaConstrucao = definicao:getH()
+    local tamanhoBorda = 2
+    local extendidoX = caixaX - tamanhoBorda
+    local extendidoY = caixaY - tamanhoBorda
+    local extendidoLargura = larguraConstrucao + (tamanhoBorda * 2)
+    local extendidoAltura = alturaConstrucao + (tamanhoBorda * 2)
 
-    -- Get Z-levels to scan with early termination
-    local zLevels = GetZLevelsToScanBounds(extendedX, extendedY, extendedX + extendedW - 1, extendedY + extendedH - 1, startZ)
+    local niveisZ = ObterNiveisZParaEscanearLimites(extendidoX, extendidoY, extendidoX + extendidoLargura - 1, extendidoY + extendidoAltura - 1, startZ)
 
-    local tiles = {}
-    for _, z in ipairs(zLevels) do
-        for x = extendedX, extendedX + extendedW - 1 do
-            for y = extendedY, extendedY + extendedH - 1 do
-                local sq = getSquare(x, y, z)
-                if sq then
-                    local inBuilding = (sq:getBuilding() == startBuilding)
-                    local inBorder = (x < bx or x >= bx + bw or y < by or y >= by + bh)
-                    if inBuilding or inBorder then
-                        table.insert(tiles, {x = x, y = y, z = z})
+    local quadrados = {}
+    for _, z in ipairs(niveisZ) do
+        for x = extendidoX, extendidoX + extendidoLargura - 1 do
+            for y = extendidoY, extendidoY + extendidoAltura - 1 do
+                local quadrado = getSquare(x, y, z)
+                if quadrado then
+                    local naConstrucao = (quadrado:getBuilding() == construcaoInicial)
+                    local naBorda = (x < caixaX or x >= caixaX + larguraConstrucao or y < caixaY or y >= caixaY + alturaConstrucao)
+                    if naConstrucao or naBorda then
+                        table.insert(quadrados, {x = x, y = y, z = z})
                     end
                 end
             end
         end
     end
 
-    tiles = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(tiles)
+    quadrados = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(quadrados)
 
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("GetInteriorTiles: found %d tiles via bounds scan", #tiles),
+        string.format("ObterQuadradosInteriores: encontrados %d quadrados via varredura de limites", #quadrados),
         "Building"
     )
 
-    return tiles
+    return quadrados
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAÇÃO
 -- ============================================================================
 
---- Print border detection debug info
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate
---- @param radius number Radius
-function LKS_EletricidadeConstrucao.Building.BorderDetector.DebugBorders(x, y, z, radius)
-    LKS_EletricidadeConstrucao.Print("=== Border Detection Debug ===")
-    LKS_EletricidadeConstrucao.Print(string.format("Position: (%d,%d,%d)", x, y, z))
-    LKS_EletricidadeConstrucao.Print("Radius: " .. radius)
+--- Imprime informações de depuração do detector de limites no console.
+--- @param x number Posição X.
+--- @param y number Posição Y.
+--- @param z number Posição Z.
+--- @param raio number Raio.
+function LKS_EletricidadeConstrucao.Building.BorderDetector.DebugBorders(x, y, z, raio)
+    LKS_EletricidadeConstrucao.Print("=== Depuração de Detecção de Bordas ===")
+    LKS_EletricidadeConstrucao.Print(string.format("Posição: (%d,%d,%d)", x, y, z))
+    LKS_EletricidadeConstrucao.Print("Raio: " .. raio)
     
-    local borders = LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(x, y, z, radius)
+    local bordas = LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(x, y, z, raio)
+    LKS_EletricidadeConstrucao.Print("Quadrados de borda: " .. #bordas)
     
-    LKS_EletricidadeConstrucao.Print("Border tiles: " .. #borders)
-    
-    for i = 1, math.min(10, #borders) do
-        local tile = borders[i]
+    for i = 1, math.min(10, #bordas) do
+        local tile = bordas[i]
         LKS_EletricidadeConstrucao.Print(string.format("  [%d] (%d,%d,%d) type=%s",
             i, tile.x, tile.y, tile.z, tile.type))
     end
     
-    if #borders > 10 then
-        LKS_EletricidadeConstrucao.Print("  ... " .. (#borders - 10) .. " more")
+    if #bordas > 10 then
+        LKS_EletricidadeConstrucao.Print("  ... " .. (#bordas - 10) .. " adicionais")
     end
     
-    local interior = LKS_EletricidadeConstrucao.Building.BorderDetector.GetInteriorTiles(x, y, z, radius)
-    LKS_EletricidadeConstrucao.Print("Interior tiles: " .. #interior)
+    local interior = LKS_EletricidadeConstrucao.Building.BorderDetector.GetInteriorTiles(x, y, z, raio)
+    LKS_EletricidadeConstrucao.Print("Quadrados de interior: " .. #interior)
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Building.BorderDetector", "2.0.0")

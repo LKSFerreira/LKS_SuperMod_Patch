@@ -6,12 +6,12 @@
 -- ============================================================================
 
 -- LKS_EletricidadeConstrucao_Heating_Manager.lua
--- LKS_EletricidadeConstrucao V2 - Building Heating Manager (Server-side)
--- Calculates heating positions from building rooms and syncs to generator ModData.
--- Client reads HeatingPositions and creates IsoHeatSource objects.
+-- LKS_EletricidadeConstrucao V2 - Gerenciador de Aquecimento de Prédios (Lado do Servidor)
+-- Calcula as posições de aquecimento das salas do prédio e sincroniza no ModData do gerador.
+-- O cliente lê HeatingPositions e cria objetos IsoHeatSource.
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Heating_Manager] LKS_EletricidadeConstrucao namespace not found - skipping")
+    print("[LKS_EletricidadeConstrucao_Heating_Manager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando")
     return
 end
 
@@ -22,208 +22,207 @@ local Heating = LKS_EletricidadeConstrucao.Heating.Manager
 local Logger  = LKS_EletricidadeConstrucao.Core.Logger
 
 -- ============================================================
--- CONSTANTS
+-- CONSTANTES
 -- ============================================================
 
-local LARGE_ROOM_THRESHOLD = 50   -- tiles; above this uses corner method
-local DEFAULT_TARGET_TEMP  = 22   -- default heating target (Celsius)
+local LIMITE_SALA_GRANDE = 50       -- blocos; acima disto usa método de cantos
+local TEMPERATURA_ALVO_PADRAO = 22  -- temperatura alvo padrão de aquecimento (Celsius)
 
 -- ============================================================
--- POSITION CALCULATION
+-- CÁLCULO DE POSIÇÃO
 -- ============================================================
 
--- Calculate heat source positions for one room.
--- Small rooms: single center point.
--- Large rooms: four corners (+ center if >200 tiles).
-local function PositionsForRoom(room, floorZ)
-    local rects = room.getRects and room:getRects()
-    if not rects or rects:size() == 0 then return {} end
+-- Calcula as posições das fontes de calor para uma única sala.
+-- Salas pequenas: ponto central único.
+-- Salas grandes: quatro cantos (+ centro se >200 blocos).
+local function obterPosicoesDaSala(sala, zPiso)
+    local retangulos = sala.getRects and sala:getRects()
+    if not retangulos or retangulos:size() == 0 then return {} end
 
-    local minX, minY, maxX, maxY = 999999, 999999, -999999, -999999
-    local totalTiles = 0
+    local minimoX, minimoY, maximoX, maximoY = 999999, 999999, -999999, -999999
+    local totalBlocos = 0
 
-    for ri = 0, rects:size() - 1 do
-        local r = rects:get(ri)
-        local x1, x2 = r:getX(), r:getX2()
-        local y1, y2 = r:getY(), r:getY2()
-        if x2 > x1 and y2 > y1 then
-            minX = math.min(minX, x1); minY = math.min(minY, y1)
-            maxX = math.max(maxX, x2); maxY = math.max(maxY, y2)
-            totalTiles = totalTiles + (x2 - x1) * (y2 - y1)
+    for indiceRetangulo = 0, retangulos:size() - 1 do
+        local retangulo = retangulos:get(indiceRetangulo)
+        local xPrimeiro, xSegundo = retangulo:getX(), retangulo:getX2()
+        local yPrimeiro, ySegundo = retangulo:getY(), retangulo:getY2()
+        if xSegundo > xPrimeiro and ySegundo > yPrimeiro then
+            minimoX = math.min(minimoX, xPrimeiro); minimoY = math.min(minimoY, yPrimeiro)
+            maximoX = math.max(maximoX, xSegundo); maximoY = math.max(maximoY, ySegundo)
+            totalBlocos = totalBlocos + (xSegundo - xPrimeiro) * (ySegundo - yPrimeiro)
         end
     end
 
-    if totalTiles <= 0 or minX == 999999 then return {} end
+    if totalBlocos <= 0 or minimoX == 999999 then return {} end
 
-    local pos   = {}
-    local INSET = 1
+    local posicoes = {}
+    local RECUO = 1
 
-    if totalTiles <= LARGE_ROOM_THRESHOLD then
-        table.insert(pos, {
-            x = math.floor(minX + (maxX - minX) * 0.5),
-            y = math.floor(minY + (maxY - minY) * 0.5),
-            z = floorZ,
+    if totalBlocos <= LIMITE_SALA_GRANDE then
+        table.insert(posicoes, {
+            x = math.floor(minimoX + (maximoX - minimoX) * 0.5),
+            y = math.floor(minimoY + (maximoY - minimoY) * 0.5),
+            z = zPiso,
         })
     else
-        table.insert(pos, {x = minX + INSET,     y = minY + INSET,     z = floorZ})
-        table.insert(pos, {x = maxX - INSET - 1, y = minY + INSET,     z = floorZ})
-        table.insert(pos, {x = minX + INSET,     y = maxY - INSET - 1, z = floorZ})
-        table.insert(pos, {x = maxX - INSET - 1, y = maxY - INSET - 1, z = floorZ})
-        if totalTiles > 200 then
-            table.insert(pos, {
-                x = math.floor(minX + (maxX - minX) * 0.5),
-                y = math.floor(minY + (maxY - minY) * 0.5),
-                z = floorZ,
+        table.insert(posicoes, {x = minimoX + RECUO,     y = minimoY + RECUO,     z = zPiso})
+        table.insert(posicoes, {x = maximoX - RECUO - 1, y = minimoY + RECUO,     z = zPiso})
+        table.insert(posicoes, {x = minimoX + RECUO,     y = maximoY - RECUO - 1, z = zPiso})
+        table.insert(posicoes, {x = maximoX - RECUO - 1, y = maximoY - RECUO - 1, z = zPiso})
+        if totalBlocos > 200 then
+            table.insert(posicoes, {
+                x = math.floor(minimoX + (maximoX - minimoX) * 0.5),
+                y = math.floor(minimoY + (maximoY - minimoY) * 0.5),
+                z = zPiso,
             })
         end
     end
 
-    return pos
+    return posicoes
 end
 
--- Find IsoBuilding from buildingData (x/y/z = light-switch coords).
-local function FindIsoBuilding(buildingData)
-    local cell = getCell()
-    if not cell then return nil end
+-- Encontra o IsoBuilding a partir de dadosPredio (x/y/z = coordenadas do interruptor de luz).
+local function encontrarPredioIso(dadosPredio)
+    local celula = getCell()
+    if not celula then return nil end
 
-    local sq = cell:getGridSquare(buildingData.x, buildingData.y, buildingData.z)
-    if sq then
-        local b = sq:getBuilding()
-        if b then return b end
+    local quadrado = celula:getGridSquare(dadosPredio.x, dadosPredio.y, dadosPredio.z)
+    if quadrado then
+        local predio = quadrado:getBuilding()
+        if predio then return predio end
     end
 
-    if buildingData.boundingBox then
-        local bb  = buildingData.boundingBox
-        local cx  = math.floor((bb.minX + bb.maxX) * 0.5)
-        local cy  = math.floor((bb.minY + bb.maxY) * 0.5)
-        local sq2 = cell:getGridSquare(cx, cy, buildingData.z)
-        if sq2 then
-            local b2 = sq2:getBuilding()
-            if b2 then return b2 end
+    if dadosPredio.boundingBox then
+        local caixaDelimitadora = dadosPredio.boundingBox
+        local centroX = math.floor((caixaDelimitadora.minX + caixaDelimitadora.maxX) * 0.5)
+        local centroY = math.floor((caixaDelimitadora.minY + caixaDelimitadora.maxY) * 0.5)
+        local quadrado2 = celula:getGridSquare(centroX, centroY, dadosPredio.z)
+        if quadrado2 then
+            local predio2 = quadrado2:getBuilding()
+            if predio2 then return predio2 end
         end
     end
 
     return nil
 end
 
--- Fallback: group buildingData.powerConsumers by square:getRoom() (mirrors V1's
--- CalculatePlayerBuiltHeating) to handle player-built buildings with no IsoBuilding.
-local function PositionsFromConsumerTiles(buildingData)
-    if not buildingData then return {} end
+-- Fallback: agrupa dadosPredio.powerConsumers por quadrado:getRoom() (espelha o CalculatePlayerBuiltHeating da V1)
+-- para tratar prédios construídos pelo jogador que não possuem um IsoBuilding vanilla.
+local function obterPosicoesDosBlocosConsumidor(dadosPredio)
+    if not dadosPredio then return {} end
 
-    local cell = getCell()
-    if not cell then return {} end
+    local celula = getCell()
+    if not celula then return {} end
 
-    -- Collect all interior positions: use powerConsumers x/y/z OR re-scan
-    -- GetInteriorTiles if consumers list is empty.
-    local tileSet = {}
-    if buildingData.powerConsumers then
-        -- powerConsumers is Kahlua-deserialized after GlobalModData load → string numeric
-        -- keys. # returns 0 and ipairs iterates nothing on such tables. Use pairs().
-        for _, c in pairs(buildingData.powerConsumers) do
-            if c.x and c.y and c.z then
-                tileSet[c.x .. "_" .. c.y .. "_" .. c.z] = {x = c.x, y = c.y, z = c.z}
+    -- Coleta todas as posições internas: usa coordenadas x/y/z de powerConsumers ou reescaneia
+    -- se a lista de consumidores estiver vazia.
+    local conjuntoBlocos = {}
+    if dadosPredio.powerConsumers then
+        -- powerConsumers é desserializado pelo Kahlua após carregar GlobalModData → chaves numéricas string.
+        -- O operador # retorna 0 e o ipairs não itera nada nestas tabelas. Use pairs().
+        for _, consumidor in pairs(dadosPredio.powerConsumers) do
+            if consumidor.x and consumidor.y and consumidor.z then
+                conjuntoBlocos[consumidor.x .. "_" .. consumidor.y .. "_" .. consumidor.z] = {x = consumidor.x, y = consumidor.y, z = consumidor.z}
             end
         end
     end
 
-    -- Group tiles by IsoRoom object (same as V1 CalculatePlayerBuiltHeating)
-    local roomGroups = {}
-    local noRoomGroup = {tiles = {}, minX = 999999, minY = 999999, maxX = -1, maxY = -1,
-                         z = buildingData.z}
+    -- Agrupa blocos por objeto IsoRoom (mesmo da V1 CalculatePlayerBuiltHeating)
+    local gruposSalas = {}
+    local grupoSemSala = {tiles = {}, minX = 999999, minY = 999999, maxX = -1, maxY = -1, z = dadosPredio.z}
 
-    for _, tile in pairs(tileSet) do
-        local sq = cell:getGridSquare(tile.x, tile.y, tile.z)
-        if sq then
-            local room = sq:getRoom()
-            if room then
-                if not roomGroups[room] then
-                    roomGroups[room] = {tiles = {}, minX = 999999, minY = 999999,
-                                        maxX = -1, maxY = -1, z = tile.z,
-                                        name = (room.getName and room:getName()) or "UnknownRoom"}
+    for _, bloco in pairs(conjuntoBlocos) do
+        local quadrado = celula:getGridSquare(bloco.x, bloco.y, bloco.z)
+        if quadrado then
+            local sala = quadrado:getRoom()
+            if sala then
+                if not gruposSalas[sala] then
+                    gruposSalas[sala] = {tiles = {}, minX = 999999, minY = 999999,
+                                        maxX = -1, maxY = -1, z = bloco.z,
+                                        name = (sala.getName and sala:getName()) or "UnknownRoom"}
                 end
-                local g = roomGroups[room]
-                table.insert(g.tiles, tile)
-                if tile.x < g.minX then g.minX = tile.x end
-                if tile.y < g.minY then g.minY = tile.y end
-                if tile.x > g.maxX then g.maxX = tile.x end
-                if tile.y > g.maxY then g.maxY = tile.y end
+                local grupo = gruposSalas[sala]
+                table.insert(grupo.tiles, bloco)
+                if bloco.x < grupo.minX then grupo.minX = bloco.x end
+                if bloco.y < grupo.minY then grupo.minY = bloco.y end
+                if bloco.x > grupo.maxX then grupo.maxX = bloco.x end
+                if bloco.y > grupo.maxY then grupo.maxY = bloco.y end
             else
-                table.insert(noRoomGroup.tiles, tile)
-                if tile.x < noRoomGroup.minX then noRoomGroup.minX = tile.x end
-                if tile.y < noRoomGroup.minY then noRoomGroup.minY = tile.y end
-                if tile.x > noRoomGroup.maxX then noRoomGroup.maxX = tile.x end
-                if tile.y > noRoomGroup.maxY then noRoomGroup.maxY = tile.y end
+                table.insert(grupoSemSala.tiles, bloco)
+                if bloco.x < grupoSemSala.minX then grupoSemSala.minX = bloco.x end
+                if bloco.y < grupoSemSala.minY then grupoSemSala.minY = bloco.y end
+                if bloco.x > grupoSemSala.maxX then grupoSemSala.maxX = bloco.x end
+                if bloco.y > grupoSemSala.maxY then grupoSemSala.maxY = bloco.y end
             end
         end
     end
 
-    local result = {}
-    local INSET  = 1
+    local resultado = {}
+    local RECUO = 1
 
-    local function groupToPositions(group, roomID)
-        if not group or #group.tiles == 0 then return end
-        local n  = #group.tiles
-        local z  = group.z
-        local pos = {}
-        if n <= LARGE_ROOM_THRESHOLD then
-            table.insert(pos, {
-                x = math.floor(group.minX + (group.maxX - group.minX) * 0.5),
-                y = math.floor(group.minY + (group.maxY - group.minY) * 0.5),
-                z = z,
+    local function converterGrupoParaPosicoes(grupo, idSala)
+        if not grupo or #grupo.tiles == 0 then return end
+        local totalBlocos = #grupo.tiles
+        local coordZ = grupo.z
+        local posicoes = {}
+        if totalBlocos <= LIMITE_SALA_GRANDE then
+            table.insert(posicoes, {
+                x = math.floor(grupo.minX + (grupo.maxX - grupo.minX) * 0.5),
+                y = math.floor(grupo.minY + (grupo.maxY - grupo.minY) * 0.5),
+                z = coordZ,
             })
         else
-            table.insert(pos, {x = group.minX + INSET,     y = group.minY + INSET,     z = z})
-            table.insert(pos, {x = group.maxX - INSET,     y = group.minY + INSET,     z = z})
-            table.insert(pos, {x = group.minX + INSET,     y = group.maxY - INSET,     z = z})
-            table.insert(pos, {x = group.maxX - INSET,     y = group.maxY - INSET,     z = z})
-            if n > 200 then
-                table.insert(pos, {
-                    x = math.floor(group.minX + (group.maxX - group.minX) * 0.5),
-                    y = math.floor(group.minY + (group.maxY - group.minY) * 0.5),
-                    z = z,
+            table.insert(posicoes, {x = grupo.minX + RECUO,     y = grupo.minY + RECUO,     z = coordZ})
+            table.insert(posicoes, {x = grupo.maxX - RECUO,     y = grupo.minY + RECUO,     z = coordZ})
+            table.insert(posicoes, {x = grupo.minX + RECUO,     y = grupo.maxY - RECUO,     z = coordZ})
+            table.insert(posicoes, {x = grupo.maxX - RECUO,     y = grupo.maxY - RECUO,     z = coordZ})
+            if totalBlocos > 200 then
+                table.insert(posicoes, {
+                    x = math.floor(grupo.minX + (grupo.maxX - grupo.minX) * 0.5),
+                    y = math.floor(grupo.minY + (grupo.maxY - grupo.minY) * 0.5),
+                    z = coordZ,
                 })
             end
         end
-        if #pos > 0 then
-            table.insert(result, {roomID = roomID, positions = pos, z = z})
+        if #posicoes > 0 then
+            table.insert(resultado, {roomID = idSala, positions = posicoes, z = coordZ})
         end
     end
 
-    local idx = 0
-    for _, g in pairs(roomGroups) do
-        idx = idx + 1
-        groupToPositions(g, g.name or ("Room_" .. idx))
+    local indice = 0
+    for _, grupo in pairs(gruposSalas) do
+        indice = indice + 1
+        converterGrupoParaPosicoes(grupo, grupo.name or ("Room_" .. indice))
     end
-    if #noRoomGroup.tiles > 0 then
-        groupToPositions(noRoomGroup, "OpenArea")
+    if #grupoSemSala.tiles > 0 then
+        converterGrupoParaPosicoes(grupoSemSala, "OpenArea")
     end
 
-    return result
+    return resultado
 end
 
--- Compute the full HeatingPositions table for a building.
--- Returns: {{roomID="...", positions=[{x,y,z},...], z=N}, ...}
+-- Calcula a tabela de HeatingPositions completa de um prédio.
+-- Retorna: {{roomID="...", positions=[{x,y,z},...], z=N}, ...}
 function Heating.CalculatePositions(buildingData)
     if not buildingData then return {} end
 
-    local isoBuilding = FindIsoBuilding(buildingData)
+    local predioIso = encontrarPredioIso(buildingData)
 
-    if not isoBuilding then
-        -- No vanilla IsoBuilding (player-built or open-air area).
-        -- Group the already-scanned powerConsumers by room — same approach as V1's
-        -- CalculatePlayerBuiltHeating() — for accurate per-room heat placement.
-        local fallback = PositionsFromConsumerTiles(buildingData)
+    if not predioIso then
+        -- Sem IsoBuilding vanilla (construído por jogador ou área ao ar livre).
+        -- Agrupa os consumidores de energia já escaneados por sala — mesma abordagem do
+        -- CalculatePlayerBuiltHeating() da V1 — para um posicionamento de calor preciso por sala.
+        local fallback = obterPosicoesDosBlocosConsumidor(buildingData)
         if fallback and #fallback > 0 then return fallback end
 
-        -- Last resort: single point at bounding box center
+        -- Último recurso: ponto único no centro da caixa delimitadora
         if buildingData.boundingBox then
-            local bb = buildingData.boundingBox
+            local caixaDelimitadora = buildingData.boundingBox
             return {{
                 roomID    = "Fallback",
                 positions = {{
-                    x = math.floor((bb.minX + bb.maxX) * 0.5),
-                    y = math.floor((bb.minY + bb.maxY) * 0.5),
+                    x = math.floor((caixaDelimitadora.minX + caixaDelimitadora.maxX) * 0.5),
+                    y = math.floor((caixaDelimitadora.minY + caixaDelimitadora.maxY) * 0.5),
                     z = buildingData.z,
                 }},
                 z = buildingData.z,
@@ -232,111 +231,110 @@ function Heating.CalculatePositions(buildingData)
         return {}
     end
 
-    local def = isoBuilding.getDef and isoBuilding:getDef()
-    if not def then return {} end
-    local rooms = def.getRooms and def:getRooms()
-    if not rooms or rooms:size() == 0 then return {} end
+    local definicao = predioIso.getDef and predioIso:getDef()
+    if not definicao then return {} end
+    local salas = definicao.getRooms and definicao:getRooms()
+    if not salas or salas:size() == 0 then return {} end
 
-    local result = {}
+    local resultado = {}
 
-    for i = 0, rooms:size() - 1 do
-        local room = rooms:get(i)
-        if room then
-            -- def:getRooms() returns RoomDef objects, which have getZ() -> int directly.
-            -- z=0 (ground floor) rooms use buildingData.z as safe fallback.
-            local floorZ = tonumber(room:getZ()) or buildingData.z
+    for indice = 0, salas:size() - 1 do
+        local sala = salas:get(indice)
+        if sala then
+            -- getRooms() retorna objetos RoomDef, os quais possuem getZ() -> int diretamente.
+            -- z=0 (piso térreo) salas usam buildingData.z como fallback de segurança.
+            local zPiso = tonumber(sala:getZ()) or buildingData.z
 
-            local positions = PositionsForRoom(room, floorZ)
-            if #positions > 0 then
-                local roomName = (room.getName and room:getName()) or ("Room_" .. i)
-                table.insert(result, {
-                    roomID    = tostring(roomName),
-                    positions = positions,
-                    z         = floorZ,
+            local posicoes = obterPosicoesDaSala(sala, zPiso)
+            if #posicoes > 0 then
+                local nomeSala = (sala.getName and sala:getName()) or ("Room_" .. indice)
+                table.insert(resultado, {
+                    roomID    = tostring(nomeSala),
+                    positions = posicoes,
+                    z         = zPiso,
                 })
             end
         end
     end
 
-    return result
+    return resultado
 end
 
 -- ============================================================
--- SYNC TO GENERATORS
+-- SINCRONIZAÇÃO PARA GERADORES
 -- ============================================================
 
 function Heating.SyncToGenerators(buildingData)
     if not buildingData or not buildingData.connectedGenerators then return end
 
-    local cell = getCell()
-    if not cell then return end
+    local celula = getCell()
+    if not celula then return end
 
-    local positions = Heating.CalculatePositions(buildingData)
-    if not positions or #positions == 0 then return end
+    local posicoes = Heating.CalculatePositions(buildingData)
+    if not posicoes or #posicoes == 0 then return end
 
-    -- Calculate heating source count for GlobalModData persistence
-    local sourceCount = 0
-    for _, grp in ipairs(positions) do
-        if type(grp.positions) == "table" then
-            sourceCount = sourceCount + #grp.positions
+    -- Calcula quantidade de fontes de aquecimento para persistência no GlobalModData
+    local quantidadeFontes = 0
+    for _, grupo in ipairs(posicoes) do
+        if type(grupo.positions) == "table" then
+            quantidadeFontes = quantidadeFontes + #grupo.positions
         end
     end
 
-    -- Track building-level heating state from the first generator we can read.
-    -- All generators in the same pool share the same building heating config,
-    -- so the first generator's ModData is authoritative for the building.
-    local buildingHeatingEnabled = false
-    local buildingTargetTemp     = DEFAULT_TARGET_TEMP
+    -- Rastreia o estado de aquecimento do prédio a partir do primeiro gerador que conseguimos ler.
+    -- Todos os geradores no mesmo pool compartilham as configurações de aquecimento do prédio,
+    -- logo, o ModData do primeiro gerador é a autoridade para o prédio.
+    local aquecimentoPredioAtivo = false
+    local temperaturaAlvoPredio = TEMPERATURA_ALVO_PADRAO
 
-    -- NOTE: connectedGenerators may be a Kahlua-deserialized table with string numeric
-    -- keys ("1", "2", …) instead of integer keys – ipairs() returns nothing in that case.
-    -- Use pairs() so all generators are visited regardless of key type.
-    for _, genKey in pairs(buildingData.connectedGenerators) do
-        local px, py, pz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if px then
-            px, py, pz = tonumber(px), tonumber(py), tonumber(pz)
-            local sq = cell:getGridSquare(px, py, pz)
-            if sq then
-                local objs = sq:getObjects()
-                for i = 0, objs:size() - 1 do
-                    local gen = objs:get(i)
-                    if gen and instanceof(gen, "IsoGenerator") then
-                        local md = gen:getModData()
-                        md.HeatingPositions = positions
-                        -- Explicitly initialize HeatingEnabled=false when first seen.
-                        -- Never auto-enable; heating must be turned on intentionally by the player.
-                        -- This also prevents the client-side nil-check from auto-enabling on
-                        -- initial pool creation or after a ModData reload that drops false values.
-                        if md.HeatingEnabled == nil then
-                            md.HeatingEnabled = false
+    -- NOTA: connectedGenerators pode ser uma tabela desserializada pelo Kahlua com chaves numéricas string
+    -- em vez de inteiras – o ipairs() não retornaria nada nesse caso.
+    -- Use pairs() para visitar todos os geradores independentemente do tipo de chave.
+    for _, chaveGerador in pairs(buildingData.connectedGenerators) do
+        local coordX, coordY, coordZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if coordX then
+            coordX, coordY, coordZ = tonumber(coordX), tonumber(coordY), tonumber(coordZ)
+            local quadrado = celula:getGridSquare(coordX, coordY, coordZ)
+            if quadrado then
+                local objetos = quadrado:getObjects()
+                for indice = 0, objetos:size() - 1 do
+                    local gerador = objetos:get(indice)
+                    if gerador and instanceof(gerador, "IsoGenerator") then
+                        local modDataObj = gerador:getModData()
+                        modDataObj.HeatingPositions = posicoes
+                        -- Inicializa explicitamente HeatingEnabled=false no primeiro contato.
+                        -- Nunca ative automaticamente; o aquecimento deve ser ligado intencionalmente pelo jogador.
+                        -- Isso impede que a verificação de nulo no cliente ative o aquecimento automaticamente.
+                        if modDataObj.HeatingEnabled == nil then
+                            modDataObj.HeatingEnabled = false
                             if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                gen:transmitModData()
+                                gerador:transmitModData()
                             end
                         end
-                        if md.HeatingTargetTemp == nil then
-                            md.HeatingTargetTemp = DEFAULT_TARGET_TEMP
+                        if modDataObj.HeatingTargetTemp == nil then
+                            modDataObj.HeatingTargetTemp = TEMPERATURA_ALVO_PADRAO
                         end
 
-                        -- Capture building-level values from this generator's moddata
-                        if md.HeatingEnabled == true then
-                            buildingHeatingEnabled = true
+                        -- Captura valores em nível de prédio a partir do moddata deste gerador
+                        if modDataObj.HeatingEnabled == true then
+                            aquecimentoPredioAtivo = true
                         end
-                        buildingTargetTemp = tonumber(md.HeatingTargetTemp) or DEFAULT_TARGET_TEMP
+                        temperaturaAlvoPredio = tonumber(modDataObj.HeatingTargetTemp) or TEMPERATURA_ALVO_PADRAO
 
-                        -- Sync heating config to GeneratorData (GlobalModData) for chunk-independent fuel calculation
-                        local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-                        if StateManager then
-                            local genId = LKS_EletricidadeConstrucao.Data.Generator.MakeId(px, py, pz)
-                            local genData = StateManager.GetGenerator(genId)
-                            if genData then
-                                genData.heatingEnabled = (md.HeatingEnabled == true)
-                                genData.heatingSourceCount = sourceCount
-                                genData.heatingTargetTemp = tonumber(md.HeatingTargetTemp) or DEFAULT_TARGET_TEMP
+                        -- Sincroniza config de aquecimento para o GeneratorData (GlobalModData) para cálculo independente de chunk
+                        local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+                        if gerenciadorEstado then
+                            local idGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(coordX, coordY, coordZ)
+                            local dadosGerador = gerenciadorEstado.GetGenerator(idGerador)
+                            if dadosGerador then
+                                dadosGerador.heatingEnabled = (modDataObj.HeatingEnabled == true)
+                                dadosGerador.heatingSourceCount = quantidadeFontes
+                                dadosGerador.heatingTargetTemp = tonumber(modDataObj.HeatingTargetTemp) or TEMPERATURA_ALVO_PADRAO
                             end
                         end
                         
                         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                            gen:transmitModData()
+                            gerador:transmitModData()
                         end
                         break
                     end
@@ -345,65 +343,54 @@ function Heating.SyncToGenerators(buildingData)
         end
     end
 
-    -- Persist heating state on the building itself.
-    -- Heating is a building/pool attribute; CalculateFuelConsumption reads from here
-    -- so that multi-generator pools don't double-count heating (one entry per building,
-    -- not one entry per generator).  The StateManager.MarkDirty() ensures persistence.
+    -- Persiste o estado do aquecimento no próprio prédio.
+    -- O aquecimento é um atributo do prédio/pool; CalculateFuelConsumption lê dele
+    -- para que pools multi-geradores não contem o aquecimento duas vezes.
     --
-    -- IMPORTANT: Only overwrite buildingData.heatingEnabled when we actually found at
-    -- least one IsoGenerator in the chunk.  If the chunk is not yet loaded, the inner
-    -- loop never executes; `buildingHeatingEnabled` stays false; we must NOT overwrite
-    -- the value that was restored from GlobalModData save — that would clear heating
-    -- state every time SyncToGenerators runs at startup before the chunk loads.
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    local foundAnyGen  = (sourceCount > 0) -- sourceCount > 0 only when CalculatePositions returned data (requires IsoBuilding access)
-    -- Use a more reliable indicator: track whether the generator loop found any IsoObj.
-    -- Re-derive: if buildingHeatingEnabled is true we definitely found a generator.
-    -- If false, we might have found generators with HeatingEnabled=false OR found nothing.
-    -- Check sourceCount: it is recalculated from CalculatePositions which requires the
-    -- isoBuilding to be accessible — if 0, positions could not be computed (off-chunk).
-    if sourceCount > 0 then
-        -- Positions were successfully calculated → both heatingEnabled and temp are fresh.
-        buildingData.heatingEnabled      = buildingHeatingEnabled
-        buildingData.heatingSourceCount  = sourceCount
-        buildingData.heatingTargetTemp   = buildingTargetTemp
+    -- IMPORTANTE: Apenas sobrescreve buildingData.heatingEnabled quando de fato encontramos
+    -- pelo menos um IsoGenerator no chunk. Se o chunk não estiver carregado na memória,
+    -- o laço interno nunca é executado e não devemos sobrescrever os dados restaurados.
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    if quantidadeFontes > 0 then
+        -- As posições foram calculadas com sucesso → ambos os campos são renovados.
+        buildingData.heatingEnabled      = aquecimentoPredioAtivo
+        buildingData.heatingSourceCount  = quantidadeFontes
+        buildingData.heatingTargetTemp   = temperaturaAlvoPredio
     else
-        -- Could not compute positions (building not in chunk yet).  Preserve whatever
-        -- was stored in GlobalModData so fuel calculation is not disrupted.
-        -- Only update heatingTargetTemp if we actually found a generator with a temp value.
-        if buildingHeatingEnabled then
+        -- Não foi possível calcular posições (prédio ainda fora de chunk).
+        -- Preserva o que estava armazenado no GlobalModData para não perturbar o consumo de combustível.
+        if aquecimentoPredioAtivo then
             buildingData.heatingEnabled = true
         end
-        if buildingTargetTemp ~= DEFAULT_TARGET_TEMP or buildingData.heatingTargetTemp == nil then
-            buildingData.heatingTargetTemp = buildingTargetTemp
+        if temperaturaAlvoPredio ~= TEMPERATURA_ALVO_PADRAO or buildingData.heatingTargetTemp == nil then
+            buildingData.heatingTargetTemp = temperaturaAlvoPredio
         end
-        -- Do not touch heatingSourceCount – keep whatever was saved.
     end
-    if StateManager then
-        StateManager.MarkDirty()
+    if gerenciadorEstado then
+        gerenciadorEstado.MarkDirty()
     end
 end
 
 -- ============================================================
--- UPDATE LOOP  (called from EveryOneMinute in ServerInit)
+-- CICLO DE ATUALIZAÇÃO (chamado de EveryOneMinute em ServerInit)
 -- ============================================================
 
 function Heating.Update()
     if isClient() and not isServer() then return end
 
-    local StateManager = LKS_EletricidadeConstrucao.Core.StateManager
-    if not StateManager then return end
-    local buildings = StateManager.GetAllBuildings()
-    if not buildings then return end
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado then return end
+    local predios = gerenciadorEstado.GetAllBuildings()
+    if not predios then return end
 
-    -- GetAllBuildings() returns a hash-map keyed by building ID – must use pairs()
-    for _, buildingData in pairs(buildings) do
-        -- NOTE: connectedGenerators is a Kahlua-deserialized hash-map after reload;
-        -- the # operator returns 0 for hash-maps.  Use pairs() to test non-emptiness.
+    -- GetAllBuildings() retorna um hash-map indexado pelo ID do prédio – deve usar pairs()
+    for _, buildingData in pairs(predios) do
+        -- NOTE: connectedGenerators é um hash-map desserializado pelo Kahlua pós-recarregamento.
+        -- O operador # retorna 0 para hash-maps. Use pairs() para testar não-vazio.
         if buildingData.connectedGenerators then
-            local _hasGens = false
-            for _ in pairs(buildingData.connectedGenerators) do _hasGens = true; break end
-            if _hasGens then
+            local _possuiGeradores = false
+            for _ in pairs(buildingData.connectedGenerators) do _possuiGeradores = true; break end
+            if _possuiGeradores then
                 Heating.SyncToGenerators(buildingData)
             end
         end
@@ -411,11 +398,11 @@ function Heating.Update()
 end
 
 -- ============================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO
 -- ============================================================
 
 function Heating.Initialize()
-    Logger.Info("Heating.Manager", "Heating Manager initialized.")
+    Logger.Info("Heating.Manager", "Gerenciador de Aquecimento inicializado.")
 end
 
 LKS_EletricidadeConstrucao.RegisterModule("Heating.Manager", "2.0.0")
