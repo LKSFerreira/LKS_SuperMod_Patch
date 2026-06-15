@@ -1,45 +1,48 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mi.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Data_Generator.lua
--- LKS_EletricidadeConstrucao V2 - Generator Data Model
--- Schema definition and operations for generator data
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Data_Generator.lua
+-- OBJETIVO: Modelo de dados (Schema) e operações para o Gerador (Generator).
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Data_Generator] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Data_Generator] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- SCHEMA DEFINITION
+-- DEFINIÇÃO DO SCHEMA
 -- ============================================================================
 
---- Generator data schema
+--- Schema de dados de um Gerador.
 --- @class GeneratorData
---- @field id string Unique identifier (x_y_z format)
---- @field x number World X coordinate
---- @field y number World Y coordinate
---- @field z number World Z coordinate
---- @field activated boolean Generator activated state
---- @field fuelAmount number Current fuel amount (0-100)
---- @field condition number Generator condition (0-100)
---- @field connectedBuildings table Array of building IDs
---- @field strain number Current load strain (0-100+)
---- @field lastUpdateTime number Last update timestamp (real-world ms, for logging)
---- @field lastUnloadGameMinutes number|nil DEPRECATED - no longer used (fuel calc runs continuously)
---- @field chunkKey string Chunk key for tracking (chunk_X_Y)
---- @field customFuelRate number|nil Custom fuel consumption rate override
---- @field isRVInterior boolean True if generator is in RV interior
--- Note: heatingEnabled / heatingSourceCount / heatingTargetTemp removed in B-99.
--- Heating config is now IsoObject-only (TryRestoreFromIsoModData Phase B populates
--- bldData.heatingEnabled directly from md.HeatingEnabled on every chunk load).
+--- @field id string Identificador único (formato: gen_x_y_z)
+--- @field x number Coordenada X no mundo global
+--- @field y number Coordenada Y no mundo global
+--- @field z number Coordenada Z no mundo global
+--- @field activated boolean Estado de ativação do gerador (ligado/desligado)
+--- @field fuelAmount number Quantidade atual de combustível (0 a 100)
+--- @field condition number Condição de integridade do gerador (0 a 100)
+--- @field connectedBuildings table Vetor contendo os IDs dos prédios conectados
+--- @field strain number Carga/esforço elétrico atual do gerador (0 a 100+)
+--- @field lastUpdateTime number Carimbo de data/hora da última atualização (milissegundos reais)
+--- @field lastUnloadGameMinutes number|nil DESCONTINUADO - não é mais utilizado (cálculo de combustível contínuo)
+--- @field chunkKey string Chave identificadora do chunk geográfico (chunk_X_Y)
+--- @field customFuelRate number|nil Sobrescrita da taxa customizada de consumo de combustível
+--- @field isRVInterior boolean Retorna true se o gerador estiver dentro do interior de um trailer/RV
+-- Nota técnica: as chaves heatingEnabled / heatingSourceCount / heatingTargetTemp foram removidas na versão B-99.
+-- A configuração de aquecimento agora pertence exclusivamente à classe IsoObject.
 
 local GeneratorSchema = {
     id = "",
@@ -52,374 +55,386 @@ local GeneratorSchema = {
     connectedBuildings = {},
     strain = 0,
     lastUpdateTime = 0,
-    -- lastUnloadGameMinutes removed - no longer needed with continuous fuel calc
     chunkKey = "",
     customFuelRate = nil,
     isRVInterior = false,
-    -- heatingEnabled / heatingSourceCount / heatingTargetTemp removed in B-99 (Option A):
-    -- these were kept for off-chunk fuel calc but FuelManager already reads
-    -- bldData.heatingEnabled (set from IsoObject on chunk load) which is correct.
 }
 
 -- ============================================================================
--- CONSTRUCTOR
+-- CONSTRUTOR
 -- ============================================================================
 
---- Create new generator data instance
---- @param generator IsoGenerator The generator object
---- @return GeneratorData New generator data
-function LKS_EletricidadeConstrucao.Data.Generator.New(generator)
+--- Cria uma nova instância de dados do gerador (GeneratorData) a partir do objeto físico do jogo.
+--- @param objetoGerador IsoGenerator O objeto de gerador físico (Java IsoGenerator).
+--- @return GeneratorData A nova instância populada com o estado do gerador.
+function LKS_EletricidadeConstrucao.Data.Generator.New(objetoGerador)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     local Geometry = LKS_EletricidadeConstrucao.Utils.Geometry
     local Table = LKS_EletricidadeConstrucao.Utils.Table
     
-    -- Validate input
-    Validation.AssertNotNil(generator, "Generator object cannot be nil")
-    Validation.Assert(Validation.IsGenerator(generator), "Object must be IsoGenerator")
+    -- Validação do objeto de entrada
+    Validation.AssertNotNil(objetoGerador, "O objeto de gerador não pode ser nulo")
+    Validation.Assert(Validation.IsGenerator(objetoGerador), "O objeto deve ser uma instância válida de IsoGenerator")
     
-    -- Get coordinates
-    local x = generator:getX()
-    local y = generator:getY()
-    local z = generator:getZ()
+    -- Obtém coordenadas do mundo
+    local coordenadaX = objetoGerador:getX()
+    local coordenadaY = objetoGerador:getY()
+    local coordenadaZ = objetoGerador:getZ()
     
-    -- Create data instance
-    local data = Table.DeepCopy(GeneratorSchema)
+    -- Instancia a estrutura base a partir do Schema
+    local dadosGerador = Table.DeepCopy(GeneratorSchema)
     
-    -- Set coordinates
-    data.x = x
-    data.y = y
-    data.z = z
-    data.id = LKS_EletricidadeConstrucao.Data.Generator.MakeId(x, y, z)
+    -- Popula coordenadas e identificação
+    dadosGerador.x = coordenadaX
+    dadosGerador.y = coordenadaY
+    dadosGerador.z = coordenadaZ
+    dadosGerador.id = LKS_EletricidadeConstrucao.Data.Generator.MakeId(coordenadaX, coordenadaY, coordenadaZ)
     
-    -- Set initial state from generator object
-    data.activated = generator:isActivated()
-    data.fuelAmount = generator:getFuel()
-    data.condition = generator:getCondition()
+    -- Popula estado a partir do objeto físico Java
+    dadosGerador.activated = objetoGerador:isActivated()
+    dadosGerador.fuelAmount = objetoGerador:getFuel()
+    dadosGerador.condition = objetoGerador:getCondition()
     
-    -- Set chunk key
-    data.chunkKey = Geometry.GetChunkKey(x, y)
+    -- Determina chaves geográficas e propriedades de mapa
+    dadosGerador.chunkKey = Geometry.GetChunkKey(coordenadaX, coordenadaY)
+    dadosGerador.isRVInterior = Geometry.IsRVInteriorCoordinate(coordenadaX, coordenadaY, coordenadaZ)
     
-    -- Detect RV interior
-    data.isRVInterior = Geometry.IsRVInteriorCoordinate(x, y, z)
+    -- Registra carimbo de hora
+    dadosGerador.lastUpdateTime = getTimestampMs()
     
-    -- Set timestamp
-    data.lastUpdateTime = getTimestampMs()
-    
-    return data
+    return dadosGerador
 end
 
 -- ============================================================================
--- ID GENERATION
+-- GERAÇÃO E LEITURA DE IDENTIFICADORES (ID)
 -- ============================================================================
 
---- Generate generator ID from coordinates
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate
---- @return string Generator ID
-function LKS_EletricidadeConstrucao.Data.Generator.MakeId(x, y, z)
-    return string.format("gen_%d_%d_%d", x, y, z)
+--- Gera o ID único de texto para um gerador a partir de suas coordenadas no mundo.
+--- @param coordenadaX number A coordenada X.
+--- @param coordenadaY number A coordenada Y.
+--- @param coordenadaZ number A coordenada Z.
+--- @return string O ID correspondente (formato: gen_x_y_z).
+function LKS_EletricidadeConstrucao.Data.Generator.MakeId(coordenadaX, coordenadaY, coordenadaZ)
+    return string.format("gen_%d_%d_%d", coordenadaX, coordenadaY, coordenadaZ)
 end
 
---- Parse generator ID to coordinates
---- @param id string Generator ID
---- @return number|nil, number|nil, number|nil X, Y, Z or nil if invalid
-function LKS_EletricidadeConstrucao.Data.Generator.ParseId(id)
-    if not id then return nil, nil, nil end
+--- Realiza o parse de um ID único de gerador de volta para coordenadas numéricas.
+--- @param identificador string O ID gerado (formato: gen_x_y_z).
+--- @return number|nil, number|nil, number|nil Retorna coordenadaX, coordenadaY, coordenadaZ ou nil se for inválido.
+function LKS_EletricidadeConstrucao.Data.Generator.ParseId(identificador)
+    if not identificador then
+        return nil, nil, nil
+    end
     
-    local x, y, z = id:match("gen_(-?%d+)_(-?%d+)_(-?%d+)")
-    if not x then return nil, nil, nil end
+    local coordenadaX, coordenadaY, coordenadaZ = identificador:match("gen_(-?%d+)_(-?%d+)_(-?%d+)")
+    if not coordenadaX then
+        return nil, nil, nil
+    end
     
-    return tonumber(x), tonumber(y), tonumber(z)
+    return tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ)
 end
 
 -- ============================================================================
--- VALIDATION
+-- VALIDAÇÃO DE INTEGRIDADE
 -- ============================================================================
 
---- Validate generator data structure
---- @param data GeneratorData Data to validate
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Data.Generator.Validate(data)
+--- Valida se a estrutura de dados de um gerador está correta e dentro dos limites permitidos.
+--- @param dadosGerador GeneratorData A tabela de dados do gerador.
+--- @return boolean, string|nil Retorna true se estiver correto, ou false com a mensagem descritiva do erro.
+function LKS_EletricidadeConstrucao.Data.Generator.Validate(dadosGerador)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     
-    -- Check if table
-    if not Validation.IsTable(data) then
-        return false, "Generator data must be a table"
+    -- Verifica se é do tipo tabela
+    if not Validation.IsTable(dadosGerador) then
+        return false, "Os dados do gerador devem estar estruturados em uma tabela"
     end
     
-    -- Validate required fields
-    local valid, err = Validation.ValidateKeys(data, {
+    -- Verifica chaves obrigatórias requeridas pelo Schema
+    local valido, erro = Validation.ValidateKeys(dadosGerador, {
         "id", "x", "y", "z", "activated", "fuelAmount", "condition",
         "connectedBuildings", "strain", "lastUpdateTime", "chunkKey"
-    }, "Generator data")
+    }, "Dados do gerador")
     
-    if not valid then return false, err end
-    
-    -- Validate ID
-    valid, err = Validation.ValidateNotEmpty(data.id, "Generator ID")
-    if not valid then return false, err end
-    
-    -- Validate coordinates
-    valid, err = Validation.ValidateCoordinates(data.x, data.y, data.z)
-    if not valid then return false, err end
-    
-    -- Validate boolean fields
-    if not Validation.IsBoolean(data.activated) then
-        return false, "activated must be boolean"
+    if not valido then
+        return false, erro
     end
     
-    -- Validate numeric ranges
-    valid, err = Validation.ValidateRange(data.fuelAmount, 0, 100, "fuelAmount")
-    if not valid then return false, err end
+    -- Valida formato do identificador único
+    valido, erro = Validation.ValidateNotEmpty(dadosGerador.id, "ID do Gerador")
+    if not valido then
+        return false, erro
+    end
     
-    valid, err = Validation.ValidateRange(data.condition, 0, 100, "condition")
-    if not valid then return false, err end
+    -- Valida se as coordenadas são numéricas e válidas
+    valido, erro = Validation.ValidateCoordinates(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+    if not valido then
+        return false, erro
+    end
     
-    valid, err = Validation.ValidateNonNegative(data.strain, "strain")
-    if not valid then return false, err end
+    -- Valida o tipo do estado de ativação
+    if not Validation.IsBoolean(dadosGerador.activated) then
+        return false, "O campo 'activated' deve ser um valor booleano"
+    end
     
-    -- Validate connected buildings is table
-    if not Validation.IsTable(data.connectedBuildings) then
-        return false, "connectedBuildings must be a table"
+    -- Valida intervalos numéricos aceitáveis
+    valido, erro = Validation.ValidateRange(dadosGerador.fuelAmount, 0, 100, "fuelAmount")
+    if not valido then
+        return false, erro
+    end
+    
+    valido, erro = Validation.ValidateRange(dadosGerador.condition, 0, 100, "condition")
+    if not valido then
+        return false, erro
+    end
+    
+    valido, erro = Validation.ValidateNonNegative(dadosGerador.strain, "strain")
+    if not valido then
+        return false, erro
+    end
+    
+    -- Valida se a lista de prédios conectados é uma tabela válida
+    if not Validation.IsTable(dadosGerador.connectedBuildings) then
+        return false, "O campo 'connectedBuildings' deve ser uma tabela"
     end
     
     return true, nil
 end
 
 -- ============================================================================
--- SERIALIZATION
+-- SERIALIZAÇÃO E DESSERIALIZAÇÃO (PERSISTÊNCIA MODDATA)
 -- ============================================================================
 
---- Serialize generator data for ModData storage
---- @param data GeneratorData Data to serialize
---- @return table Serialized data
-function LKS_EletricidadeConstrucao.Data.Generator.Serialize(data)
-    -- Generator data is already in simple table format
-    -- Just create a clean copy
+--- Serializa os dados do gerador em um formato de tabela limpa para armazenamento no ModData do jogo.
+--- @param dadosGerador GeneratorData A estrutura de dados do gerador.
+--- @return table Uma cópia limpa e serializável dos dados do gerador.
+function LKS_EletricidadeConstrucao.Data.Generator.Serialize(dadosGerador)
     local Table = LKS_EletricidadeConstrucao.Utils.Table
-    return Table.DeepCopy(data)
+    return Table.DeepCopy(dadosGerador)
 end
 
---- Deserialize generator data from ModData
---- @param serialized table Serialized data
---- @return GeneratorData|nil Deserialized data or nil if invalid
-function LKS_EletricidadeConstrucao.Data.Generator.Deserialize(serialized)
-    if not serialized then return nil end
-    
-    local Table       = LKS_EletricidadeConstrucao.Utils.Table
-    local Geometry    = LKS_EletricidadeConstrucao.Utils.Geometry
-    local Validation  = LKS_EletricidadeConstrucao.Utils.Validation
-    local data        = Table.DeepCopy(serialized)
-
-    -- Backward compatibility: older saves may miss new fields (e.g., lastUpdateTime).
-    -- Merge with the current schema defaults before validating.
-    for k, v in pairs(GeneratorSchema) do
-        if data[k] == nil then
-            data[k] = v
-        end
-    end
-    
-    -- Debug: log which fuel amount was loaded from ModData
-    print(string.format("[LKS_EletricidadeConstrucao_DESERIALIZE] gen=%s fuelAmount=%.2f (from ModData)", 
-        data.id or "?", data.fuelAmount or 0))
-    -- Rebuild chunkKey if absent.
-    if (not data.chunkKey or data.chunkKey == "") and Geometry then
-        data.chunkKey = Geometry.GetChunkKey(data.x or 0, data.y or 0)
-    end
-    -- Ensure connectedBuildings is a table.
-    if not (Validation and Validation.IsTable and Validation.IsTable(data.connectedBuildings)) then
-        data.connectedBuildings = {}
-    end
-
-    -- Validate deserialized data
-    local valid, err = LKS_EletricidadeConstrucao.Data.Generator.Validate(data)
-    if not valid then
-        LKS_EletricidadeConstrucao.Error("[Generator.Deserialize] Invalid data: " .. err)
+--- Desserializa a estrutura de dados de um gerador a partir dos dados do ModData.
+--- @param dadosSerializados table Tabela de dados crus lidos do ModData.
+--- @return GeneratorData|nil Retorna os dados desserializados ou nil se for inválido.
+function LKS_EletricidadeConstrucao.Data.Generator.Deserialize(dadosSerializados)
+    if not dadosSerializados then
         return nil
     end
     
-    return data
-end
-
--- ============================================================================
--- UPDATE OPERATIONS
--- ============================================================================
-
---- Update generator data from generator object
---- @param data GeneratorData Data to update
---- @param generator IsoGenerator Generator object
-function LKS_EletricidadeConstrucao.Data.Generator.UpdateFromObject(data, generator)
+    local Table = LKS_EletricidadeConstrucao.Utils.Table
+    local Geometry = LKS_EletricidadeConstrucao.Utils.Geometry
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
-    
-    Validation.AssertNotNil(data, "Generator data cannot be nil")
-    Validation.AssertNotNil(generator, "Generator object cannot be nil")
-    
-    -- Update state
-    data.activated = generator:isActivated()
-    data.fuelAmount = generator:getFuel()
-    data.condition = generator:getCondition()
-    data.lastUpdateTime = getTimestampMs()
-end
+    local dadosGerador = Table.DeepCopy(dadosSerializados)
 
---- Calculate current strain based on connected buildings
---- @param data GeneratorData Generator data
---- @param buildingDataMap table Map of building ID to building data
---- @return number Calculated strain (0-100+)
-function LKS_EletricidadeConstrucao.Data.Generator.CalculateStrain(data, buildingDataMap)
-    local totalPower = 0
-    
-    -- Sum power from all connected buildings
-    -- connectedBuildings is Kahlua-deserialized (string numeric keys); use pairs
-    for _, buildingId in pairs(data.connectedBuildings) do
-        local buildingData = buildingDataMap[buildingId]
-        if buildingData then
-            totalPower = totalPower + (buildingData.totalPowerDraw or 0)
+    -- Retrocompatibilidade: preenche chaves ausentes com valores padrão do Schema atual
+    for campo, valorPadrao in pairs(GeneratorSchema) do
+        if dadosGerador[campo] == nil then
+            dadosGerador[campo] = valorPadrao
         end
     end
     
-    -- Convert to strain percentage
-    -- Base: 1 light = 1%, configurable via constants
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local baseStrain = Constants.FUEL.BASE_STRAIN_PER_LIGHT or 1.0
+    -- Log de depuração interna
+    print(string.format("[LKS_EletricidadeConstrucao_DESERIALIZE] gen=%s fuelAmount=%.2f (obtido do ModData)", 
+        dadosGerador.id or "?", dadosGerador.fuelAmount or 0))
+        
+    -- Reconstrói a chave geográfica do chunk caso ausente
+    if (not dadosGerador.chunkKey or dadosGerador.chunkKey == "") and Geometry then
+        dadosGerador.chunkKey = Geometry.GetChunkKey(dadosGerador.x or 0, dadosGerador.y or 0)
+    end
     
-    return totalPower * baseStrain
+    -- Garante que a estrutura de conexões é uma tabela
+    if not (Validation and Validation.IsTable and Validation.IsTable(dadosGerador.connectedBuildings)) then
+        dadosGerador.connectedBuildings = {}
+    end
+
+    -- Realiza validação final dos dados lidos
+    local valido, erro = LKS_EletricidadeConstrucao.Data.Generator.Validate(dadosGerador)
+    if not valido then
+        LKS_EletricidadeConstrucao.Error("[Generator.Deserialize] Estrutura de dados inválida: " .. erro)
+        return nil
+    end
+    
+    return dadosGerador
 end
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- OPERAÇÕES DE ATUALIZAÇÃO
 -- ============================================================================
 
---- Check if generator is running (activated and has fuel)
---- @param data GeneratorData Generator data
---- @return boolean True if running
-function LKS_EletricidadeConstrucao.Data.Generator.IsRunning(data)
-    -- Generator is running if it has fuel AND is not explicitly deactivated
-    -- (activated == false means explicitly deactivated, nil or true means active)
-    local hasFuel = (data.fuelAmount or 0) > 0
-    local notDeactivated = (data.activated ~= false)  -- true if nil or true
-    return hasFuel and notDeactivated
+--- Sincroniza e atualiza os dados locais a partir do estado atual de um objeto de gerador físico (Java).
+--- @param dadosGerador GeneratorData A tabela de dados do gerador a ser atualizada.
+--- @param objetoGerador IsoGenerator O gerador físico Java de onde ler os dados.
+function LKS_EletricidadeConstrucao.Data.Generator.UpdateFromObject(dadosGerador, objetoGerador)
+    local Validation = LKS_EletricidadeConstrucao.Utils.Validation
+    
+    Validation.AssertNotNil(dadosGerador, "Os dados do gerador não podem ser nulos")
+    Validation.AssertNotNil(objetoGerador, "O objeto de gerador físico não pode ser nulo")
+    
+    -- Sincroniza estado de ativação, combustível e integridade física
+    dadosGerador.activated = objetoGerador:isActivated()
+    dadosGerador.fuelAmount = objetoGerador:getFuel()
+    dadosGerador.condition = objetoGerador:getCondition()
+    dadosGerador.lastUpdateTime = getTimestampMs()
 end
 
---- Check if generator needs refuel
---- @param data GeneratorData Generator data
---- @param threshold number Fuel threshold (default: 10)
---- @return boolean True if needs refuel
-function LKS_EletricidadeConstrucao.Data.Generator.NeedsRefuel(data, threshold)
-    threshold = threshold or 10
-    return data.fuelAmount < threshold
+--- Calcula a carga/esforço elétrico (strain) atual do gerador com base na demanda de prédios conectados.
+--- @param dadosGerador GeneratorData O gerador sendo analisado.
+--- @param mapaDadosPredios table O mapa contendo todos os dados dos prédios indexados por ID.
+--- @return number O percentual calculado da carga de strain elétrica (0 a 100+).
+function LKS_EletricidadeConstrucao.Data.Generator.CalculateStrain(dadosGerador, mapaDadosPredios)
+    local potenciaTotal = 0
+    
+    -- Acumula a demanda de potência de cada prédio vinculado
+    for _, predioId in pairs(dadosGerador.connectedBuildings) do
+        local dadosPredio = mapaDadosPredios[predioId]
+        if dadosPredio then
+            potenciaTotal = potenciaTotal + (dadosPredio.totalPowerDraw or 0)
+        end
+    end
+    
+    -- Converte a demanda bruta para um percentual de esforço elétrico
+    local Constants = LKS_EletricidadeConstrucao.Constants
+    local esforcoPorLuz = Constants.FUEL.BASE_STRAIN_PER_LIGHT or 1.0
+    
+    return potenciaTotal * esforcoPorLuz
 end
 
---- Get remaining runtime in hours
---- @param data GeneratorData Generator data
---- @param fuelRate number Fuel consumption rate per hour
---- @return number Hours remaining
-function LKS_EletricidadeConstrucao.Data.Generator.GetRemainingHours(data, fuelRate)
-    if not data.activated or data.fuelAmount <= 0 then
+-- ============================================================================
+-- FUNÇÕES AUXILIARES DE SUPORTE
+-- ============================================================================
+
+--- Verifica se o gerador está ativamente em funcionamento (ligado e contendo combustível).
+--- @param dadosGerador GeneratorData O gerador analisado.
+--- @return boolean Retorna true se estiver em operação ativa.
+function LKS_EletricidadeConstrucao.Data.Generator.IsRunning(dadosGerador)
+    local possuiCombustivel = (dadosGerador.fuelAmount or 0) > 0
+    local naoDesativado = (dadosGerador.activated ~= false)
+    return possuiCombustivel and naoDesativado
+end
+
+--- Verifica se o nível de combustível está abaixo de um limite mínimo específico.
+--- @param dadosGerador GeneratorData O gerador analisado.
+--- @param limiteMinimo number|nil O limite mínimo crítico de combustível (padrão: 10).
+--- @return boolean Retorna true se for necessário reabastecer.
+function LKS_EletricidadeConstrucao.Data.Generator.NeedsRefuel(dadosGerador, limiteMinimo)
+    limiteMinimo = limiteMinimo or 10
+    return dadosGerador.fuelAmount < limiteMinimo
+end
+
+--- Obtém a quantidade estimada de horas de funcionamento restantes sob a taxa de consumo atual.
+--- @param dadosGerador GeneratorData O gerador analisado.
+--- @param taxaCombustivel number A taxa base de consumo de combustível por hora do gerador.
+--- @return number A quantidade de horas estimadas restantes de autonomia.
+function LKS_EletricidadeConstrucao.Data.Generator.GetRemainingHours(dadosGerador, taxaCombustivel)
+    if not dadosGerador.activated or dadosGerador.fuelAmount <= 0 then
         return 0
     end
     
-    -- Apply tiered strain modifier
-    local strainMultiplier = 1.0
-    if data.strain > 0 then
-        local strain = data.strain
+    -- Aplica o modificador de esforço (strain) estruturado
+    local multiplicadorStrain = 1.0
+    if dadosGerador.strain > 0 then
+        local strain = dadosGerador.strain
         
-        -- TIERED STRAIN SYSTEM (matches server-side StrainCalculator):
-        -- 0-50%: No extra fuel (1.0x)
-        -- 51-75%: 1.0x to 1.25x
-        -- 76-100%: 1.26x to 1.75x
-        -- 101-200%: 1.75x to 3.0x
+        -- SISTEMA DE MULTIPLICADOR DE DEMANDA:
+        -- 0-50% de Strain: Sem consumo adicional (1.0x)
+        -- 51-75% de Strain: Escala de 1.0x a 1.25x
+        -- 76-100% de Strain: Escala de 1.26x a 1.75x
+        -- 101-200% de Strain: Escala de 1.75x a 3.0x
         
         if strain <= 50 then
-            strainMultiplier = 1.0
+            multiplicadorStrain = 1.0
         elseif strain <= 75 then
-            local t = (strain - 50) / 25
-            strainMultiplier = 1.0 + (t * 0.25)
+            local fatorStrain = (strain - 50) / 25
+            multiplicadorStrain = 1.0 + (fatorStrain * 0.25)
         elseif strain <= 100 then
-            local t = (strain - 75) / 25
-            strainMultiplier = 1.26 + (t * 0.49)
+            local fatorStrain = (strain - 75) / 25
+            multiplicadorStrain = 1.26 + (fatorStrain * 0.49)
         else
-            local t = math.min((strain - 100) / 100, 1.0)
-            strainMultiplier = 1.75 + (t * 1.25)
+            local fatorStrain = math.min((strain - 100) / 100, 1.0)
+            multiplicadorStrain = 1.75 + (fatorStrain * 1.25)
         end
         
-        -- Cap at maximum
+        -- Limita o multiplicador ao teto configurado
         local Constants = LKS_EletricidadeConstrucao.Constants
-        local maxMultiplier = Constants.FUEL.MAX_STRAIN_MULTIPLIER or 3.0
-        if strainMultiplier > maxMultiplier then
-            strainMultiplier = maxMultiplier
+        local multiplicadorMaximo = Constants.FUEL.MAX_STRAIN_MULTIPLIER or 3.0
+        if multiplicadorStrain > multiplicadorMaximo then
+            multiplicadorStrain = multiplicadorMaximo
         end
     end
     
-    local effectiveRate = fuelRate * strainMultiplier
+    local taxaEfetiva = taxaCombustivel * multiplicadorStrain
     
-    if effectiveRate <= 0 then
-        return 999999 -- Infinite
+    if taxaEfetiva <= 0 then
+        return 999999 -- Autonomia infinita
     end
     
-    return data.fuelAmount / effectiveRate
+    return dadosGerador.fuelAmount / taxaEfetiva
 end
 
---- Add connected building
---- @param data GeneratorData Generator data
---- @param buildingId string Building ID to add
-function LKS_EletricidadeConstrucao.Data.Generator.AddBuilding(data, buildingId)
-    -- connectedBuildings may be Kahlua-deserialized (string numeric keys); use pairs
-    local already = false
-    for _, v in pairs(data.connectedBuildings) do
-        if v == buildingId then already = true; break end
+--- Vincula um prédio conectado aos dados de carregamento do gerador.
+--- @param dadosGerador GeneratorData O gerador analisado.
+--- @param predioId string O ID do prédio a ser adicionado.
+function LKS_EletricidadeConstrucao.Data.Generator.AddBuilding(dadosGerador, predioId)
+    local jaConectado = false
+    for _, valorId in pairs(dadosGerador.connectedBuildings) do
+        if valorId == predioId then
+            jaConectado = true
+            break
+        end
     end
-    if not already then
-        table.insert(data.connectedBuildings, buildingId)
+    if not jaConectado then
+        table.insert(dadosGerador.connectedBuildings, predioId)
     end
 end
 
---- Remove connected building
---- @param data GeneratorData Generator data
---- @param buildingId string Building ID to remove
-function LKS_EletricidadeConstrucao.Data.Generator.RemoveBuilding(data, buildingId)
-    -- Rebuild list excluding target: cannot use index-based remove on Kahlua
-    -- string-key tables where #t == 0 and integer indices don't exist.
-    local newList = {}
-    for _, v in pairs(data.connectedBuildings) do
-        if v ~= buildingId then table.insert(newList, v) end
+--- Remove a conexão de um prédio dos dados de carregamento do gerador.
+--- @param dadosGerador GeneratorData O gerador analisado.
+--- @param predioId string O ID do prédio a ser removido.
+function LKS_EletricidadeConstrucao.Data.Generator.RemoveBuilding(dadosGerador, predioId)
+    -- Recria a lista de prédios conectados excluindo o ID alvo
+    local novaLista = {}
+    for _, valorId in pairs(dadosGerador.connectedBuildings) do
+        if valorId ~= predioId then
+            table.insert(novaLista, valorId)
+        end
     end
-    data.connectedBuildings = newList
+    dadosGerador.connectedBuildings = novaLista
 end
 
---- Clear all connected buildings
---- @param data GeneratorData Generator data
-function LKS_EletricidadeConstrucao.Data.Generator.ClearBuildings(data)
-    data.connectedBuildings = {}
-    data.strain = 0
+--- Remove as conexões de todos os prédios e zera a carga de esforço elétrico.
+--- @param dadosGerador GeneratorData O gerador analisado.
+function LKS_EletricidadeConstrucao.Data.Generator.ClearBuildings(dadosGerador)
+    dadosGerador.connectedBuildings = {}
+    dadosGerador.strain = 0
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAÇÃO
 -- ============================================================================
 
---- Convert generator data to string for debugging
---- @param data GeneratorData Generator data
---- @return string String representation
-function LKS_EletricidadeConstrucao.Data.Generator.ToString(data)
-    local _n = 0
-    if data.connectedBuildings then
-        for _ in pairs(data.connectedBuildings) do _n = _n + 1 end
+--- Converte o estado atual do gerador em uma string descritiva legível para fins de depuração.
+--- @param dadosGerador GeneratorData O gerador analisado.
+--- @return string Representação descritiva formatada.
+function LKS_EletricidadeConstrucao.Data.Generator.ToString(dadosGerador)
+    local quantidadePredios = 0
+    if dadosGerador.connectedBuildings then
+        for _ in pairs(dadosGerador.connectedBuildings) do
+            quantidadePredios = quantidadePredios + 1
+        end
     end
     return string.format(
-        "Generator[%s] at (%d,%d,%d) | Active:%s Fuel:%.1f Condition:%d Strain:%.1f Buildings:%d",
-        data.id,
-        data.x, data.y, data.z,
-        tostring(data.activated),
-        data.fuelAmount,
-        data.condition,
-        data.strain,
-        _n
+        "Gerador[%s] em (%d,%d,%d) | Ligado:%s Combustível:%.1f Integridade:%d Esforço:%.1f Prédios:%d",
+        dadosGerador.id,
+        dadosGerador.x, dadosGerador.y, dadosGerador.z,
+        tostring(dadosGerador.activated),
+        dadosGerador.fuelAmount,
+        dadosGerador.condition,
+        dadosGerador.strain,
+        quantidadePredios
     )
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO E REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Data.Generator", "2.0.0")

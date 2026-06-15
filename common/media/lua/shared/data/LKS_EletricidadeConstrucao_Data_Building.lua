@@ -1,44 +1,48 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mi.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Data_Building.lua
--- LKS_EletricidadeConstrucao V2 - Building Data Model
--- Schema definition and operations for building data
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Data_Building.lua
+-- OBJETIVO: Modelo de dados (Schema) e operações para Prédios/Estruturas (Building).
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Data_Building] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Data_Building] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- SCHEMA DEFINITION
+-- DEFINIÇÃO DO SCHEMA
 -- ============================================================================
 
---- Building data schema
+--- Schema de dados de um Prédio/Estrutura.
 --- @class BuildingData
---- @field id string Unique identifier (x_y_z format)
---- @field x number World X coordinate (typically light switch position)
---- @field y number World Y coordinate
---- @field z number World Z coordinate
---- @field generatorId string|nil Connected generator ID
---- @field powerConsumers table Array of consumer data
---- @field totalPowerDraw number Total power consumption
---- @field isPowered boolean Current power state
---- @field borderRadius number Scan radius for this building
---- @field lastScanTime number Last scan timestamp
---- @field boundingBox table|nil Bounding box {minX, minY, maxX, maxY}
---- @field isRVInterior boolean True if building is in RV interior
---- @field heatingPowerDraw number Additional draw from active heating
---- @field heatingEnabled boolean True if heating is active for this building (pool-level fuel calc)
---- @field heatingSourceCount number Number of heating positions for this building (pool-level fuel calc)
---- @field heatingTargetTemp number Heating target temperature in °C (pool-level fuel calc)
+--- @field id string Identificador único (formato: bld_x_y_z)
+--- @field x number Coordenada X no mundo global (geralmente do interruptor de ancoragem)
+--- @field y number Coordenada Y no mundo global
+--- @field z number Coordenada Z no mundo global
+--- @field generatorId string|nil ID do gerador conectado
+--- @field powerConsumers table Vetor contendo os dados dos consumidores de energia
+--- @field totalPowerDraw number Consumo total de energia do prédio
+--- @field isPowered boolean Estado atual de fornecimento de energia (ligado/desligado)
+--- @field borderRadius number Raio de varredura/escaneamento de limite deste prédio
+--- @field lastScanTime number Carimbo de data/hora do último escaneamento realizado
+--- @field boundingBox table|nil Caixa delimitadora física {minX, minY, maxX, maxY}
+--- @field isRVInterior boolean Retorna true se o prédio estiver no interior de um trailer/RV
+--- @field heatingPowerDraw number Carga elétrica extra adicionada pelo aquecedor ativo
+--- @field heatingEnabled boolean Retorna true se o aquecimento do prédio estiver ativado (cálculo de combustível)
+--- @field heatingSourceCount number Quantidade de pontos de aquecimento neste prédio (cálculo de combustível)
+--- @field heatingTargetTemp number Temperatura alvo configurada para o aquecimento (cálculo de combustível)
 
 local BuildingSchema = {
     id = "",
@@ -54,113 +58,118 @@ local BuildingSchema = {
     lastScanTime = 0,
     boundingBox = nil,
     isRVInterior = false,
-    -- Heating state cached for chunk-independent pool fuel calculation.
-    -- Set by Heating.SyncToGenerators; read by CalculateFuelConsumption.
     heatingEnabled = false,
     heatingSourceCount = 0,
     heatingTargetTemp = 22,
 }
 
--- Heating load is treated as an extra power consumer that only applies when
--- the building actually has an active consumer (lights/appliances on). This
--- prevents idle heating stress when nothing is drawing power.
-local function ComputeHeatingLoad(buildingData)
+--- Calcula a carga extra gerada pelo aquecimento da estrutura.
+--- O consumo do aquecedor é tratado como carga extra apenas quando o prédio possui pelo menos
+--- um dispositivo elétrico consumindo ativamente. Isso evita sobrecarga com geradores ociosos.
+--- @param dadosPredio BuildingData A tabela contendo os dados do prédio analisado.
+--- @return number O consumo elétrico gerado pelo aquecimento.
+local function ComputeHeatingLoad(dadosPredio)
     local Constants = LKS_EletricidadeConstrucao.Constants
 
-    -- Require at least one active consumer and a connected generator
-    if not buildingData or (buildingData.activeConsumerCount or 0) <= 0 then
+    -- Requer pelo menos um consumidor elétrico ativo e um gerador conectado
+    if not dadosPredio or (dadosPredio.activeConsumerCount or 0) <= 0 then
         return 0
     end
 
-    -- NOTE: connectedGenerators is a Kahlua-deserialized hash-map after GlobalModData
-    -- reload → string numeric keys ("1","2",...).  # always returns 0 on such tables;
-    -- use a pairs-based emptiness check instead.
-    if not buildingData.connectedGenerators then return 0 end
-    local _hasGens = false
-    for _ in pairs(buildingData.connectedGenerators) do _hasGens = true; break end
-    if not _hasGens then return 0 end
-
-    -- Fast path: building-level heatingEnabled is the authoritative flag written by
-    -- Heating.SyncToGenerators and persisted in GlobalModData.  Use it directly so
-    -- we don't need IsoObject access (which fails off-chunk) and avoid Kahlua issues.
-    if buildingData.heatingEnabled and buildingData.heatingSourceCount
-       and buildingData.heatingSourceCount > 0 then
-        local baseLoad  = (Constants.HEATING and Constants.HEATING.HEATING_POWER_PER_ROOM) or 0.5
-        local perDegree = baseLoad * 0.10
-        local targetT   = buildingData.heatingTargetTemp or 22
-        local delta     = targetT - 20
-        local loadPerSrc = baseLoad + perDegree * delta
-        return loadPerSrc * buildingData.heatingSourceCount
+    -- Nota: após a leitura do ModData, connectedGenerators pode ser desserializada como dicionário Kahlua
+    -- contendo chaves textuais indexadas ("1", "2"). Logo, o operador # retorna zero. Usamos pairs().
+    if not dadosPredio.connectedGenerators then
+        return 0
+    end
+    
+    local possuiGeradores = false
+    for _ in pairs(dadosPredio.connectedGenerators) do
+        possuiGeradores = true
+        break
+    end
+    if not possuiGeradores then
+        return 0
     end
 
-    -- Fallback: no building-level heating data yet (first session after upgrade),
-    -- read live from IsoObject ModData.  Requires chunk to be loaded.
-    local cell = getCell()
-    if not cell then return 0 end
+    -- Caminho prioritário: a flag heatingEnabled em nível de prédio é escrita pelo Heating.SyncToGenerators
+    -- e persistida no GlobalModData. Usamos diretamente para evitar acessar IsoObject (o que falha se o chunk estiver descarregado).
+    if dadosPredio.heatingEnabled and dadosPredio.heatingSourceCount and dadosPredio.heatingSourceCount > 0 then
+        local cargaBase = (Constants.HEATING and Constants.HEATING.HEATING_POWER_PER_ROOM) or 0.5
+        local cargaPorGrau = cargaBase * 0.10
+        local temperaturaAlvo = dadosPredio.heatingTargetTemp or 22
+        local diferencaTemperatura = temperaturaAlvo - 20
+        local cargaPorFonte = cargaBase + cargaPorGrau * diferencaTemperatura
+        return cargaPorFonte * dadosPredio.heatingSourceCount
+    end
 
-    -- Collect heating configuration from ANY active generator in the pool.
-    -- This ensures heating continues working even if the primary generator
-    -- is deactivated and a backup generator takes over (pool failover).
-    local heatingConfig = nil
-    -- Fallback-path constants (fast-path returned above if building-level data was present)
-    local baseLoad  = (Constants.HEATING and Constants.HEATING.HEATING_POWER_PER_ROOM) or 0.5
-    local perDegree = baseLoad * 0.10
-    local baselineT = 20
+    -- Fallback: sem dados de aquecimento em nível de prédio (primeira sessão).
+    -- Lê diretamente dos ModData do IsoObject físico. Requer que o chunk esteja carregado.
+    local celulaMundo = getCell()
+    if not celulaMundo then
+        return 0
+    end
 
-    -- Use pairs: Kahlua-deserialized connectedGenerators has string numeric keys.
-    for _, genKey in pairs(buildingData.connectedGenerators) do
-        local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        if gx then
-            local sq = cell:getGridSquare(tonumber(gx), tonumber(gy), tonumber(gz))
-            if sq then
-                local objs = sq:getObjects()
-                if objs then
-                    for i = 0, objs:size() - 1 do
-                        local gen = objs:get(i)
-                        if gen and instanceof(gen, "IsoGenerator") then
-                            local gmd = gen:getModData()
-                            -- If this generator has heating enabled and is active, use its config
-                            if gmd and gmd.HeatingEnabled == true and gen:isActivated() and type(gmd.HeatingPositions) == "table" then
-                                local srcCount = 0
-                                for _, grp in pairs(gmd.HeatingPositions) do
-                                    if type(grp.positions) == "table" then
-                                        -- grp.positions may also be Kahlua-deserialized
-                                        local posCount = 0
-                                        for _ in pairs(grp.positions) do posCount = posCount + 1 end
-                                        srcCount = srcCount + posCount
+    -- Obtém configurações de aquecimento de qualquer gerador ativo no pool.
+    local configuracaoAquecimento = nil
+    local cargaBase = (Constants.HEATING and Constants.HEATING.HEATING_POWER_PER_ROOM) or 0.5
+    local cargaPorGrau = cargaBase * 0.10
+    local temperaturaReferencia = 20
+
+    -- connectedGenerators pode conter chaves textuais (Kahlua), por isso usamos pairs()
+    for _, chaveGerador in pairs(dadosPredio.connectedGenerators) do
+        local geradorX, geradorY, geradorZ = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        if geradorX then
+            local quadrado = celulaMundo:getGridSquare(tonumber(geradorX), tonumber(geradorY), tonumber(geradorZ))
+            if quadrado then
+                local listaObjetos = quadrado:getObjects()
+                if listaObjetos then
+                    for indice = 0, listaObjetos:size() - 1 do
+                        local objetoGerador = listaObjetos:get(indice)
+                        if objetoGerador and instanceof(objetoGerador, "IsoGenerator") then
+                            local dadosModGerador = objetoGerador:getModData()
+                            -- Se o gerador possui aquecimento ativado, usa suas configurações
+                            if dadosModGerador and dadosModGerador.HeatingEnabled == true and objetoGerador:isActivated() and type(dadosModGerador.HeatingPositions) == "table" then
+                                local quantidadeFontes = 0
+                                for _, grupo in pairs(dadosModGerador.HeatingPositions) do
+                                    if type(grupo.positions) == "table" then
+                                        local quantidadePosicoes = 0
+                                        for _ in pairs(grupo.positions) do
+                                            quantidadePosicoes = quantidadePosicoes + 1
+                                        end
+                                        quantidadeFontes = quantidadeFontes + quantidadePosicoes
                                     end
                                 end
-                                if srcCount > 0 then
-                                    local target = tonumber(gmd.HeatingTargetTemp) or 22
-                                    -- Allow delta to be negative (temps below baseline reduce load)
-                                    local delta = target - baselineT
-                                    local loadPerSrc = baseLoad + perDegree * delta
-                                    heatingConfig = {
-                                        load = loadPerSrc * srcCount,
-                                        target = target,
-                                        sources = srcCount
+                                if quantidadeFontes > 0 then
+                                    local temperaturaAlvo = tonumber(dadosModGerador.HeatingTargetTemp) or 22
+                                    local diferencaTemperatura = temperaturaAlvo - temperaturaReferencia
+                                    local cargaPorFonte = cargaBase + cargaPorGrau * diferencaTemperatura
+                                    configuracaoAquecimento = {
+                                        load = cargaPorFonte * quantidadeFontes,
+                                        target = temperaturaAlvo,
+                                        sources = quantidadeFontes
                                     }
-                                    -- Found an active generator with heating - use this config
                                     break
                                 end
-                            -- If generator is inactive but has heating config, store as fallback
-                            elseif gmd and gmd.HeatingEnabled == true and not heatingConfig and type(gmd.HeatingPositions) == "table" then
-                                local srcCount = 0
-                                for _, grp in pairs(gmd.HeatingPositions) do
-                                    if type(grp.positions) == "table" then
-                                        local posCount = 0
-                                        for _ in pairs(grp.positions) do posCount = posCount + 1 end
-                                        srcCount = srcCount + posCount
+                            -- Se estiver desligado mas com aquecimento ativado, guarda como fallback
+                            elseif dadosModGerador and dadosModGerador.HeatingEnabled == true and not configuracaoAquecimento and type(dadosModGerador.HeatingPositions) == "table" then
+                                local quantidadeFontes = 0
+                                for _, grupo in pairs(dadosModGerador.HeatingPositions) do
+                                    if type(grupo.positions) == "table" then
+                                        local quantidadePosicoes = 0
+                                        for _ in pairs(grupo.positions) do
+                                            quantidadePosicoes = quantidadePosicoes + 1
+                                        end
+                                        quantidadeFontes = quantidadeFontes + quantidadePosicoes
                                     end
                                 end
-                                if srcCount > 0 then
-                                    local target = tonumber(gmd.HeatingTargetTemp) or 22
-                                    local delta = target - baselineT
-                                    local loadPerSrc = baseLoad + perDegree * delta
-                                    heatingConfig = {
-                                        load = loadPerSrc * srcCount,
-                                        target = target,
-                                        sources = srcCount
+                                if quantidadeFontes > 0 then
+                                    local temperaturaAlvo = tonumber(dadosModGerador.HeatingTargetTemp) or 22
+                                    local diferencaTemperatura = temperaturaAlvo - temperaturaReferencia
+                                    local cargaPorFonte = cargaBase + cargaPorGrau * diferencaTemperatura
+                                    configuracaoAquecimento = {
+                                        load = cargaPorFonte * quantidadeFontes,
+                                        target = temperaturaAlvo,
+                                        sources = quantidadeFontes
                                     }
                                 end
                             end
@@ -169,429 +178,450 @@ local function ComputeHeatingLoad(buildingData)
                 end
             end
         end
-        -- If we found an active generator with heating, stop searching
-        if heatingConfig and heatingConfig.load then
+        if configuracaoAquecimento and configuracaoAquecimento.load then
             break
         end
     end
 
-    -- Return the heating load from active generator, or fallback to inactive generator config
-    return heatingConfig and heatingConfig.load or 0
+    return configuracaoAquecimento and configuracaoAquecimento.load or 0
 end
 
 -- ============================================================================
--- CONSTRUCTOR
+-- CONSTRUTOR
 -- ============================================================================
 
---- Create new building data instance
---- @param lightSwitch IsoLightSwitch The light switch object (building anchor)
---- @param radius number Border scan radius
---- @return BuildingData New building data
-function LKS_EletricidadeConstrucao.Data.Building.New(lightSwitch, radius)
+--- Cria uma nova instância de dados do prédio (BuildingData) a partir do interruptor físico.
+--- @param interruptorLuz IsoLightSwitch O interruptor âncora do prédio.
+--- @param raioBorda number|nil O raio máximo de varredura (opcional).
+--- @return BuildingData A nova instância do modelo de dados populada.
+function LKS_EletricidadeConstrucao.Data.Building.New(interruptorLuz, raioBorda)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     local Geometry = LKS_EletricidadeConstrucao.Utils.Geometry
     local Table = LKS_EletricidadeConstrucao.Utils.Table
     
-    -- Validate input
-    Validation.AssertNotNil(lightSwitch, "Light switch object cannot be nil")
-    Validation.Assert(Validation.IsLightSwitch(lightSwitch), "Object must be IsoLightSwitch")
+    -- Validação do objeto de entrada
+    Validation.AssertNotNil(interruptorLuz, "O interruptor de luz não pode ser nulo")
+    Validation.Assert(Validation.IsLightSwitch(interruptorLuz), "O objeto deve ser uma instância válida de IsoLightSwitch")
     
-    -- Get coordinates
-    local x = lightSwitch:getX()
-    local y = lightSwitch:getY()
-    local z = lightSwitch:getZ()
+    -- Coleta coordenadas
+    local coordenadaX = interruptorLuz:getX()
+    local coordenadaY = interruptorLuz:getY()
+    local coordenadaZ = interruptorLuz:getZ()
     
-    -- Create data instance
-    local data = Table.DeepCopy(BuildingSchema)
+    -- Clona a estrutura do Schema
+    local dadosPredio = Table.DeepCopy(BuildingSchema)
     
-    -- Set coordinates
-    data.x = x
-    data.y = y
-    data.z = z
-    data.id = LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, z)
+    -- Define coordenadas e ID único
+    dadosPredio.x = coordenadaX
+    dadosPredio.y = coordenadaY
+    dadosPredio.z = coordenadaZ
+    dadosPredio.id = LKS_EletricidadeConstrucao.Data.Building.MakeId(coordenadaX, coordenadaY, coordenadaZ)
     
-    -- Set radius
+    -- Define raio de varredura
     local Constants = LKS_EletricidadeConstrucao.Constants
-    data.borderRadius = radius or Constants.BUILDING.DEFAULT_BORDER_RADIUS or 10
+    dadosPredio.borderRadius = raioBorda or Constants.BUILDING.DEFAULT_BORDER_RADIUS or 10
     
-    -- Detect RV interior
-    data.isRVInterior = Geometry.IsRVInteriorCoordinate(x, y, z)
+    -- Detecta se pertence ao interior de um trailer/RV
+    dadosPredio.isRVInterior = Geometry.IsRVInteriorCoordinate(coordenadaX, coordenadaY, coordenadaZ)
     
-    -- Set timestamp
-    data.lastScanTime = getTimestampMs()
+    -- Registra carimbo de hora
+    dadosPredio.lastScanTime = getTimestampMs()
     
-    return data
+    return dadosPredio
 end
 
 -- ============================================================================
--- ID GENERATION
+-- GERAÇÃO E LEITURA DE IDENTIFICADORES (ID)
 -- ============================================================================
 
---- Generate building ID from coordinates
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate
---- @return string Building ID
-function LKS_EletricidadeConstrucao.Data.Building.MakeId(x, y, z)
-    return string.format("bld_%d_%d_%d", x, y, z)
+--- Gera o ID único de texto para um prédio a partir de suas coordenadas no mundo.
+--- @param coordenadaX number A coordenada X.
+--- @param coordenadaY number A coordenada Y.
+--- @param coordenadaZ number A coordenada Z.
+--- @return string O ID correspondente (formato: bld_x_y_z).
+function LKS_EletricidadeConstrucao.Data.Building.MakeId(coordenadaX, coordenadaY, coordenadaZ)
+    return string.format("bld_%d_%d_%d", coordenadaX, coordenadaY, coordenadaZ)
 end
 
---- Parse building ID to coordinates
---- @param id string Building ID
---- @return number|nil, number|nil, number|nil X, Y, Z or nil if invalid
-function LKS_EletricidadeConstrucao.Data.Building.ParseId(id)
-    if not id then return nil, nil, nil end
+--- Realiza o parse de um ID único de prédio de volta para coordenadas numéricas.
+--- @param identificador string O ID gerado (formato: bld_x_y_z).
+--- @return number|nil, number|nil, number|nil Retorna coordenadaX, coordenadaY, coordenadaZ ou nil se for inválido.
+function LKS_EletricidadeConstrucao.Data.Building.ParseId(identificador)
+    if not identificador then
+        return nil, nil, nil
+    end
     
-    local x, y, z = id:match("bld_(-?%d+)_(-?%d+)_(-?%d+)")
-    if not x then return nil, nil, nil end
+    local coordenadaX, coordenadaY, coordenadaZ = identificador:match("bld_(-?%d+)_(-?%d+)_(-?%d+)")
+    if not coordenadaX then
+        return nil, nil, nil
+    end
     
-    return tonumber(x), tonumber(y), tonumber(z)
+    return tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ)
 end
 
 -- ============================================================================
--- VALIDATION
+-- VALIDAÇÃO DE INTEGRIDADE
 -- ============================================================================
 
---- Validate building data structure
---- @param data BuildingData Data to validate
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Data.Building.Validate(data)
+--- Valida se a estrutura de dados de um prédio está correta e dentro dos limites permitidos.
+--- @param dadosPredio BuildingData A tabela contendo os dados do prédio.
+--- @return boolean, string|nil Retorna true se estiver correto, ou false com a mensagem descritiva do erro.
+function LKS_EletricidadeConstrucao.Data.Building.Validate(dadosPredio)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     
-    -- Check if table
-    if not Validation.IsTable(data) then
-        return false, "Building data must be a table"
+    -- Verifica se é do tipo tabela
+    if not Validation.IsTable(dadosPredio) then
+        return false, "Os dados do prédio devem estar estruturados em uma tabela"
     end
     
-    -- Validate required fields
-    local valid, err = Validation.ValidateKeys(data, {
+    -- Valida chaves obrigatórias requeridas pelo Schema
+    local valido, erro = Validation.ValidateKeys(dadosPredio, {
         "id", "x", "y", "z", "powerConsumers", "totalPowerDraw",
         "heatingPowerDraw", "isPowered", "borderRadius", "lastScanTime"
-    }, "Building data")
+    }, "Dados do prédio")
     
-    if not valid then return false, err end
-    
-    -- Validate ID
-    valid, err = Validation.ValidateNotEmpty(data.id, "Building ID")
-    if not valid then return false, err end
-    
-    -- Validate coordinates
-    valid, err = Validation.ValidateCoordinates(data.x, data.y, data.z)
-    if not valid then return false, err end
-    
-    -- Validate boolean fields
-    if not Validation.IsBoolean(data.isPowered) then
-        return false, "isPowered must be boolean"
+    if not valido then
+        return false, erro
     end
     
-    -- Validate numeric fields
-    valid, err = Validation.ValidateNonNegative(data.totalPowerDraw, "totalPowerDraw")
-    if not valid then return false, err end
-    
-    valid, err = Validation.ValidatePositive(data.borderRadius, "borderRadius")
-    if not valid then return false, err end
-    
-    -- Validate consumers is table
-    if not Validation.IsTable(data.powerConsumers) then
-        return false, "powerConsumers must be a table"
+    -- Valida formato do identificador único
+    valido, erro = Validation.ValidateNotEmpty(dadosPredio.id, "ID do Prédio")
+    if not valido then
+        return false, erro
     end
     
-    -- Validate generatorId if set
-    if data.generatorId ~= nil and not Validation.IsString(data.generatorId) then
-        return false, "generatorId must be string or nil"
+    -- Valida se as coordenadas são numéricas e válidas
+    valido, erro = Validation.ValidateCoordinates(dadosPredio.x, dadosPredio.y, dadosPredio.z)
+    if not valido then
+        return false, erro
+    end
+    
+    -- Valida o tipo do estado elétrico
+    if not Validation.IsBoolean(dadosPredio.isPowered) then
+        return false, "O campo 'isPowered' deve ser um valor booleano"
+    end
+    
+    -- Valida intervalos numéricos aceitáveis
+    valido, erro = Validation.ValidateNonNegative(dadosPredio.totalPowerDraw, "totalPowerDraw")
+    if not valido then
+        return false, erro
+    end
+    
+    valido, erro = Validation.ValidatePositive(dadosPredio.borderRadius, "borderRadius")
+    if not valido then
+        return false, erro
+    end
+    
+    -- Valida se a tabela de consumidores está no formato correto
+    if not Validation.IsTable(dadosPredio.powerConsumers) then
+        return false, "O campo 'powerConsumers' deve ser uma tabela"
+    end
+    
+    -- Valida gerador associado caso esteja preenchido
+    if dadosPredio.generatorId ~= nil and not Validation.IsString(dadosPredio.generatorId) then
+        return false, "O campo 'generatorId' deve ser do tipo texto (string) ou nulo"
     end
     
     return true, nil
 end
 
 -- ============================================================================
--- SERIALIZATION
+-- SERIALIZAÇÃO E DESSERIALIZAÇÃO (PERSISTÊNCIA MODDATA)
 -- ============================================================================
 
---- Serialize building data for ModData storage
---- @param data BuildingData Data to serialize
---- @return table Serialized data
-function LKS_EletricidadeConstrucao.Data.Building.Serialize(data)
+--- Serializa os dados do prédio para persistência no ModData do jogo.
+--- Remove chaves efêmeras que devem ser recalculadas dinamicamente a cada carregamento de chunk para evitar bugs de desatualização.
+--- @param dadosPredio BuildingData Os dados do prédio a serem limpos e serializados.
+--- @return table Uma cópia limpa e serializável dos dados do prédio.
+function LKS_EletricidadeConstrucao.Data.Building.Serialize(dadosPredio)
     local Table = LKS_EletricidadeConstrucao.Utils.Table
-    local copy = Table.DeepCopy(data)
-    -- Option A (B-99): powerConsumers and heating config are ephemeral — never persisted.
-    --   powerConsumers  : always rebuilt by ScanBuilding on each chunk load; saving them
-    --                     was the root cause of B-87 through B-97 (stale consumer counts).
-    --   heatingEnabled / heatingTargetTemp / heatingSourceCount / heatingPowerDraw:
-    --                     always read from IsoObject ModData on chunk load (TryRestore
-    --                     Phase B); persisting them recreated the sync bug fixed by B-97A.
-    copy.powerConsumers     = nil
-    copy.heatingEnabled     = nil
-    copy.heatingSourceCount = nil
-    copy.heatingTargetTemp  = nil
-    copy.heatingPowerDraw   = nil
-    return copy
+    local copia = Table.DeepCopy(dadosPredio)
+    
+    -- Campos temporários e voláteis recalculados dinamicamente no carregamento (ScanBuilding)
+    copia.powerConsumers = nil
+    copia.heatingEnabled = nil
+    copia.heatingSourceCount = nil
+    copia.heatingTargetTemp = nil
+    copia.heatingPowerDraw = nil
+    
+    return copia
 end
 
---- Deserialize building data from ModData
---- @param serialized table Serialized data
---- @return BuildingData|nil Deserialized data or nil if invalid
-function LKS_EletricidadeConstrucao.Data.Building.Deserialize(serialized)
-    if not serialized then return nil end
-    
-    local Table = LKS_EletricidadeConstrucao.Utils.Table
-    local data = Table.DeepCopy(serialized)
-
-    -- B-99 stopped persisting ephemeral consumer/heating scan results.
-    -- Older/newer saves therefore need these runtime-only fields restored here.
-    if data.powerConsumers == nil then data.powerConsumers = {} end
-    -- Backward compatibility: older saves may lack heating fields
-    if data.heatingPowerDraw  == nil then data.heatingPowerDraw  = 0     end
-    if data.heatingEnabled    == nil then data.heatingEnabled    = false  end
-    if data.heatingSourceCount == nil then data.heatingSourceCount = 0   end
-    if data.heatingTargetTemp  == nil then data.heatingTargetTemp  = 22  end
-    
-    -- Validate deserialized data
-    local valid, err = LKS_EletricidadeConstrucao.Data.Building.Validate(data)
-    if not valid then
-        LKS_EletricidadeConstrucao.Error("[Building.Deserialize] Invalid data: " .. err)
+--- Desserializa a estrutura de dados de um prédio a partir dos dados do ModData do jogo.
+--- @param dadosSerializados table Tabela de dados brutos carregados do ModData.
+--- @return BuildingData|nil Retorna os dados desserializados estruturados ou nil se for inválido.
+function LKS_EletricidadeConstrucao.Data.Building.Deserialize(dadosSerializados)
+    if not dadosSerializados then
         return nil
     end
     
-    return data
+    local Table = LKS_EletricidadeConstrucao.Utils.Table
+    local dadosPredio = Table.DeepCopy(dadosSerializados)
+
+    -- Restaura campos de simulação locais e dinâmicos não persistidos
+    if dadosPredio.powerConsumers == nil then
+        dadosPredio.powerConsumers = {}
+    end
+    if dadosPredio.heatingPowerDraw == nil then
+        dadosPredio.heatingPowerDraw = 0
+    end
+    if dadosPredio.heatingEnabled == nil then
+        dadosPredio.heatingEnabled = false
+    end
+    if dadosPredio.heatingSourceCount == nil then
+        dadosPredio.heatingSourceCount = 0
+    end
+    if dadosPredio.heatingTargetTemp == nil then
+        dadosPredio.heatingTargetTemp = 22
+    end
+    
+    -- Valida os dados carregados do prédio
+    local valido, erro = LKS_EletricidadeConstrucao.Data.Building.Validate(dadosPredio)
+    if not valido then
+        LKS_EletricidadeConstrucao.Error("[Building.Deserialize] Dados desserializados do prédio inválidos: " .. erro)
+        return nil
+    end
+    
+    return dadosPredio
 end
 
 -- ============================================================================
--- CONSUMER OPERATIONS
+-- OPERAÇÕES COM CONSUMIDORES DE ENERGIA
 -- ============================================================================
 
---- Add power consumer to building
---- @param data BuildingData Building data
---- @param consumer ConsumerData Consumer data to add
-function LKS_EletricidadeConstrucao.Data.Building.AddConsumer(data, consumer)
+--- Adiciona um consumidor elétrico cadastrado à malha de dados do prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param consumidor ConsumerData Os dados do consumidor elétrico a ser inserido.
+function LKS_EletricidadeConstrucao.Data.Building.AddConsumer(dadosPredio, consumidor)
     local Table = LKS_EletricidadeConstrucao.Utils.Table
-    local maxConsumers = ((LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeConstrucao.Constants.BUILDING)
+    local maximoConsumidores = ((LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeConstrucao.Constants.BUILDING)
         and LKS_EletricidadeConstrucao.Constants.BUILDING.MAX_CONSUMERS_PER_BUILDING) or 500
 
-    local consumerCount = 0
-    for _ in pairs(data.powerConsumers) do
-        consumerCount = consumerCount + 1
+    local consumidoresContados = 0
+    for _ in pairs(dadosPredio.powerConsumers) do
+        consumidoresContados = consumidoresContados + 1
     end
 
-    if consumerCount >= maxConsumers then
+    if consumidoresContados >= maximoConsumidores then
         return
     end
     
-    -- Check if already exists
-    local exists = Table.Find(data.powerConsumers, function(c)
-        return c.squareX == consumer.squareX 
-            and c.squareY == consumer.squareY 
-            and c.squareZ == consumer.squareZ
+    -- Verifica se o consumidor já está registrado por sua coordenada física
+    local existe = Table.Find(dadosPredio.powerConsumers, function(consumidorItem)
+        return consumidorItem.squareX == consumidor.squareX 
+            and consumidorItem.squareY == consumidor.squareY 
+            and consumidorItem.squareZ == consumidor.squareZ
     end)
     
-    if not exists then
-        table.insert(data.powerConsumers, consumer)
-        LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(data)
+    if not existe then
+        table.insert(dadosPredio.powerConsumers, consumidor)
+        LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(dadosPredio)
     end
 end
 
---- Remove power consumer from building
---- @param data BuildingData Building data
---- @param squareX number Consumer X coordinate
---- @param squareY number Consumer Y coordinate
---- @param squareZ number Consumer Z coordinate
-function LKS_EletricidadeConstrucao.Data.Building.RemoveConsumer(data, squareX, squareY, squareZ)
-    -- Rebuild list excluding matching consumer.
-    -- Cannot use reverse-index loop: after GlobalModData deserialization Kahlua
-    -- assigns string numeric keys so #data.powerConsumers == 0 and the loop body
-    -- would never execute.
-    local newConsumers = {}
-    for _, consumer in pairs(data.powerConsumers) do
-        if not (consumer.squareX == squareX
-           and consumer.squareY == squareY
-           and consumer.squareZ == squareZ) then
-            table.insert(newConsumers, consumer)
-        end
-    end
-    data.powerConsumers = newConsumers
+--- Remove um consumidor elétrico cadastrado da malha de dados do prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param coordenadaX number A coordenada X física do consumidor.
+--- @param coordenadaY number A coordenada Y física do consumidor.
+--- @param coordenadaZ number A coordenada Z física do consumidor.
+function LKS_EletricidadeConstrucao.Data.Building.RemoveConsumer(dadosPredio, coordenadaX, coordenadaY, coordenadaZ)
+    local novosConsumidores = {}
     
-    LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(data)
+    -- Filtra a lista de consumidores excluindo o alvo correspondente à coordenada
+    for _, consumidor in pairs(dadosPredio.powerConsumers) do
+        if not (consumidor.squareX == coordenadaX
+           and consumidor.squareY == coordenadaY
+           and consumidor.squareZ == coordenadaZ) then
+            table.insert(novosConsumidores, consumidor)
+        end
+    end
+    dadosPredio.powerConsumers = novosConsumidores
+    
+    LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(dadosPredio)
 end
 
---- Clear all power consumers
---- @param data BuildingData Building data
-function LKS_EletricidadeConstrucao.Data.Building.ClearConsumers(data)
-    data.powerConsumers = {}
-    data.totalPowerDraw = 0
+--- Limpa todos os consumidores de energia registrados no prédio e zera a carga.
+--- @param dadosPredio BuildingData Os dados do prédio.
+function LKS_EletricidadeConstrucao.Data.Building.ClearConsumers(dadosPredio)
+    dadosPredio.powerConsumers = {}
+    dadosPredio.totalPowerDraw = 0
 end
 
---- Recalculate total power draw
---- Sums ALL consumers unconditionally - power draw represents what the building
---- WOULD consume when powered (matches V1 behaviour).
---- isActive is tracked separately for the "X/Y active" UI display.
---- @param data BuildingData Building data
-function LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(data)
-    local total = 0
-    local activeCount = 0
+--- Recalcula a carga de energia elétrica do prédio somando o consumo dos aparelhos ativamente ligados.
+--- @param dadosPredio BuildingData Os dados do prédio.
+function LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(dadosPredio)
+    local potenciaTotal = 0
+    local consumidoresAtivos = 0
 
-    -- powerConsumers is Kahlua-deserialized (string numeric keys); pairs required
-    for _, consumer in pairs(data.powerConsumers) do
-        -- Only count active consumers for power draw and strain calculation
-        if consumer.isActive then
-            total = total + (consumer.powerDraw or 1)
-            activeCount = activeCount + 1
+    -- Percorre a lista de consumidores elétricos ativos
+    for _, consumidor in pairs(dadosPredio.powerConsumers) do
+        if consumidor.isActive then
+            potenciaTotal = potenciaTotal + (consumidor.powerDraw or 1)
+            consumidoresAtivos = consumidoresAtivos + 1
         end
     end
 
-    -- Heating adds dynamic load based on target temp; only while something is on.
-    local heatingLoad = ComputeHeatingLoad(data)
-    data.heatingPowerDraw = heatingLoad
+    -- Calcula e adiciona a carga extra de aquecimento se houver consumo ativo
+    local cargaAquecedor = ComputeHeatingLoad(dadosPredio)
+    dadosPredio.heatingPowerDraw = cargaAquecedor
+    potenciaTotal = potenciaTotal + cargaAquecedor
 
-    total = total + heatingLoad
-
-    data.totalPowerDraw = total
-    data.activeConsumerCount = activeCount
-    -- pairs-count: powerConsumers may be Kahlua-deserialized (string numeric keys)
-    local _tc = 0
-    for _ in pairs(data.powerConsumers) do _tc = _tc + 1 end
-    data.totalConsumers = _tc
+    -- Atualiza as variáveis de controle de carga no modelo de dados
+    dadosPredio.totalPowerDraw = potenciaTotal
+    dadosPredio.activeConsumerCount = consumidoresAtivos
+    
+    local totalConsumidores = 0
+    for _ in pairs(dadosPredio.powerConsumers) do
+        totalConsumidores = totalConsumidores + 1
+    end
+    dadosPredio.totalConsumers = totalConsumidores
 end
 
 -- ============================================================================
--- POWER STATE OPERATIONS
+-- OPERAÇÕES DE ESTADO DE FORNECIMENTO ELÉTRICO
 -- ============================================================================
 
---- Set building power state
---- @param data BuildingData Building data
---- @param powered boolean Power state
-function LKS_EletricidadeConstrucao.Data.Building.SetPowered(data, powered)
-    if data.isPowered ~= powered then
-        data.isPowered = powered
-        -- Event will be triggered by caller
+--- Define o estado atual de fornecimento de energia elétrica do prédio (ligado/desligado).
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param alimentado boolean Retorna true se o prédio estiver energizado.
+function LKS_EletricidadeConstrucao.Data.Building.SetPowered(dadosPredio, alimentado)
+    if dadosPredio.isPowered ~= alimentado then
+        dadosPredio.isPowered = alimentado
     end
 end
 
---- Connect building to generator
---- @param data BuildingData Building data
---- @param generatorId string Generator ID
-function LKS_EletricidadeConstrucao.Data.Building.ConnectGenerator(data, generatorId)
-    if data.generatorId ~= generatorId then
-        data.generatorId = generatorId
-        -- Event will be triggered by caller
+--- Conecta o prédio ao identificador de um gerador no ecossistema.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param geradorId string O ID exclusivo do gerador a ser conectado.
+function LKS_EletricidadeConstrucao.Data.Building.ConnectGenerator(dadosPredio, geradorId)
+    if dadosPredio.generatorId ~= geradorId then
+        dadosPredio.generatorId = geradorId
     end
 end
 
---- Disconnect building from generator
---- @param data BuildingData Building data
-function LKS_EletricidadeConstrucao.Data.Building.DisconnectGenerator(data)
-    data.generatorId = nil
-    LKS_EletricidadeConstrucao.Data.Building.SetPowered(data, false)
+--- Desconecta o prédio de qualquer gerador, zerando seu estado elétrico (desliga energia).
+--- @param dadosPredio BuildingData Os dados do prédio.
+function LKS_EletricidadeConstrucao.Data.Building.DisconnectGenerator(dadosPredio)
+    dadosPredio.generatorId = nil
+    LKS_EletricidadeConstrucao.Data.Building.SetPowered(dadosPredio, false)
 end
 
 -- ============================================================================
--- SCAN OPERATIONS
+-- OPERAÇÕES DE ESCANEAMENTO (VARREDURA)
 -- ============================================================================
 
---- Update last scan time
---- @param data BuildingData Building data
-function LKS_EletricidadeConstrucao.Data.Building.MarkScanned(data)
-    data.lastScanTime = getTimestampMs()
+--- Registra a data/hora real de conclusão do último escaneamento de contorno realizado no prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+function LKS_EletricidadeConstrucao.Data.Building.MarkScanned(dadosPredio)
+    dadosPredio.lastScanTime = getTimestampMs()
 end
 
---- Check if building needs rescan
---- @param data BuildingData Building data
---- @param intervalMs number Scan interval in milliseconds
---- @return boolean True if needs rescan
-function LKS_EletricidadeConstrucao.Data.Building.NeedsRescan(data, intervalMs)
-    local currentTime = getTimestampMs()
-    return (currentTime - data.lastScanTime) >= intervalMs
+--- Verifica se o intervalo de tempo configurado já passou e o prédio precisa ser escaneado novamente.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param intervaloMilissegundos number O intervalo de re-escaneamento em milissegundos.
+--- @return boolean Retorna true se for necessário rodar um novo escaneamento.
+function LKS_EletricidadeConstrucao.Data.Building.NeedsRescan(dadosPredio, intervaloMilissegundos)
+    local tempoAtual = getTimestampMs()
+    return (tempoAtual - dadosPredio.lastScanTime) >= intervaloMilissegundos
 end
 
---- Set bounding box for building
---- @param data BuildingData Building data
---- @param minX number Minimum X
---- @param minY number Minimum Y
---- @param maxX number Maximum X
---- @param maxY number Maximum Y
-function LKS_EletricidadeConstrucao.Data.Building.SetBoundingBox(data, minX, minY, maxX, maxY)
-    data.boundingBox = {
-        minX = minX,
-        minY = minY,
-        maxX = maxX,
-        maxY = maxY
+--- Define as coordenadas geográficas limites da caixa delimitadora física (Bounding Box) do prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param minimoX number Coordenada X mínima.
+--- @param minimoY number Coordenada Y mínima.
+--- @param maximoX number Coordenada X máxima.
+--- @param maximoY number Coordenada Y máxima.
+function LKS_EletricidadeConstrucao.Data.Building.SetBoundingBox(dadosPredio, minimoX, minimoY, maximoX, maximoY)
+    dadosPredio.boundingBox = {
+        minX = minimoX,
+        minY = minimoY,
+        maxX = maximoX,
+        maxY = maximoY
     }
 end
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- FUNÇÕES AUXILIARES DE SUPORTE
 -- ============================================================================
 
---- Check if building is connected to a generator
---- @param data BuildingData Building data
---- @return boolean True if connected
-function LKS_EletricidadeConstrucao.Data.Building.IsConnected(data)
-    return data.generatorId ~= nil
+--- Verifica se o prédio está ativamente vinculado/conectado a um gerador no ecossistema.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @return boolean Retorna true se houver gerador conectado.
+function LKS_EletricidadeConstrucao.Data.Building.IsConnected(dadosPredio)
+    return dadosPredio.generatorId ~= nil
 end
 
---- Get number of active consumers
---- @param data BuildingData Building data
---- @return number Count of active consumers
-function LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(data)
-    local count = 0
-    -- powerConsumers is Kahlua-deserialized (string numeric keys); pairs required
-    for _, consumer in pairs(data.powerConsumers) do
-        if consumer.isActive then
-            count = count + 1
+--- Obtém a quantidade total de consumidores elétricos atualmente ligados no prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @return number Quantidade de consumidores ativos.
+function LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(dadosPredio)
+    local consumidoresAtivos = 0
+    for _, consumidor in pairs(dadosPredio.powerConsumers) do
+        if consumidor.isActive then
+            consumidoresAtivos = consumidoresAtivos + 1
         end
     end
-    return count
+    return consumidoresAtivos
 end
 
---- Get total consumer count
---- @param data BuildingData Building data
---- @return number Total consumers
-function LKS_EletricidadeConstrucao.Data.Building.GetTotalConsumerCount(data)
-    local count = 0
-    for _ in pairs(data.powerConsumers) do count = count + 1 end
-    return count
+--- Obtém o total acumulado de consumidores (ligados e desligados) cadastrados na malha do prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @return number Quantidade total de consumidores elétricos.
+function LKS_EletricidadeConstrucao.Data.Building.GetTotalConsumerCount(dadosPredio)
+    local totalConsumidores = 0
+    for _ in pairs(dadosPredio.powerConsumers) do
+        totalConsumidores = totalConsumidores + 1
+    end
+    return totalConsumidores
 end
 
---- Check if building should provide power based on generator state
---- @param data BuildingData Building data
---- @param generatorData GeneratorData|nil Generator data (optional)
---- @return boolean True if should provide power
-function LKS_EletricidadeConstrucao.Data.Building.ShouldProvidePower(data, generatorData)
-    if not data.generatorId then
+--- Verifica se o prédio deve ou não estar energizado com base no estado operacional do gerador conectado.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param dadosGerador GeneratorData|nil Dados operacionais do gerador associado (opcional).
+--- @return boolean Retorna true se o gerador estiver ativo e fornecendo energia.
+function LKS_EletricidadeConstrucao.Data.Building.ShouldProvidePower(dadosPredio, dadosGerador)
+    if not dadosPredio.generatorId then
         return false
     end
     
-    if generatorData then
-        -- Check if generator is actually running
-        return LKS_EletricidadeConstrucao.Data.Generator.IsRunning(generatorData)
+    if dadosGerador then
+        -- Retorna true se o gerador estiver rodando ativamente com combustível
+        return LKS_EletricidadeConstrucao.Data.Generator.IsRunning(dadosGerador)
     end
     
-    -- Assume powered if connected (generator state unknown)
+    -- Suposição padrão: assume energizado caso haja vínculo e o gerador físico não tenha sido avaliado
     return true
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAÇÃO
 -- ============================================================================
 
---- Convert building data to string for debugging
---- @param data BuildingData Building data
---- @return string String representation
-function LKS_EletricidadeConstrucao.Data.Building.ToString(data)
+--- Converte o estado operacional do prédio em uma string descritiva legível para fins de depuração.
+--- @param dadosPredio BuildingData Os dados do prédio analisado.
+--- @return string Representação descritiva formatada.
+function LKS_EletricidadeConstrucao.Data.Building.ToString(dadosPredio)
     return string.format(
-        "Building[%s] at (%d,%d,%d) | Gen:%s Powered:%s Consumers:%d/%d Power:%.1f Radius:%d",
-        data.id,
-        data.x, data.y, data.z,
-        data.generatorId or "none",
-        tostring(data.isPowered),
-        LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(data),
-        (function() local n=0; for _ in pairs(data.powerConsumers) do n=n+1 end; return n end)(),
-        data.totalPowerDraw,
-        data.borderRadius
+        "Predio[%s] em (%d,%d,%d) | Gerador:%s Alimentado:%s Consumidores:%d/%d Carga:%.1f Raio:%d",
+        dadosPredio.id,
+        dadosPredio.x, dadosPredio.y, dadosPredio.z,
+        dadosPredio.generatorId or "nenhum",
+        tostring(dadosPredio.isPowered),
+        LKS_EletricidadeConstrucao.Data.Building.GetActiveConsumerCount(dadosPredio),
+        (function() 
+            local contadorLoop = 0 
+            for _ in pairs(dadosPredio.powerConsumers) do 
+                contadorLoop = contadorLoop + 1 
+            end 
+            return contadorLoop 
+        end)(),
+        dadosPredio.totalPowerDraw,
+        dadosPredio.borderRadius
     )
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO E REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Data.Building", "2.0.0")

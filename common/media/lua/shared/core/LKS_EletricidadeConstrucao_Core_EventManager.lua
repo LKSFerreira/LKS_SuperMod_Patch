@@ -1,115 +1,115 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Core_EventManager.lua
--- LKS_EletricidadeConstrucao V2 - Event Manager
--- Custom event system for mod communication
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Core_EventManager.lua
+-- OBJETIVO: Sistema de eventos personalizado para comunicação interna e extensões.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Core_EventManager] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Core_EventManager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- EVENT REGISTRY
+-- REGISTRO DE EVENTOS
 -- ============================================================================
 
-local _eventHandlers = {}  -- event name -> array of handler functions
-local _eventStats = {}  -- event name -> { fired: number, handlers: number }
+local _manipuladoresEventos = {} -- nomeEvento -> array contendo as funções ouvintes
+local _estatisticasEventos = {}  -- nomeEvento -> { disparados: number, manipuladores: number }
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- FUNÇÕES AUXILIARES INTERNAS
 -- ============================================================================
 
---- Initialize event statistics
---- @param eventName string Event name
-local function InitEventStats(eventName)
-    if not _eventStats[eventName] then
-        _eventStats[eventName] = {
-            fired = 0,
-            handlers = 0
+--- Inicializa a estrutura de estatísticas de disparos para um determinado evento.
+--- @param nomeEvento string O nome identificador do evento.
+local function InicializarEstatisticasEvento(nomeEvento)
+    if not _estatisticasEventos[nomeEvento] then
+        _estatisticasEventos[nomeEvento] = {
+            disparados = 0,
+            manipuladores = 0
         }
     end
 end
 
 -- ============================================================================
--- EVENT REGISTRATION
+-- MÉTODOS PÚBLICOS DE MANIPULAÇÃO DE EVENTOS
 -- ============================================================================
 
---- Register event handler
---- @param eventName string Event name
---- @param handler function Handler function
---- @param priority number|nil Priority (higher = earlier, default: 0)
---- @return boolean True if registered successfully
-function LKS_EletricidadeConstrucao.Core.EventManager.RegisterHandler(eventName, handler, priority)
-    local Validation = LKS_EletricidadeConstrucao.Utils.Validation
+--- Registra um manipulador/ouvinte de evento personalizado com prioridade.
+--- @param nomeEvento string O nome do evento a ser escutado.
+--- @param manipulador function A função callback executada quando o evento é disparado.
+--- @param prioridade number|nil Prioridade de execução (valores maiores rodam antes, padrão: 0).
+--- @return boolean Retorna true se o registro foi realizado com sucesso.
+function LKS_EletricidadeConstrucao.Core.EventManager.RegisterHandler(nomeEvento, manipulador, prioridade)
+    local Validacao = LKS_EletricidadeConstrucao.Utils.Validation
     
-    -- Validate inputs
-    if Validation.IsEmptyString(eventName) then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("Event name cannot be empty", "Event")
+    -- Validação de sanidade de parâmetros
+    if Validacao.IsEmptyString(nomeEvento) then
+        LKS_EletricidadeConstrucao.Core.Logger.Error("O nome do evento não pode ser vazio", "Event")
         return false
     end
     
-    if not Validation.IsFunction(handler) then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("Handler must be a function", "Event")
+    if not Validacao.IsFunction(manipulador) then
+        LKS_EletricidadeConstrucao.Core.Logger.Error("O manipulador do evento deve ser uma função válida", "Event")
         return false
     end
     
-    -- Initialize handler array
-    if not _eventHandlers[eventName] then
-        _eventHandlers[eventName] = {}
+    -- Cria a fila de ouvintes caso seja o primeiro registro do evento
+    if not _manipuladoresEventos[nomeEvento] then
+        _manipuladoresEventos[nomeEvento] = {}
     end
     
-    -- Create handler entry
-    local entry = {
-        handler = handler,
-        priority = priority or 0
+    local entrada = {
+        handler = manipulador,
+        priority = prioridade or 0
     }
     
-    -- Insert handler
-    table.insert(_eventHandlers[eventName], entry)
+    table.insert(_manipuladoresEventos[nomeEvento], entrada)
     
-    -- Sort by priority (highest first)
-    table.sort(_eventHandlers[eventName], function(a, b)
-        return a.priority > b.priority
+    -- Ordena os ouvintes por prioridade de execução (maior prioridade executa antes)
+    table.sort(_manipuladoresEventos[nomeEvento], function(manipuladorA, manipuladorB)
+        return manipuladorA.priority > manipuladorB.priority
     end)
     
-    -- Update stats
-    InitEventStats(eventName)
-    _eventStats[eventName].handlers = #_eventHandlers[eventName]
+    -- Atualiza metadados estatísticos
+    InicializarEstatisticasEvento(nomeEvento)
+    _estatisticasEventos[nomeEvento].manipuladores = #_manipuladoresEventos[nomeEvento]
     
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Registered handler for event: " .. eventName, "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Registrado manipulador para o evento: " .. nomeEvento, "Event")
     
     return true
 end
 
---- Unregister event handler
---- @param eventName string Event name
---- @param handler function Handler function to remove
---- @return boolean True if unregistered successfully
-function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterHandler(eventName, handler)
-    if not _eventHandlers[eventName] then
+--- Remove o registro de um manipulador de evento previamente escutado.
+--- @param nomeEvento string O nome do evento associado.
+--- @param manipulador function A função callback a ser desvinculada.
+--- @return boolean Retorna true se o manipulador foi localizado e removido.
+function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterHandler(nomeEvento, manipulador)
+    if not _manipuladoresEventos[nomeEvento] then
         return false
     end
     
-    -- Find and remove handler
-    for i = #_eventHandlers[eventName], 1, -1 do
-        if _eventHandlers[eventName][i].handler == handler then
-            table.remove(_eventHandlers[eventName], i)
+    for indiceLoop = #_manipuladoresEventos[nomeEvento], 1, -1 do
+        if _manipuladoresEventos[nomeEvento][indiceLoop].handler == manipulador then
+            table.remove(_manipuladoresEventos[nomeEvento], indiceLoop)
             
-            -- Update stats
-            if _eventStats[eventName] then
-                _eventStats[eventName].handlers = #_eventHandlers[eventName]
+            if _estatisticasEventos[nomeEvento] then
+                _estatisticasEventos[nomeEvento].manipuladores = #_manipuladoresEventos[nomeEvento]
             end
             
-            LKS_EletricidadeConstrucao.Core.Logger.Debug("Unregistered handler for event: " .. eventName, "Event")
+            LKS_EletricidadeConstrucao.Core.Logger.Debug("Removido manipulador do evento: " .. nomeEvento, "Event")
             return true
         end
     end
@@ -117,285 +117,285 @@ function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterHandler(eventNam
     return false
 end
 
---- Clear all handlers for event
---- @param eventName string Event name
-function LKS_EletricidadeConstrucao.Core.EventManager.ClearHandlers(eventName)
-    _eventHandlers[eventName] = nil
+--- Limpa permanentemente todos os manipuladores vinculados a um evento.
+--- @param nomeEvento string O nome do evento a limpar.
+function LKS_EletricidadeConstrucao.Core.EventManager.ClearHandlers(nomeEvento)
+    _manipuladoresEventos[nomeEvento] = nil
     
-    if _eventStats[eventName] then
-        _eventStats[eventName].handlers = 0
+    if _estatisticasEventos[nomeEvento] then
+        _estatisticasEventos[nomeEvento].manipuladores = 0
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Cleared all handlers for event: " .. eventName, "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Todos os ouvintes do evento foram limpos: " .. nomeEvento, "Event")
 end
 
 -- ============================================================================
--- EVENT TRIGGERING
+-- DISPARADOR DE EVENTOS
 -- ============================================================================
 
---- Trigger event
---- @param eventName string Event name
---- @param ... any Event arguments
---- @return number Number of handlers executed
-function LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(eventName, ...)
-    -- Check if there are handlers
-    if not _eventHandlers[eventName] or #_eventHandlers[eventName] == 0 then
+--- Dispara um evento personalizado executando todos os manipuladores escutas em ordem de prioridade.
+--- @param nomeEvento string O nome do evento disparado.
+--- @param ... any Argumentos variáveis repassados às funções callbacks ouvintes.
+--- @return integer A quantidade de manipuladores executados com sucesso (sem travar por erro).
+function LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(nomeEvento, ...)
+    if not _manipuladoresEventos[nomeEvento] or #_manipuladoresEventos[nomeEvento] == 0 then
         return 0
     end
     
-    -- Update stats
-    InitEventStats(eventName)
-    _eventStats[eventName].fired = _eventStats[eventName].fired + 1
+    InicializarEstatisticasEvento(nomeEvento)
+    _estatisticasEventos[nomeEvento].disparados = _estatisticasEventos[nomeEvento].disparados + 1
     
-    -- Execute handlers
-    local count = 0
-    local args = {...}
+    local contagemSucessos = 0
+    local argumentos = {...}
     
-    LKS_EletricidadeConstrucao.Core.Logger.Trace("Triggering event: " .. eventName .. " with " .. #_eventHandlers[eventName] .. " handlers", "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Trace(string.format(
+        "Disparando evento: %s com %d manipuladores na fila", 
+        nomeEvento, #_manipuladoresEventos[nomeEvento]), "Event")
     
-    for _, entry in ipairs(_eventHandlers[eventName]) do
-        -- Call handler with error protection
-        local success, err = pcall(entry.handler, unpack(args))
+    for _, entrada in ipairs(_manipuladoresEventos[nomeEvento]) do
+        -- Protege a execução de callbacks em ambiente isolado pcall para não derrubar a engine por erros de mods terceiros
+        local sucesso, erro = pcall(entrada.handler, unpack(argumentos))
         
-        if not success then
-            LKS_EletricidadeConstrucao.Core.Logger.Error("Error in event handler for " .. eventName .. ": " .. tostring(err), "Event")
+        if not sucesso then
+            LKS_EletricidadeConstrucao.Core.Logger.Error(string.format(
+                "Falha técnica na execução do callback do evento %s: %s", 
+                nomeEvento, tostring(erro)), "Event")
         else
-            count = count + 1
+            contagemSucessos = contagemSucessos + 1
         end
     end
     
-    return count
+    return contagemSucessos
 end
 
---- Register a vanilla game event handler
---- Returns true on success, false if the event does not exist in this Lua state
---- @param eventName string Vanilla event name
---- @param handler function Handler function
-function LKS_EletricidadeConstrucao.Core.EventManager.RegisterGameEvent(eventName, handler)
-    if not Events[eventName] then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("RegisterGameEvent: event '" .. tostring(eventName) .. "' does not exist in this Lua state - skipping", "Event")
+--- Vincula uma função callback a um evento nativo/vanilla do Project Zomboid (API nativa Events.X.Add).
+--- @param nomeEvento string O nome do evento nativo do jogo (ex: OnTick, OnGameStart, OnContainerUpdate).
+--- @param manipulador function A função executada pelo evento nativo.
+--- @return boolean Retorna true se o vínculo com a engine foi realizado com sucesso.
+function LKS_EletricidadeConstrucao.Core.EventManager.RegisterGameEvent(nomeEvento, manipulador)
+    if not Events[nomeEvento] then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
+            "RegisterGameEvent: O evento nativo '%s' não existe nesta VM Lua do jogo - pulando registro", 
+            tostring(nomeEvento)), "Event")
         return false
     end
-    Events[eventName].Add(handler)
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Registered handler for game event: " .. eventName, "Event")
+    Events[nomeEvento].Add(manipulador)
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Registrado vínculo com evento nativo: " .. nomeEvento, "Event")
     return true
 end
 
---- Unregister a vanilla game event handler
---- @param eventName string Vanilla event name
---- @param handler function Handler function
-function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterGameEvent(eventName, handler)
-    if not Events[eventName] then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("UnregisterGameEvent: event '" .. tostring(eventName) .. "' does not exist - skipping", "Event")
+--- Remove o vínculo de uma função callback em relação a um evento nativo do Project Zomboid.
+--- @param nomeEvento string O nome do evento nativo.
+--- @param manipulador function O callback ou ouvinte a desvincular.
+--- @return boolean Retorna true se o desvínculo foi concluído.
+function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterGameEvent(nomeEvento, manipulador)
+    if not Events[nomeEvento] then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
+            "UnregisterGameEvent: O evento nativo '%s' não existe - pulando desregistramento", 
+            tostring(nomeEvento)), "Event")
         return false
     end
-    Events[eventName].Remove(handler)
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Unregistered handler for game event: " .. eventName, "Event")
+    Events[nomeEvento].Remove(manipulador)
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Removido vínculo com evento nativo: " .. nomeEvento, "Event")
     return true
 end
 
 -- ============================================================================
--- CUSTOM EVENT DEFINITIONS
+-- DEFINIÇÕES DE EVENTOS CUSTOMIZADOS DO SISTEMA ELÉTRICO
 -- ============================================================================
 
---- Initialize all custom events
+--- Inicializa e valida as definições dos eventos personalizados configurados nas Constantes do mod.
 function LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents()
-    -- Safe check for dependencies
-    if not LKS_EletricidadeConstrucao or not LKS_EletricidadeConstrucao.Constants or not LKS_EletricidadeConstrucao.Core or not LKS_EletricidadeConstrucao.Core.Logger then
-        print("[LKS_EletricidadeConstrucao_Core_EventManager] InitializeCustomEvents: Missing dependencies, skipping initialization")
+    if not LKS_EletricidadeConstrucao 
+            or not LKS_EletricidadeConstrucao.Constants 
+            or not LKS_EletricidadeConstrucao.Core 
+            or not LKS_EletricidadeConstrucao.Core.Logger then
+        print("[LKS_EletricidadeConstrucao_Core_EventManager] InitializeCustomEvents: Dependências internas indisponíveis!")
         return
     end
     
-    local Constants = LKS_EletricidadeConstrucao.Constants
+    local Constantes = LKS_EletricidadeConstrucao.Constants
     
-    -- Initialize event statistics for all custom events
-    if Constants.EVENTS then
-        for _, eventName in pairs(Constants.EVENTS) do
-            InitEventStats(eventName)
+    if Constantes.EVENTS then
+        for _, nomeEvento in pairs(Constantes.EVENTS) do
+            InicializarEstatisticasEvento(nomeEvento)
         end
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Initialized custom events", "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Eventos personalizados do sistema elétrico inicializados", "Event")
 end
 
 -- ============================================================================
--- GENERATOR EVENTS
+-- ENTRADAS DE GATILHOS (GERADORES)
 -- ============================================================================
 
---- Trigger generator connected event
---- @param generatorData GeneratorData Generator that was connected
---- @param buildingData BuildingData Building that was connected
-function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorConnected(generatorData, buildingData)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.GENERATOR_CONNECTED, generatorData, buildingData)
+--- Dispara evento após a conexão física de um gerador a uma construção.
+--- @param dadosGerador table Os dados do gerador.
+--- @param dadosConstrucao table Os dados da construção conectada.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorConnected(dadosGerador, dadosConstrucao)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.GENERATOR_CONNECTED, dadosGerador, dadosConstrucao)
 end
 
---- Trigger generator disconnected event
---- @param generatorData GeneratorData Generator that was disconnected
---- @param buildingData BuildingData Building that was disconnected
-function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorDisconnected(generatorData, buildingData)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.GENERATOR_DISCONNECTED, generatorData, buildingData)
+--- Dispara evento após a desconexão física de um gerador em relação a uma construção.
+--- @param dadosGerador table Os dados do gerador.
+--- @param dadosConstrucao table Os dados da construção desconectada.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorDisconnected(dadosGerador, dadosConstrucao)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.GENERATOR_DISCONNECTED, dadosGerador, dadosConstrucao)
 end
 
---- Trigger generator activated event
---- @param generatorData GeneratorData Generator that was activated
-function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorActivated(generatorData)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.GENERATOR_ACTIVATED, generatorData)
+--- Dispara evento de ativação física de gerador.
+--- @param dadosGerador table Os dados do gerador ligado.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorActivated(dadosGerador)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.GENERATOR_ACTIVATED, dadosGerador)
 end
 
---- Trigger generator deactivated event
---- @param generatorData GeneratorData Generator that was deactivated
-function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorDeactivated(generatorData)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.GENERATOR_DEACTIVATED, generatorData)
+--- Dispara evento de desativação física de gerador.
+--- @param dadosGerador table Os dados do gerador desligado.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorDeactivated(dadosGerador)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.GENERATOR_DEACTIVATED, dadosGerador)
 end
 
---- Trigger generator fuel empty event
---- @param generatorData GeneratorData Generator that ran out of fuel
-function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorFuelEmpty(generatorData)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.GENERATOR_FUEL_EMPTY, generatorData)
-end
-
--- ============================================================================
--- BUILDING EVENTS
--- ============================================================================
-
---- Trigger building power changed event
---- @param buildingData BuildingData Building with changed power state
---- @param isPowered boolean New power state
-function LKS_EletricidadeConstrucao.Core.EventManager.OnBuildingPowerChanged(buildingData, isPowered)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.BUILDING_POWER_CHANGED, buildingData, isPowered)
-end
-
---- Trigger building scanned event
---- @param buildingData BuildingData Building that was scanned
-function LKS_EletricidadeConstrucao.Core.EventManager.OnBuildingScanned(buildingData)
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.BUILDING_SCANNED, buildingData)
+--- Dispara evento indicando que o combustível do gerador acabou completamente.
+--- @param dadosGerador table Os dados do gerador afetado.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnGeneratorFuelEmpty(dadosGerador)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.GENERATOR_FUEL_EMPTY, dadosGerador)
 end
 
 -- ============================================================================
--- STATE EVENTS
+-- ENTRADAS DE GATILHOS (CONSTRUÇÕES)
 -- ============================================================================
 
---- Trigger state loaded event
+--- Dispara evento de alteração no estado de alimentação elétrica de uma construção.
+--- @param dadosConstrucao table Os dados da construção.
+--- @param estaEnergizado boolean Novo status de energia.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnBuildingPowerChanged(dadosConstrucao, estaEnergizado)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.BUILDING_POWER_CHANGED, dadosConstrucao, estaEnergizado)
+end
+
+--- Dispara evento após a conclusão da varredura geométrica e de blocos de uma construção.
+--- @param dadosConstrucao table Os dados da construção varrida.
+function LKS_EletricidadeConstrucao.Core.EventManager.OnBuildingScanned(dadosConstrucao)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.BUILDING_SCANNED, dadosConstrucao)
+end
+
+-- ============================================================================
+-- ENTRADAS DE GATILHOS (ESTADO DO MOD)
+-- ============================================================================
+
+--- Dispara evento após o carregamento bem-sucedido dos dados globais ModData.
 function LKS_EletricidadeConstrucao.Core.EventManager.OnStateLoaded()
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.STATE_LOADED)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.STATE_LOADED)
 end
 
---- Trigger state saved event
+--- Dispara evento após a gravação persistente dos dados globais no ModData.
 function LKS_EletricidadeConstrucao.Core.EventManager.OnStateSaved()
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.STATE_SAVED)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.STATE_SAVED)
 end
 
---- Trigger state reset event
+--- Dispara evento após a redefinição padrão do estado do mod.
 function LKS_EletricidadeConstrucao.Core.EventManager.OnStateReset()
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.STATE_RESET)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.STATE_RESET)
 end
 
 -- ============================================================================
--- NETWORK EVENTS (Multiplayer)
+-- ENTRADAS DE GATILHOS (MULTIPLAYER)
 -- ============================================================================
 
---- Trigger full sync event
+--- Dispara evento de sincronização total solicitada/recebida no modo rede MP.
 function LKS_EletricidadeConstrucao.Core.EventManager.OnFullSync()
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.FULL_SYNC)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.FULL_SYNC)
 end
 
---- Trigger delta sync event
+--- Dispara evento de sincronização incremental delta solicitada/recebida no modo rede MP.
 function LKS_EletricidadeConstrucao.Core.EventManager.OnDeltaSync()
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constants.EVENTS.DELTA_SYNC)
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(Constantes.EVENTS.DELTA_SYNC)
 end
 
 -- ============================================================================
--- STATISTICS
+-- CONSULTAS E AUDITORIA
 -- ============================================================================
 
---- Get event statistics
---- @param eventName string|nil Event name (nil for all events)
---- @return table Statistics
-function LKS_EletricidadeConstrucao.Core.EventManager.GetStats(eventName)
-    if eventName then
-        return _eventStats[eventName] or { fired = 0, handlers = 0 }
+--- Retorna as estatísticas de disparos consolidadas para um ou todos os eventos.
+--- @param nomeEvento string|nil O nome do evento a filtrar (nil para retornar todos).
+--- @return table Tabela contendo estatísticas de contagem de disparo.
+function LKS_EletricidadeConstrucao.Core.EventManager.GetStats(nomeEvento)
+    if nomeEvento then
+        return _estatisticasEventos[nomeEvento] or { disparados = 0, manipuladores = 0 }
     else
-        return _eventStats
+        return _estatisticasEventos
     end
 end
 
---- Get handler count for event
---- @param eventName string Event name
---- @return number Handler count
-function LKS_EletricidadeConstrucao.Core.EventManager.GetHandlerCount(eventName)
-    if not _eventHandlers[eventName] then
+--- Consulta a quantidade de ouvintes/manipuladores vinculados a um evento.
+--- @param nomeEvento string O nome identificador do evento.
+--- @return integer Quantidade de ouvintes ativos.
+function LKS_EletricidadeConstrucao.Core.EventManager.GetHandlerCount(nomeEvento)
+    if not _manipuladoresEventos[nomeEvento] then
         return 0
     end
-    
-    return #_eventHandlers[eventName]
+    return #_manipuladoresEventos[nomeEvento]
 end
 
---- Check if event has handlers
---- @param eventName string Event name
---- @return boolean True if has handlers
-function LKS_EletricidadeConstrucao.Core.EventManager.HasHandlers(eventName)
-    return LKS_EletricidadeConstrucao.Core.EventManager.GetHandlerCount(eventName) > 0
+--- Verifica se há ouvintes registrados escutando um evento específico.
+--- @param nomeEvento string O nome do evento.
+--- @return boolean Retorna true se houver ao menos um manipulador escutando o evento.
+function LKS_EletricidadeConstrucao.Core.EventManager.HasHandlers(nomeEvento)
+    return LKS_EletricidadeConstrucao.Core.EventManager.GetHandlerCount(nomeEvento) > 0
 end
 
--- ============================================================================
--- DEBUG
--- ============================================================================
-
---- Print event statistics
+--- Imprime estatísticas históricas de disparo e ouvintes cadastrados no console.
 function LKS_EletricidadeConstrucao.Core.EventManager.PrintStats()
-    LKS_EletricidadeConstrucao.Print("=== Event Manager Statistics ===")
+    LKS_EletricidadeConstrucao.Print("=== Estatísticas do Gerenciador de Eventos ===")
     
-    local totalFired = 0
-    local totalHandlers = 0
+    local totalDisparados = 0
+    local totalManipuladores = 0
     
-    for eventName, stats in pairs(_eventStats) do
-        LKS_EletricidadeConstrucao.Print(string.format("  %s: fired=%d handlers=%d", 
-            eventName, stats.fired, stats.handlers))
+    for nomeEvento, estatisticas in pairs(_estatisticasEventos) do
+        LKS_EletricidadeConstrucao.Print(string.format("  %s: disparados=%d manipuladores=%d", 
+            nomeEvento, estatisticas.disparados, estatisticas.manipuladores))
         
-        totalFired = totalFired + stats.fired
-        totalHandlers = totalHandlers + stats.handlers
+        totalDisparados = totalDisparados + estatisticas.disparados
+        totalManipuladores = totalManipuladores + estatisticas.manipuladores
     end
     
-    LKS_EletricidadeConstrucao.Print(string.format("Total: %d events fired, %d handlers registered", 
-        totalFired, totalHandlers))
+    LKS_EletricidadeConstrucao.Print(string.format("Total: %d disparos de eventos efetuados, %d manipuladores registrados", 
+        totalDisparados, totalManipuladores))
 end
 
---- Print registered events
+--- Imprime a lista detalhada de eventos e ouvintes ordenados por prioridade no console.
 function LKS_EletricidadeConstrucao.Core.EventManager.PrintEvents()
-    LKS_EletricidadeConstrucao.Print("=== Registered Events ===")
+    LKS_EletricidadeConstrucao.Print("=== Eventos Customizados Registrados ===")
     
-    for eventName, handlers in pairs(_eventHandlers) do
-        LKS_EletricidadeConstrucao.Print("  " .. eventName .. ": " .. #handlers .. " handler(s)")
-        
-        for i, entry in ipairs(handlers) do
-            LKS_EletricidadeConstrucao.Print(string.format("    [%d] Priority: %d", i, entry.priority))
+    for nomeEvento, manipuladores in pairs(_manipuladoresEventos) do
+        LKS_EletricidadeConstrucao.Print(string.format("  %s: %d manipuladores", nomeEvento, #manipuladores))
+        for indice, entrada in ipairs(manipuladores) do
+            LKS_EletricidadeConstrucao.Print(string.format("    [%d] Prioridade: %d", indice, entrada.priority))
         end
     end
 end
 
---- Clear all event statistics
+--- Zera o histórico acumulado de contagem de disparos dos eventos.
 function LKS_EletricidadeConstrucao.Core.EventManager.ClearStats()
-    for eventName, stats in pairs(_eventStats) do
-        stats.fired = 0
+    for _, estatisticas in pairs(_estatisticasEventos) do
+        estatisticas.disparados = 0
     end
-    
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Cleared event statistics", "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Estatísticas de disparos de eventos zeradas", "Event")
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- CONCLUSÃO DO REGISTRO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Core.EventManager", "2.0.0")

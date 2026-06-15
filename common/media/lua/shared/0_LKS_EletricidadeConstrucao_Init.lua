@@ -1,77 +1,94 @@
 -- ============================================================================
--- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
--- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) por sua fantástica contribuição para a comunidade!
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Init.lua
--- LKS_EletricidadeConstrucao V2 - Main Initialization File
--- This is the entry point for the mod - loads all core systems in correct order
--- MUST be loaded first (enforced by filename alphabetical order)
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: 0_LKS_EletricidadeConstrucao_Init.lua
+-- OBJETIVO: Ponto de entrada e inicialização principal do módulo LKS_EletricidadeConstrucao.
+-- DETALHE DE PRECEDÊNCIA: O prefixo "0_" no nome do arquivo força alfabeticamente o carregamento
+-- antes de qualquer subpasta do diretório "shared/" no motor Lua do Project Zomboid.
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
 -- ============================================================================
--- PHASE 0: CREATE GLOBAL NAMESPACE IMMEDIATELY
+-- FASE 0: CRIAÇÃO DO NAMESPACE GLOBAL E INFRAESTRUTURA BÁSICA
 -- ============================================================================
--- CRITICAL: Must create namespace BEFORE loading any other files
--- because PZ loads files alphabetically (actions/ loads before core/)
+-- CRÍTICO: O namespace deve existir antes que qualquer arquivo de ações ou utilitários
+-- seja carregado pela engine em ordem alfabética.
 
--- Create main namespace and all sub-namespaces
+-- Criação do Namespace Principal
 LKS_EletricidadeConstrucao = LKS_EletricidadeConstrucao or {}
--- Alias LKS_EletricidadeConstrucao removido: use LKS_EletricidadeConstrucao.
 
 LKS_EletricidadeConstrucao.VERSION = "2.0.0-alpha"
 LKS_EletricidadeConstrucao.BUILD_DATE = "2026-02-22"
 LKS_EletricidadeConstrucao.MOD_ID = "LKSSuperModPatch"
 
--- Create all sub-namespaces upfront
+-- Inicialização preventiva de sub-namespaces globais
 LKS_EletricidadeConstrucao.Core = LKS_EletricidadeConstrucao.Core or {}
 LKS_EletricidadeConstrucao.Core.Runtime = LKS_EletricidadeConstrucao.Core.Runtime or {}
 LKS_EletricidadeConstrucao.Core.StateManager = LKS_EletricidadeConstrucao.Core.StateManager or {}
 LKS_EletricidadeConstrucao.Core.EventManager = LKS_EletricidadeConstrucao.Core.EventManager or {}
 
 -- ============================================================================
--- PROXY LOGGER (Phase 0)
+-- LOGGER PROXY (Fase 0)
 -- ============================================================================
--- Create a proxy logger that queues messages until the real logger is ready.
--- This ensures all modules can safely call Logger.Info/Warn/Error/Debug/Trace
--- at any point during loading without crashing, even before core/ is loaded.
+-- Cria um Logger Proxy temporário que enfileira mensagens em memória antes do
+-- subsistema de logging real estar totalmente carregado. Isso evita travamentos de 
+-- ponteiro nulo (nil pointer crashes) durante o bootstrap do mod.
 if not LKS_EletricidadeConstrucao.Core.Logger or not LKS_EletricidadeConstrucao.Core.Logger._isProxy then
-    local _queue = {}
-    local _real = nil
-    local function dispatch(level, msg, cat)
-        if _real and _real[level] then
-            _real[level](msg, cat)
+    local filaMensagens = {}
+    local loggerReal = nil
+    
+    --- Despacha uma mensagem para o logger real ou a enfileira em memória se não estiver pronto.
+    --- @param nivel string O nível do log (ex: "Info", "Warn", "Error").
+    --- @param msg string A mensagem de texto a ser logada.
+    --- @param categoria string A categoria ou escopo do log.
+    local function despacharLog(nivel, msg, categoria)
+        if loggerReal and loggerReal[nivel] then
+            loggerReal[nivel](msg, categoria)
         else
-            table.insert(_queue, {level = level, msg = tostring(msg), cat = tostring(cat or "")})
+            table.insert(filaMensagens, {
+                level = nivel, 
+                msg = tostring(msg), 
+                cat = tostring(categoria or "")
+            })
         end
     end
+    
     LKS_EletricidadeConstrucao.Core.Logger = {
         _isProxy = true,
-        _queue = _queue,
-        -- Called by LKS_EletricidadeConstrucao_Core_Logger.lua to activate the real implementation
-        _activate = function(realLogger)
-            _real = realLogger
-            -- Flush queued messages
-            for _, entry in ipairs(_queue) do
-                if _real[entry.level] then
-                    _real[entry.level](entry.msg, entry.cat)
+        _queue = filaMensagens,
+        
+        --- Ativa o logger real de produção e descarrega a fila de mensagens acumulada.
+        --- Chamado internamente por LKS_EletricidadeConstrucao_Core_Logger.lua após carregar.
+        --- @param loggerInstanciado table O módulo de logger de produção definitivo.
+        _activate = function(loggerInstanciado)
+            loggerReal = loggerInstanciado
+            for _, entrada in ipairs(filaMensagens) do
+                if loggerReal[entrada.level] then
+                    loggerReal[entrada.level](entrada.msg, entrada.cat)
                 else
-                    print(string.format("[LKS_EletricidadeConstrucao][%s][%s] %s", entry.level, entry.cat, entry.msg))
+                    print(string.format("[LKS_EletricidadeConstrucao][%s][%s] %s", entrada.level, entrada.cat, entrada.msg))
                 end
             end
-            _queue = {}
+            filaMensagens = {}
         end,
-        Info  = function(msg, cat) dispatch("Info",  msg, cat) end,
-        Warn  = function(msg, cat) dispatch("Warn",  msg, cat) end,
-        Error = function(msg, cat) dispatch("Error", msg, cat) end,
-        Debug = function(msg, cat) dispatch("Debug", msg, cat) end,
-        Trace = function(msg, cat) dispatch("Trace", msg, cat) end,
+        Info  = function(msg, cat) despacharLog("Info",  msg, cat) end,
+        Warn  = function(msg, cat) despacharLog("Warn",  msg, cat) end,
+        Error = function(msg, cat) despacharLog("Error", msg, cat) end,
+        Debug = function(msg, cat) despacharLog("Debug", msg, cat) end,
+        Trace = function(msg, cat) despacharLog("Trace", msg, cat) end,
     }
 end
 
+-- Inicialização dos demais sub-namespaces do mod
 LKS_EletricidadeConstrucao.Fuel = LKS_EletricidadeConstrucao.Fuel or {}
 LKS_EletricidadeConstrucao.Fuel.Manager = LKS_EletricidadeConstrucao.Fuel.Manager or {}
 LKS_EletricidadeConstrucao.Fuel.StrainCalculator = LKS_EletricidadeConstrucao.Fuel.StrainCalculator or {}
@@ -106,6 +123,13 @@ if not LKS_EletricidadeConstrucao._RawPrint then
     LKS_EletricidadeConstrucao._RawPrint = print
 end
 
+--- Verifica se uma mensagem específica de console deve ser suprimida do print nativo.
+---
+--- Serve para reduzir a poluição visual do console gerada por logs redundantes,
+--- permitindo apenas mensagens críticas de erro/alerta, ou todas as mensagens caso o DebugMode esteja ativo.
+---
+--- @param message any A mensagem a ser avaliada.
+--- @return boolean Retorna true se a mensagem deve ser silenciada no console.
 local function ShouldSuppressLKS_EletricidadeConstrucaoPrint(message)
     if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.DebugMode then
         return false
@@ -133,9 +157,9 @@ local function ShouldSuppressLKS_EletricidadeConstrucaoPrint(message)
 
     return string.find(message, "[LKS_EletricidadeConstrucao_", 1, true) == 1
         or string.find(message, "[LKS_EletricidadeConstrucao]", 1, true) == 1
-        or string.find(message, "[LKS_EletricidadeConstrucao]", 1, true) == 1
 end
 
+-- Instalador do filtro de console para print nativo
 if not LKS_EletricidadeConstrucao._PrintFilterInstalled then
     local rawPrint = LKS_EletricidadeConstrucao._RawPrint
     print = function(...)
@@ -158,19 +182,25 @@ LKS_EletricidadeConstrucao._InitStatus = LKS_EletricidadeConstrucao._InitStatus 
     ServerInitialized = false
 }
 
--- Helper functions
+-- Funções utilitárias globais do namespace elétrico
 if not LKS_EletricidadeConstrucao.RegisterModule then
+    --- Registra um módulo recém-carregado no namespace elétrico.
+    --- @param moduleName string O nome descritivo do módulo.
+    --- @param version string A versão técnica do módulo (opcional).
     function LKS_EletricidadeConstrucao.RegisterModule(moduleName, version)
         LKS_EletricidadeConstrucao._LoadedModules[moduleName] = {
             name = moduleName,
             version = version or "unknown",
             loadedAt = os.time()
         }
-        print(string.format("[LKS_EletricidadeConstrucao] Module loaded: %s (v%s)", moduleName, version or "unknown"))
+        LKS_EletricidadeConstrucao.Print(string.format("Módulo carregado: %s (v%s)", moduleName, version or "unknown"))
     end
 end
 
 if not LKS_EletricidadeConstrucao.Print then
+    --- Função de logging padrão e padronizada para o console.
+    --- @param message string O texto do log.
+    --- @param level string O nível do log (opcional, padrão: "INFO").
     function LKS_EletricidadeConstrucao.Print(message, level)
         level = level or "INFO"
         print(string.format("[LKS_EletricidadeConstrucao][%s] %s", level, message))
@@ -178,146 +208,130 @@ if not LKS_EletricidadeConstrucao.Print then
 end
 
 -- ============================================================================
--- PHASE 1: NAMESPACE & CORE SYSTEMS
+-- FASE 1: SUBSISTEMAS BASE & DETECÇÃO DE AMBIENTE
 -- ============================================================================
 
--- Load namespace module (now just adds helper functions)
+-- Carrega o módulo base de namespace
 require "core/LKS_EletricidadeConstrucao_Core_Namespace"
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Init] CRITICAL: Namespace initialization failed - skipping init")
+    print("[LKS_EletricidadeConstrucao_Init] CRÍTICO: Falha na inicialização do Namespace - abortando boot")
     return
 end
 
--- Load runtime context (game mode detection)
+-- Carrega o contexto de execução (Singleplayer, Servidor Dedicado, Cliente Multiplayer)
 require "core/LKS_EletricidadeConstrucao_Core_RuntimeContext"
 
 if not LKS_EletricidadeConstrucao._InitStatus.RuntimeContextReady then
-    print("[LKS_EletricidadeConstrucao_Init] CRITICAL: Runtime context initialization failed - skipping init")
+    print("[LKS_EletricidadeConstrucao_Init] CRÍTICO: Falha na inicialização do Runtime Context - abortando boot")
     return
 end
 
 -- ============================================================================
--- PHASE 2: CONFIGURATION & CONSTANTS
+-- FASE 2: CONSTANTES & CONFIGURAÇÕES DE SANDBOX
 -- ============================================================================
 
--- Load constants (magic numbers, defaults)
+-- Carrega números mágicos, limites físicos e constantes matemáticas
 require "LKS_EletricidadeConstrucao_Constants"
 
--- Load configuration (sandbox options)
+-- Carrega o arquivo de configuração e preferências
 require "LKS_EletricidadeConstrucao_Config"
 
+-- Carrega e sincroniza as opções baseadas nas variáveis de Sandbox do servidor/mundo
 if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.LoadFromSandbox then
     LKS_EletricidadeConstrucao.Config.LoadFromSandbox()
 end
 
--- Validate configuration
+-- Executa validação de sanidade das configurações carregadas
 if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.Validate then
     LKS_EletricidadeConstrucao.Config.Validate()
 else
-    print("[LKS_EletricidadeConstrucao_Init] WARNING: Config.Validate not available, using defaults")
+    print("[LKS_EletricidadeConstrucao_Init] AVISO: Config.Validate indisponível, usando configurações padrão")
 end
 
 -- ============================================================================
--- PHASE 3: UTILITIES (Shared code, no context-specific logic)
+-- FASE 3: BIBLIOTECAS UTILITÁRIAS (Códigos matemáticos/lógicos puros)
 -- ============================================================================
 
--- Load utility modules
 require "utils/LKS_EletricidadeConstrucao_Utils_Math"
 require "utils/LKS_EletricidadeConstrucao_Utils_Geometry"
 require "utils/LKS_EletricidadeConstrucao_Utils_Table"
 require "utils/LKS_EletricidadeConstrucao_Utils_Validation"
 
 -- ============================================================================
--- PHASE 4: DATA MODELS & CORE INFRASTRUCTURE
+-- FASE 4: ESTRUTURAS DE DADOS & GERENCIADORES CORE
 -- ============================================================================
 
--- Load data model definitions
+-- Carrega os modelos de dados (estruturas OOP e classes de simulação)
 require "data/LKS_EletricidadeConstrucao_Data_Generator"
 require "data/LKS_EletricidadeConstrucao_Data_Building"
 require "data/LKS_EletricidadeConstrucao_Data_Consumer"
 require "data/LKS_EletricidadeConstrucao_Data_State"
 
--- Load core infrastructure
+-- Carrega o Logger real, o Gerenciador de Estado e Eventos customizados
 require "core/LKS_EletricidadeConstrucao_Core_Logger"
 require "core/LKS_EletricidadeConstrucao_Core_StateManager"
 require "core/LKS_EletricidadeConstrucao_Core_EventManager"
 
--- Initialize core systems
+-- Inicializa os manipuladores de eventos e do ModData persistente do mundo
 if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.EventManager and LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents then
     LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents()
 else
-    print("[LKS_EletricidadeConstrucao_Init] ERROR: EventManager.InitializeCustomEvents not available!")
-    print("[LKS_EletricidadeConstrucao_Init] LKS_EletricidadeConstrucao.Core exists: " .. tostring(LKS_EletricidadeConstrucao.Core ~= nil))
-    print("[LKS_EletricidadeConstrucao_Init] LKS_EletricidadeConstrucao.Core.EventManager exists: " .. tostring(LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.EventManager ~= nil))
+    print("[LKS_EletricidadeConstrucao_Init] ERRO: EventManager.InitializeCustomEvents indisponível!")
 end
 
 if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager and LKS_EletricidadeConstrucao.Core.StateManager.Initialize then
     LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
 else
-    print("[LKS_EletricidadeConstrucao_Init] ERROR: StateManager.Initialize not available!")
+    print("[LKS_EletricidadeConstrucao_Init] ERRO: StateManager.Initialize indisponível!")
 end
 
 -- ============================================================================
--- PHASE 5: CONTEXT-SPECIFIC INITIALIZATION
+-- FASE 5: INICIALIZAÇÃO DE CONTEXTOS COMPARTILHADOS E TIMED ACTIONS
 -- ============================================================================
 
--- Print current runtime context
+-- Imprime o modo de jogo detectado (Singleplayer / Multiplayer Client / Server)
 LKS_EletricidadeConstrucao.Core.Runtime.PrintContext()
 
--- ========================================
--- SHARED: TIMED ACTIONS (Both client and server)
--- ========================================
+-- Carrega as Ações Temporizadas comuns a Cliente e Servidor
 require "actions/LKS_EletricidadeConstrucao_ActionsInit"
 
--- ========================================
--- CLIENT/SERVER INITIALIZATION
--- ========================================
--- NOTE: Do NOT require client/ or server/ files from shared/!
--- PZ loads client/ files only in the client Lua state (where isClient()=true),
--- and server/ files only in the server Lua state (where isServer()=true).
--- Calling require "client/..." from a shared/ file would run client code in
--- the server state, breaking isClient() guards.
--- PZ itself will load LKS_EletricidadeConstrucao_ClientInit.lua and LKS_EletricidadeConstrucao_ServerInit.lua automatically.
-LKS_EletricidadeConstrucao._InitStatus.ClientInitialized = false  -- Set by LKS_EletricidadeConstrucao_ClientInit.lua
-LKS_EletricidadeConstrucao._InitStatus.ServerInitialized = false  -- Set by LKS_EletricidadeConstrucao_ServerInit.lua
+-- AVISO CRÍTICO: Não dê require em arquivos das pastas "client/" ou "server/"
+-- diretamente de arquivos na pasta "shared/". O PZ se encarrega de carregar
+-- automaticamente LKS_EletricidadeConstrucao_ClientInit.lua ou
+-- LKS_EletricidadeConstrucao_ServerInit.lua nos respectivos ambientes isolados de execução Lua.
+LKS_EletricidadeConstrucao._InitStatus.ClientInitialized = false  -- Preenchido por LKS_EletricidadeConstrucao_ClientInit.lua
+LKS_EletricidadeConstrucao._InitStatus.ServerInitialized = false  -- Preenchido por LKS_EletricidadeConstrucao_ServerInit.lua
 
 -- ============================================================================
--- PHASE 6: PUBLIC API
--- ============================================================================
-
--- TODO: Load API modules
--- require "api/LKS_EletricidadeConstrucao_API_Generator"
--- require "api/LKS_EletricidadeConstrucao_API_Consumer"
--- require "api/LKS_EletricidadeConstrucao_API_Events"
-
--- ============================================================================
--- INITIALIZATION COMPLETE
+-- FASE 6: CONCLUSÃO DO PROCESSO DE BOOTSTRAP
 -- ============================================================================
 
 LKS_EletricidadeConstrucao._InitStatus.CoreInitialized = true
 
--- Print loaded modules
-local loadedModules = LKS_EletricidadeConstrucao.GetLoadedModules()
-LKS_EletricidadeConstrucao.Print(string.format("Initialization complete - %d modules loaded", #loadedModules))
+-- Resumo dos módulos carregados com sucesso
+local modulosCarregados = LKS_EletricidadeConstrucao.GetLoadedModules()
+LKS_EletricidadeConstrucao.Print(string.format("Inicialização concluída - %d módulos registrados", #modulosCarregados))
 
 if LKS_EletricidadeConstrucao.Config.DebugMode then
-    LKS_EletricidadeConstrucao.Print("Loaded modules:")
-    for _, moduleName in ipairs(loadedModules) do
-        LKS_EletricidadeConstrucao.Print("  - " .. moduleName)
+    LKS_EletricidadeConstrucao.Print("Módulos carregados em ordem:")
+    for _, nomeModulo in ipairs(modulosCarregados) do
+        LKS_EletricidadeConstrucao.Print("  - " .. nomeModulo)
     end
 end
 
--- Print summary
+-- Cabeçalho detalhado no log final de carregamento
 print("========================================")
-print("LKS_EletricidadeConstrucao V2 Ready")
-print(string.format("  Mode: %s", LKS_EletricidadeConstrucao.Core.Runtime.GetGameMode()))
-print(string.format("  Server: %s", tostring(LKS_EletricidadeConstrucao.IsServer())))
-print(string.format("  Client: %s", tostring(LKS_EletricidadeConstrucao.IsClient())))
-print(string.format("  Modules: %d", #loadedModules))
+print("LKS_EletricidadeConstrucao V2 Pronto")
+print(string.format("  Modo de Jogo: %s", LKS_EletricidadeConstrucao.Core.Runtime.GetGameMode()))
+print(string.format("  Servidor: %s", tostring(LKS_EletricidadeConstrucao.IsServer())))
+print(string.format("  Cliente: %s", tostring(LKS_EletricidadeConstrucao.IsClient())))
+print(string.format("  Módulos: %d", #modulosCarregados))
 print("========================================")
 
--- Save init timestamp
+-- Salva carimbo de data/hora do boot
 LKS_EletricidadeConstrucao._InitTimestamp = os.time()
+
+print("[LKS PATCH - 0_LKS_EletricidadeConstrucao_Init.lua] Carregado com sucesso!")
 
 return LKS_EletricidadeConstrucao

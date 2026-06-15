@@ -1,70 +1,72 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Actions_OpenInfoWindow.lua
--- TimedAction for opening Generator Info Window
--- Opens UI showing generator and building stats
--- LOCATION: shared/actions/
+-- ARQUIVO: LKS_EletricidadeConstrucao_Actions_OpenInfoWindow.lua
+-- OBJETIVO: Ação Temporizada (TimedAction) para abrir a janela de interface gráfica de informações do gerador.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
+-- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Actions_OpenInfoWindow] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Actions_OpenInfoWindow] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
-print("[LKS_EletricidadeConstrucao_Actions_OpenInfoWindow] Loading Open Info Window action...")
-
--- Load required modules
+-- Carrega dependência nativa do jogo
 require "TimedActions/ISBaseTimedAction"
 
--- Register module
-LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Actions_OpenInfoWindow")
+LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Actions_OpenInfoWindow", "2.0.0")
 
--- Create namespace
 LKS_EletricidadeConstrucao.Actions = LKS_EletricidadeConstrucao.Actions or {}
 
--- ============================================================
--- OPEN INFO WINDOW TIMED ACTION
--- ============================================================
+-- ============================================================================
+-- DEFINIÇÃO DA CLASSE DE AÇÃO TEMPORIZADA
+-- ============================================================================
 
 LKS_EletricidadeConstrucao_OpenInfoWindow = ISBaseTimedAction:derive("LKS_EletricidadeConstrucao_OpenInfoWindow")
 
--- ============================================================
--- VALIDATION
--- ============================================================
+-- ============================================================================
+-- VALIDAÇÕES
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:isValid()
-    -- Generator must still exist
+    -- O gerador físico deve continuar existindo no mapa
     if not self.generator then return false end
     
-    -- Generator must be at same location
-    local square = self.generator:getSquare()
-    if not square then return false end
+    -- O gerador deve estar no mesmo quadrado
+    local quadrado = self.generator:getSquare()
+    if not quadrado then return false end
     
     return true
 end
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:waitToStart()
-    local sq = self.anchorSquare or (self.generator and self.generator:getSquare())
-    if sq then
-        self.character:faceLocation(sq:getX(), sq:getY())
+    local quadrado = self.anchorSquare or (self.generator and self.generator:getSquare())
+    if quadrado then
+        self.character:faceLocation(quadrado:getX(), quadrado:getY())
     end
     return self.character:shouldBeTurning()
 end
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:update()
-    local sq = self.anchorSquare or (self.generator and self.generator:getSquare())
-    if sq then
-        self.character:faceLocation(sq:getX(), sq:getY())
+    local quadrado = self.anchorSquare or (self.generator and self.generator:getSquare())
+    if quadrado then
+        self.character:faceLocation(quadrado:getX(), quadrado:getY())
     end
 end
 
--- ============================================================
--- ANIMATION
--- ============================================================
+-- ============================================================================
+-- ANIMAÇÃO
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:start()
     self:setActionAnim("Loot")
@@ -80,110 +82,119 @@ function LKS_EletricidadeConstrucao_OpenInfoWindow:perform()
     ISBaseTimedAction.perform(self)
 end
 
--- ============================================================
--- ACTION EXECUTION
--- ============================================================
+-- ============================================================================
+-- OPERAÇÕES E EXECUÇÃO
+-- ============================================================================
 
-local function NormalizeBuildingHint(buildingHint)
-    if type(buildingHint) == "table" then
-        return buildingHint.id
+--- Normaliza a dica da construção (tabela ou string) retornando apenas o seu ID.
+--- @param dicaConstrucao table|string A dica da construção.
+--- @return string|nil O ID normalizado ou nil.
+local function NormalizarDicaConstrucao(dicaConstrucao)
+    if type(dicaConstrucao) == "table" then
+        return dicaConstrucao.id
     end
-    if type(buildingHint) == "string" then
-        return buildingHint
+    if type(dicaConstrucao) == "string" then
+        return dicaConstrucao
     end
     return nil
 end
 
-local function SendOpenInfoWindowToClient(playerObj, generator, anchorSquare, buildingHint)
-    if not playerObj or not sendServerCommand then
+--- Envia a mensagem de abertura da interface para o cliente multiplayer solicitado.
+--- @param objetoJogador any O jogador solicitante.
+--- @param gerador any O gerador físico de referência.
+--- @param quadradoAncora any O quadrado de âncora de mapa.
+--- @param dicaConstrucao table|string Dica da construção associada.
+--- @return boolean Retorna true se a mensagem do servidor foi enviada.
+local function EnviarAberturaJanelaAoCliente(objetoJogador, gerador, quadradoAncora, dicaConstrucao)
+    if not objetoJogador or not sendServerCommand then
         return false
     end
 
-    local genSquare = generator and generator:getSquare()
-    if not genSquare then
+    local quadradoGerador = gerador and gerador:getSquare()
+    if not quadradoGerador then
         return false
     end
 
-    local payload = {
+    local cargaDados = {
         kind = "OpenInfoWindow",
         success = true,
-        genX = genSquare:getX(),
-        genY = genSquare:getY(),
-        genZ = genSquare:getZ(),
+        genX = quadradoGerador:getX(),
+        genY = quadradoGerador:getY(),
+        genZ = quadradoGerador:getZ(),
     }
 
-    local sq = anchorSquare or genSquare
-    if sq then
-        payload.anchorX = sq:getX()
-        payload.anchorY = sq:getY()
-        payload.anchorZ = sq:getZ()
+    local quadrado = quadradoAncora or quadradoGerador
+    if quadrado then
+        cargaDados.anchorX = quadrado:getX()
+        cargaDados.anchorY = quadrado:getY()
+        cargaDados.anchorZ = quadrado:getZ()
     end
 
-    local buildingID = NormalizeBuildingHint(buildingHint)
-    if buildingID then
-        payload.buildingID = buildingID
+    local identificadorConstrucao = NormalizarDicaConstrucao(dicaConstrucao)
+    if identificadorConstrucao then
+        cargaDados.buildingID = identificadorConstrucao
     end
 
-    sendServerCommand(playerObj, "LKS_EletricidadeConstrucao", "ActionResult", payload)
+    sendServerCommand(objetoJogador, "LKS_EletricidadeConstrucao", "ActionResult", cargaDados)
     return true
 end
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:complete()
-    -- Dedicated server has no UI; ask the requesting client to open it locally.
+    -- Servidores dedicados não possuem interface visual (UI) nativa;
+    -- enviam uma solicitação de comando para que o cliente solicitante abra localmente.
     if isServer() and not isClient() then
-        if not SendOpenInfoWindowToClient(self.character, self.generator, self.anchorSquare, self.buildingHint) then
-            LKS_EletricidadeConstrucao.Warn("[OpenInfoWindow] Dedicated server could not send client open request")
+        if not EnviarAberturaJanelaAoCliente(self.character, self.generator, self.anchorSquare, self.buildingHint) then
+            LKS_EletricidadeConstrucao.Warn("[OpenInfoWindow] Servidor dedicado falhou ao enviar comando de abertura ao cliente")
         end
         return true
     end
     
-    -- Check if UI module loaded
+    -- Verifica se o módulo de interface gráfica foi carregado com sucesso
     if not LKS_EletricidadeConstrucao.UI or not LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow then
-        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow not loaded!")
+        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] O módulo LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow não foi localizado!")
         return true
     end
     
-    -- Open info window
-    LKS_EletricidadeConstrucao.Print("[OpenInfoWindow] Opening generator info window")
+    LKS_EletricidadeConstrucao.Print("[OpenInfoWindow] Abrindo janela de estatísticas elétricas")
     
     if LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open then
-        LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open(self.character, self.generator, self.anchorSquare, self.buildingHint)
+        LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open(
+            self.character, self.generator, self.anchorSquare, self.buildingHint)
     else
-        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open not found!")
+        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] O método LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open não foi localizado!")
     end
     
     return true
 end
 
--- ============================================================
--- DURATION & CONSTRUCTOR
--- ============================================================
+-- ============================================================================
+-- DURAÇÃO E CONSTRUTOR
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:getDuration()
     if self.character:isTimedActionInstant() then
         return 1
     end
-    
-    -- Opening window is fast (~1 second)
+    -- Abrir a interface de forma natural leva 1 segundo físico (10 ticks)
     return 10
 end
 
 function LKS_EletricidadeConstrucao_OpenInfoWindow:new(character, generator, anchorSquare, buildingHint)
-    local o = ISBaseTimedAction.new(self, character)
-    o.character = character
-    o.generator = generator
-    o.anchorSquare = anchorSquare
-    o.buildingHint = NormalizeBuildingHint(buildingHint)
-    o.stopOnWalk = true
-    o.stopOnRun = true
-    o.maxTime = o:getDuration()
-    return o
+    local objetoInstanciado = ISBaseTimedAction.new(self, character)
+    objetoInstanciado.character = character
+    objetoInstanciado.generator = generator
+    objetoInstanciado.anchorSquare = anchorSquare
+    objetoInstanciado.buildingHint = NormalizarDicaConstrucao(buildingHint)
+    objetoInstanciado.stopOnWalk = true
+    objetoInstanciado.stopOnRun = true
+    objetoInstanciado.maxTime = objetoInstanciado:getDuration()
+    return objetoInstanciado
 end
 
--- ============================================================
--- EXPORT TO NAMESPACE
--- ============================================================
+-- ============================================================================
+-- EXPORTAÇÃO PARA O NAMESPACE
+-- ============================================================================
 
 LKS_EletricidadeConstrucao.Actions.OpenInfoWindow = LKS_EletricidadeConstrucao_OpenInfoWindow
 
-print("[LKS_EletricidadeConstrucao_Actions_OpenInfoWindow] Open Info Window action loaded successfully")
+LKS_EletricidadeConstrucao.Print("Ação OpenInfoWindow carregada no namespace")

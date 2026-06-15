@@ -1,24 +1,28 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mi.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Core_Logger.lua
--- LKS_EletricidadeConstrucao V2 - Logging System
--- Categorized logging with debug levels and performance optimization
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Core_Logger.lua
+-- OBJETIVO: Subsistema de logging categorizado, depuração e medição de desempenho (performance).
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Core_Logger] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Core_Logger] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- LOG LEVELS
+-- NÍVEIS DE LOG
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.Core.Logger.Levels = {
@@ -30,7 +34,7 @@ LKS_EletricidadeConstrucao.Core.Logger.Levels = {
 }
 
 -- ============================================================================
--- LOG CATEGORIES
+-- CATEGORIAS DE LOG
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.Core.Logger.Categories = {
@@ -47,442 +51,441 @@ LKS_EletricidadeConstrucao.Core.Logger.Categories = {
 }
 
 -- ============================================================================
--- LOCAL STATE
+-- ESTADO LOCAL E CONFIGURAÇÕES
 -- ============================================================================
 
-local _globalLevel = LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO
-local _categoryLevels = {}  -- Category-specific log levels
-local _enabledCategories = {}  -- Which categories are enabled
-local _logToFile = false  -- Whether to log to file (future feature)
-local _showTimestamp = true  -- Show timestamp in logs
-local _showCategory = true  -- Show category in logs
+local _nivelGlobal = LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO
+local _niveisCategorias = {}             -- Níveis de log por categoria específica
+local _categoriasHabilitadas = {}        -- Quais categorias estão ativas para exibição
+local _salvarEmArquivo = false           -- Gravar logs em arquivo de texto (funcionalidade futura)
+local _exibirCarimboTempo = true         -- Exibir hora/minuto do jogo no cabeçalho do log
+local _exibirCategoria = true            -- Exibir categoria do log no cabeçalho
 
--- Initialize all categories as enabled
-for _, category in pairs(LKS_EletricidadeConstrucao.Core.Logger.Categories) do
-    _enabledCategories[category] = true
+-- Inicializa todas as categorias de log como habilitadas por padrão
+for _, categoria in pairs(LKS_EletricidadeConstrucao.Core.Logger.Categories) do
+    _categoriasHabilitadas[categoria] = true
 end
 
 -- ============================================================================
--- CONFIGURATION
+-- CONFIGURAÇÕES E MODIFICADORES
 -- ============================================================================
 
---- Set global log level
---- @param level number Log level (1-5)
-function LKS_EletricidadeConstrucao.Core.Logger.SetLevel(level)
-    _globalLevel = level
+--- Define o nível global de depuração.
+--- @param nivel number O nível do log (1 a 5).
+function LKS_EletricidadeConstrucao.Core.Logger.SetLevel(nivel)
+    _nivelGlobal = nivel
 end
 
---- Get global log level
---- @return number Current log level
+--- Obtém o nível global de depuração atual.
+--- @return number O nível do log global ativo.
 function LKS_EletricidadeConstrucao.Core.Logger.GetLevel()
-    return _globalLevel
+    return _nivelGlobal
 end
 
---- Set log level for specific category
---- @param category string Category name
---- @param level number Log level
-function LKS_EletricidadeConstrucao.Core.Logger.SetCategoryLevel(category, level)
-    _categoryLevels[category] = level
+--- Define o nível de depuração para uma categoria de log específica.
+--- @param categoria string O nome descritivo da categoria.
+--- @param nivel number O nível do log.
+function LKS_EletricidadeConstrucao.Core.Logger.SetCategoryLevel(categoria, nivel)
+    _niveisCategorias[categoria] = nivel
 end
 
---- Enable category
---- @param category string Category name
-function LKS_EletricidadeConstrucao.Core.Logger.EnableCategory(category)
-    _enabledCategories[category] = true
+--- Habilita a exibição de logs para uma determinada categoria.
+--- @param categoria string O nome descritivo da categoria.
+function LKS_EletricidadeConstrucao.Core.Logger.EnableCategory(categoria)
+    _categoriasHabilitadas[categoria] = true
 end
 
---- Disable category
---- @param category string Category name
-function LKS_EletricidadeConstrucao.Core.Logger.DisableCategory(category)
-    _enabledCategories[category] = false
+--- Desabilita a exibição de logs para uma determinada categoria.
+--- @param categoria string O nome descritivo da categoria.
+function LKS_EletricidadeConstrucao.Core.Logger.DisableCategory(categoria)
+    _categoriasHabilitadas[categoria] = false
 end
 
---- Check if category is enabled
---- @param category string Category name
---- @return boolean True if enabled
-function LKS_EletricidadeConstrucao.Core.Logger.IsCategoryEnabled(category)
-    return _enabledCategories[category] == true
+--- Verifica se uma categoria de log está habilitada para exibição.
+--- @param categoria string O nome descritivo da categoria.
+--- @return boolean Retorna true se estiver habilitada.
+function LKS_EletricidadeConstrucao.Core.Logger.IsCategoryEnabled(categoria)
+    return _categoriasHabilitadas[categoria] == true
 end
 
---- Enable timestamp display
---- @param enabled boolean Enable state
-function LKS_EletricidadeConstrucao.Core.Logger.SetShowTimestamp(enabled)
-    _showTimestamp = enabled
+--- Define se o carimbo de data/hora do jogo deve ser impresso nos logs.
+--- @param habilitado boolean True para exibir.
+function LKS_EletricidadeConstrucao.Core.Logger.SetShowTimestamp(habilitado)
+    _exibirCarimboTempo = habilitado
 end
 
---- Enable category display
---- @param enabled boolean Enable state
-function LKS_EletricidadeConstrucao.Core.Logger.SetShowCategory(enabled)
-    _showCategory = enabled
+--- Define se a categoria correspondente deve ser impressa nos logs.
+--- @param habilitado boolean True para exibir.
+function LKS_EletricidadeConstrucao.Core.Logger.SetShowCategory(habilitado)
+    _exibirCategoria = habilitado
 end
 
 -- ============================================================================
--- LEVEL CHECKING
+-- VERIFICAÇÕES DE FILTRAGEM
 -- ============================================================================
 
---- Check if message should be logged
---- @param level number Message log level
---- @param category string|nil Category name
---- @return boolean True if should log
-local function ShouldLog(level, category)
-    -- Check category enabled
-    if category and not LKS_EletricidadeConstrucao.Core.Logger.IsCategoryEnabled(category) then
+--- Valida se uma mensagem de depuração deve ser impressa de acordo com o nível e categoria.
+--- @param nivel number O nível de log da mensagem específica.
+--- @param categoria string|nil O nome da categoria associada.
+--- @return boolean Retorna true se a mensagem deve ser impressa.
+local function ShouldLog(nivel, categoria)
+    -- Verifica se a categoria está desabilitada
+    if categoria and not LKS_EletricidadeConstrucao.Core.Logger.IsCategoryEnabled(categoria) then
         return false
     end
     
-    -- Get effective level (category-specific or global)
-    local effectiveLevel = _globalLevel
-    if category and _categoryLevels[category] then
-        effectiveLevel = _categoryLevels[category]
+    -- Determina o nível de corte (específico da categoria ou global)
+    local nivelCorte = _nivelGlobal
+    if categoria and _niveisCategorias[categoria] then
+        nivelCorte = _niveisCategorias[categoria]
     end
     
-    return level <= effectiveLevel
+    return nivel <= nivelCorte
 end
 
 -- ============================================================================
--- FORMATTING
+-- FORMATAÇÃO DE TEXTO
 -- ============================================================================
 
---- Format log message
---- @param level string Level name
---- @param category string|nil Category name
---- @param message string Message
---- @return string Formatted message
-local function FormatMessage(level, category, message)
-    local parts = {}
+--- Formata a mensagem de log adicionando prefixos e informações contextuais.
+--- @param nivelTexto string A identificação do nível (ex: "INFO", "WARN").
+--- @param categoria string|nil O nome da categoria associada.
+--- @param mensagem string A mensagem descritiva principal.
+--- @return string A mensagem de log formatada final.
+local function FormatMessage(nivelTexto, categoria, mensagem)
+    local partes = {}
     
-    -- Add timestamp (safe: getGameTime may be nil during load phase)
-    if _showTimestamp then
-        local ok, gameTime = pcall(getGameTime)
-        if ok and gameTime then
-            local hour = gameTime:getHour()
-            local minute = gameTime:getMinutes()
-            table.insert(parts, string.format("[%02d:%02d]", hour, minute))
+    -- Adiciona carimbo de data/hora do jogo (pcall seguro contra boots parciais da engine)
+    if _exibirCarimboTempo then
+        local sucesso, tempoJogo = pcall(getGameTime)
+        if sucesso and tempoJogo then
+            local hora = tempoJogo:getHour()
+            local minuto = tempoJogo:getMinutes()
+            table.insert(partes, string.format("[%02d:%02d]", hora, minuto))
         end
     end
     
-    -- Add mod prefix
-    table.insert(parts, "[LKS_EletricidadeConstrucao]")
+    -- Prefixo do Mod
+    table.insert(partes, "[LKS_EletricidadeConstrucao]")
     
-    -- Add level
-    table.insert(parts, "[" .. level .. "]")
+    -- Nível do log
+    table.insert(partes, "[" .. nivelTexto .. "]")
     
-    -- Add category
-    if _showCategory and category then
-        table.insert(parts, "[" .. category .. "]")
+    -- Categoria do log
+    if _exibirCategoria and categoria then
+        table.insert(partes, "[" .. categoria .. "]")
     end
     
-    -- Add message
-    table.insert(parts, message)
+    -- Mensagem descritiva
+    table.insert(partes, mensagem)
     
-    return table.concat(parts, " ")
+    return table.concat(partes, " ")
 end
 
 -- ============================================================================
--- CORE LOGGING FUNCTIONS
+-- FUNÇÕES DE LOGGING CORE
 -- ============================================================================
 
---- Log error message
---- @param message string Message to log
---- @param category string|nil Category
-function LKS_EletricidadeConstrucao.Core.Logger.Error(message, category)
-    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR, category) then
+--- Grava uma mensagem de log de erro (ERROR) no console.
+--- @param mensagem string A mensagem.
+--- @param categoria? string A categoria (opcional).
+function LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, categoria)
+    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR, categoria) then
         return
     end
     
-    local formatted = FormatMessage("ERROR", category, message)
-    print(formatted)
+    local mensagemFormatada = FormatMessage("ERROR", categoria, mensagem)
+    print(mensagemFormatada)
     
-    -- Also log to game console
+    -- Fallback adicional de gravação
     if isClient() then
-        -- Avoid using DebugLog as it may not be available
-        print(formatted)
+        print(mensagemFormatada)
     end
 end
 
---- Log warning message
---- @param message string Message to log
---- @param category string|nil Category
-function LKS_EletricidadeConstrucao.Core.Logger.Warn(message, category)
-    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN, category) then
+--- Grava uma mensagem de log de aviso (WARN) no console.
+--- @param mensagem string A mensagem.
+--- @param categoria? string A categoria (opcional).
+function LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, categoria)
+    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN, categoria) then
         return
     end
     
-    local formatted = FormatMessage("WARN", category, message)
-    print(formatted)
+    local mensagemFormatada = FormatMessage("WARN", categoria, mensagem)
+    print(mensagemFormatada)
 end
 
---- Log info message
---- @param message string Message to log
---- @param category string|nil Category
-function LKS_EletricidadeConstrucao.Core.Logger.Info(message, category)
-    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO, category) then
+--- Grava uma mensagem de log de informação (INFO) no console.
+--- @param mensagem string A mensagem.
+--- @param categoria? string A categoria (opcional).
+function LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, categoria)
+    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO, categoria) then
         return
     end
     
-    local formatted = FormatMessage("INFO", category, message)
-    print(formatted)
+    local mensagemFormatada = FormatMessage("INFO", categoria, mensagem)
+    print(mensagemFormatada)
 end
 
---- Log debug message
---- @param message string Message to log
---- @param category string|nil Category
-function LKS_EletricidadeConstrucao.Core.Logger.Debug(message, category)
-    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG, category) then
+--- Grava uma mensagem de log de depuração (DEBUG) no console.
+--- @param mensagem string A mensagem.
+--- @param categoria? string A categoria (opcional).
+function LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, categoria)
+    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG, categoria) then
         return
     end
     
-    local formatted = FormatMessage("DEBUG", category, message)
-    print(formatted)
+    local mensagemFormatada = FormatMessage("DEBUG", categoria, mensagem)
+    print(mensagemFormatada)
 end
 
---- Log trace message (very detailed)
---- @param message string Message to log
---- @param category string|nil Category
-function LKS_EletricidadeConstrucao.Core.Logger.Trace(message, category)
-    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.TRACE, category) then
+--- Grava uma mensagem de log de rastreamento detalhado (TRACE) no console.
+--- @param mensagem string A mensagem.
+--- @param categoria? string A categoria (opcional).
+function LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, categoria)
+    if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.TRACE, categoria) then
         return
     end
     
-    local formatted = FormatMessage("TRACE", category, message)
-    print(formatted)
+    local mensagemFormatada = FormatMessage("TRACE", categoria, mensagem)
+    print(mensagemFormatada)
 end
 
 -- ============================================================================
--- CATEGORY-SPECIFIC SHORTCUTS
+-- ENVIOS RÁPIDOS (SHORTCUTS) POR CATEGORIA
 -- ============================================================================
 
---- Log fuel-related message
---- @param level number Log level
---- @param message string Message
-function LKS_EletricidadeConstrucao.Core.Logger.LogFuel(level, message)
+--- Grava mensagens específicas relacionadas a combustível de geradores.
+--- @param nivel number O nível de severidade do log.
+--- @param mensagem string A mensagem.
+function LKS_EletricidadeConstrucao.Core.Logger.LogFuel(nivel, mensagem)
     local Levels = LKS_EletricidadeConstrucao.Core.Logger.Levels
-    local category = LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL
+    local categoria = LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL
     
-    if level == Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, category)
-    elseif level == Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, category)
-    elseif level == Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, category)
-    elseif level == Levels.DEBUG then
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, category)
+    if nivel == Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, categoria)
+    elseif nivel == Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, categoria)
+    elseif nivel == Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, categoria)
+    elseif nivel == Levels.DEBUG then
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, categoria)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Trace(message, category)
+        LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, categoria)
     end
 end
 
---- Log power-related message
---- @param level number Log level
---- @param message string Message
-function LKS_EletricidadeConstrucao.Core.Logger.LogPower(level, message)
+--- Grava mensagens específicas relacionadas à malha e distribuição de energia.
+--- @param nivel number O nível de severidade do log.
+--- @param mensagem string A mensagem.
+function LKS_EletricidadeConstrucao.Core.Logger.LogPower(nivel, mensagem)
     local Levels = LKS_EletricidadeConstrucao.Core.Logger.Levels
-    local category = LKS_EletricidadeConstrucao.Core.Logger.Categories.POWER
+    local categoria = LKS_EletricidadeConstrucao.Core.Logger.Categories.POWER
     
-    if level == Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, category)
-    elseif level == Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, category)
-    elseif level == Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, category)
-    elseif level == Levels.DEBUG then
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, category)
+    if nivel == Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, categoria)
+    elseif nivel == Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, categoria)
+    elseif nivel == Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, categoria)
+    elseif nivel == Levels.DEBUG then
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, categoria)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Trace(message, category)
+        LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, categoria)
     end
 end
 
---- Log building-related message
---- @param level number Log level
---- @param message string Message
-function LKS_EletricidadeConstrucao.Core.Logger.LogBuilding(level, message)
+--- Grava mensagens específicas relacionadas à simulação e escaneamento de prédios.
+--- @param nivel number O nível de severidade do log.
+--- @param mensagem string A mensagem.
+function LKS_EletricidadeConstrucao.Core.Logger.LogBuilding(nivel, mensagem)
     local Levels = LKS_EletricidadeConstrucao.Core.Logger.Levels
-    local category = LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING
+    local categoria = LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING
     
-    if level == Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, category)
-    elseif level == Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, category)
-    elseif level == Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, category)
-    elseif level == Levels.DEBUG then
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, category)
+    if nivel == Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, categoria)
+    elseif nivel == Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, categoria)
+    elseif nivel == Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, categoria)
+    elseif nivel == Levels.DEBUG then
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, categoria)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Trace(message, category)
+        LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, categoria)
     end
 end
 
---- Log network-related message
---- @param level number Log level
---- @param message string Message
-function LKS_EletricidadeConstrucao.Core.Logger.LogNetwork(level, message)
+--- Grava mensagens específicas relacionadas à transmissão de pacotes de rede (MP).
+--- @param nivel number O nível de severidade do log.
+--- @param mensagem string A mensagem.
+function LKS_EletricidadeConstrucao.Core.Logger.LogNetwork(nivel, mensagem)
     local Levels = LKS_EletricidadeConstrucao.Core.Logger.Levels
-    local category = LKS_EletricidadeConstrucao.Core.Logger.Categories.NETWORK
+    local categoria = LKS_EletricidadeConstrucao.Core.Logger.Categories.NETWORK
     
-    if level == Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, category)
-    elseif level == Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, category)
-    elseif level == Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, category)
-    elseif level == Levels.DEBUG then
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, category)
+    if nivel == Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, categoria)
+    elseif nivel == Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, categoria)
+    elseif nivel == Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, categoria)
+    elseif nivel == Levels.DEBUG then
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, categoria)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Trace(message, category)
+        LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, categoria)
     end
 end
 
---- Log UI-related message
---- @param level number Log level
---- @param message string Message
-function LKS_EletricidadeConstrucao.Core.Logger.LogUI(level, message)
+--- Grava mensagens específicas relacionadas à interface de usuário (UI).
+--- @param nivel number O nível de severidade do log.
+--- @param mensagem string A mensagem.
+function LKS_EletricidadeConstrucao.Core.Logger.LogUI(nivel, mensagem)
     local Levels = LKS_EletricidadeConstrucao.Core.Logger.Levels
-    local category = LKS_EletricidadeConstrucao.Core.Logger.Categories.UI
+    local categoria = LKS_EletricidadeConstrucao.Core.Logger.Categories.UI
     
-    if level == Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, category)
-    elseif level == Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, category)
-    elseif level == Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, category)
-    elseif level == Levels.DEBUG then
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, category)
+    if nivel == Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, categoria)
+    elseif nivel == Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, categoria)
+    elseif nivel == Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, categoria)
+    elseif nivel == Levels.DEBUG then
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, categoria)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Trace(message, category)
+        LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, categoria)
     end
 end
 
 -- ============================================================================
--- PERFORMANCE LOGGING
+-- DIAGNÓSTICO DE DESEMPENHO (PERFORMANCE TIMERS)
 -- ============================================================================
 
-local _performanceTimers = {}
+local _cronometrosPerformance = {}
 
---- Start performance timer
---- @param name string Timer name
-function LKS_EletricidadeConstrucao.Core.Logger.StartTimer(name)
+--- Inicia a cronometragem de desempenho para um bloco de código específico.
+--- @param nomeTimer string O nome de identificação exclusivo do cronômetro.
+function LKS_EletricidadeConstrucao.Core.Logger.StartTimer(nomeTimer)
     if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG, LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE) then
         return
     end
     
-    _performanceTimers[name] = getTimestampMs()
+    _cronometrosPerformance[nomeTimer] = getTimestampMs()
 end
 
---- End performance timer and log
---- @param name string Timer name
---- @param threshold number|nil Warning threshold in ms (optional)
-function LKS_EletricidadeConstrucao.Core.Logger.EndTimer(name, threshold)
+--- Finaliza a cronometragem de desempenho de um bloco de código, imprimindo o tempo decorrido.
+--- @param nomeTimer string O nome de identificação exclusivo do cronômetro.
+--- @param limiteMilissegundos number|nil Limite de tolerância em milissegundos para disparar avisos de lentidão (opcional).
+function LKS_EletricidadeConstrucao.Core.Logger.EndTimer(nomeTimer, limiteMilissegundos)
     if not ShouldLog(LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG, LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE) then
         return
     end
     
-    local startTime = _performanceTimers[name]
-    if not startTime then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Timer '" .. name .. "' was not started", LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
+    local tempoInicio = _cronometrosPerformance[nomeTimer]
+    if not tempoInicio then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("O cronômetro '" .. nomeTimer .. "' não foi iniciado", LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
         return
     end
     
-    local elapsed = getTimestampMs() - startTime
-    _performanceTimers[name] = nil
+    local tempoDecorrido = getTimestampMs() - tempoInicio
+    _cronometrosPerformance[nomeTimer] = nil
     
-    local message = string.format("%s took %.2f ms", name, elapsed)
+    local mensagem = string.format("%s levou %.2f ms", nomeTimer, tempoDecorrido)
     
-    -- Check threshold
-    if threshold and elapsed > threshold then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message .. " (exceeded threshold: " .. threshold .. " ms)", LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
+    -- Dispara aviso caso exceda o limite crítico
+    if limiteMilissegundos and tempoDecorrido > limiteMilissegundos then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem .. " (excedeu o limite tolerado: " .. limiteMilissegundos .. " ms)", LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
     end
 end
 
 -- ============================================================================
--- OBJECT LOGGING
+-- LOGGING DE ESTRUTURAS E MODELOS DE DADOS
 -- ============================================================================
 
---- Log generator data
---- @param generatorData GeneratorData Generator to log
---- @param level number|nil Log level (default: DEBUG)
-function LKS_EletricidadeConstrucao.Core.Logger.LogGenerator(generatorData, level)
-    level = level or LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG
+--- Grava no console a representação textual dos dados de um gerador.
+--- @param dadosGerador GeneratorData Os dados do gerador.
+--- @param nivel number|nil O nível de severidade do log (padrão: DEBUG).
+function LKS_EletricidadeConstrucao.Core.Logger.LogGenerator(dadosGerador, nivel)
+    nivel = nivel or LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG
     
-    if not ShouldLog(level, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL) then
+    if not ShouldLog(nivel, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL) then
         return
     end
     
-    local message = LKS_EletricidadeConstrucao.Data.Generator.ToString(generatorData)
+    local mensagem = LKS_EletricidadeConstrucao.Data.Generator.ToString(dadosGerador)
     
-    if level == LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
-    elseif level == LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
-    elseif level == LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
+    if nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
+    elseif nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
+    elseif nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.FUEL)
     end
 end
 
---- Log building data
---- @param buildingData BuildingData Building to log
---- @param level number|nil Log level (default: DEBUG)
-function LKS_EletricidadeConstrucao.Core.Logger.LogBuilding(buildingData, level)
-    level = level or LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG
+--- Grava no console a representação textual dos dados de um prédio.
+--- @param dadosPredio BuildingData Os dados do prédio.
+--- @param nivel number|nil O nível de severidade do log (padrão: DEBUG).
+function LKS_EletricidadeConstrucao.Core.Logger.LogBuilding(dadosPredio, nivel)
+    nivel = nivel or LKS_EletricidadeConstrucao.Core.Logger.Levels.DEBUG
     
-    if not ShouldLog(level, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING) then
+    if not ShouldLog(nivel, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING) then
         return
     end
     
-    local message = LKS_EletricidadeConstrucao.Data.Building.ToString(buildingData)
+    local mensagem = LKS_EletricidadeConstrucao.Data.Building.ToString(dadosPredio)
     
-    if level == LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
-    elseif level == LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
-    elseif level == LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+    if nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+    elseif nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+    elseif nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Debug(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+        LKS_EletricidadeConstrucao.Core.Logger.Debug(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
     end
 end
 
---- Log consumer data
---- @param consumerData ConsumerData Consumer to log
---- @param level number|nil Log level (default: TRACE)
-function LKS_EletricidadeConstrucao.Core.Logger.LogConsumer(consumerData, level)
-    level = level or LKS_EletricidadeConstrucao.Core.Logger.Levels.TRACE
+--- Grava no console a representação textual dos dados de um consumidor.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @param nivel number|nil O nível de severidade do log (padrão: TRACE).
+function LKS_EletricidadeConstrucao.Core.Logger.LogConsumer(dadosConsumidor, nivel)
+    nivel = nivel or LKS_EletricidadeConstrucao.Core.Logger.Levels.TRACE
     
-    if not ShouldLog(level, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING) then
+    if not ShouldLog(nivel, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING) then
         return
     end
     
-    local message = LKS_EletricidadeConstrucao.Data.Consumer.ToString(consumerData)
+    local mensagem = LKS_EletricidadeConstrucao.Data.Consumer.ToString(dadosConsumidor)
     
-    if level == LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR then
-        LKS_EletricidadeConstrucao.Core.Logger.Error(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
-    elseif level == LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
-    elseif level == LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO then
-        LKS_EletricidadeConstrucao.Core.Logger.Info(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+    if nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.ERROR then
+        LKS_EletricidadeConstrucao.Core.Logger.Error(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+    elseif nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.WARN then
+        LKS_EletricidadeConstrucao.Core.Logger.Warn(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+    elseif nivel == LKS_EletricidadeConstrucao.Core.Logger.Levels.INFO then
+        LKS_EletricidadeConstrucao.Core.Logger.Info(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
     else
-        LKS_EletricidadeConstrucao.Core.Logger.Trace(message, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
+        LKS_EletricidadeConstrucao.Core.Logger.Trace(mensagem, LKS_EletricidadeConstrucao.Core.Logger.Categories.BUILDING)
     end
 end
 
 -- ============================================================================
--- DEBUG UTILITIES
+-- UTILITÁRIOS DE DEPURAÇÃO
 -- ============================================================================
 
 --- Print logger configuration
 function LKS_EletricidadeConstrucao.Core.Logger.PrintConfig()
-    LKS_EletricidadeConstrucao.Print("=== Logger Configuration ===")
-    LKS_EletricidadeConstrucao.Print("Global Level: " .. _globalLevel)
-    LKS_EletricidadeConstrucao.Print("Show Timestamp: " .. tostring(_showTimestamp))
-    LKS_EletricidadeConstrucao.Print("Show Category: " .. tostring(_showCategory))
+    LKS_EletricidadeConstrucao.Print("=== Configurações do Logger ===")
+    LKS_EletricidadeConstrucao.Print("Nível Global: " .. _nivelGlobal)
+    LKS_EletricidadeConstrucao.Print("Exibir Carimbo de Tempo: " .. tostring(_exibirCarimboTempo))
+    LKS_EletricidadeConstrucao.Print("Exibir Categorias: " .. tostring(_exibirCategoria))
     
-    LKS_EletricidadeConstrucao.Print("Enabled Categories:")
-    for category, enabled in pairs(_enabledCategories) do
-        local level = _categoryLevels[category] or "default"
-        LKS_EletricidadeConstrucao.Print("  " .. category .. ": " .. tostring(enabled) .. " (level: " .. tostring(level) .. ")")
+    LKS_EletricidadeConstrucao.Print("Categorias Habilitadas:")
+    for categoria, habilitada in pairs(_categoriasHabilitadas) do
+        local nivel = _niveisCategorias[categoria] or "padrão"
+        LKS_EletricidadeConstrucao.Print("  " .. categoria .. ": " .. tostring(habilitada) .. " (nível: " .. tostring(nivel) .. ")")
     end
 end
 

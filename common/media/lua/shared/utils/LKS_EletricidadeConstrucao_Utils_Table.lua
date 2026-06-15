@@ -1,252 +1,258 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mi.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Utils_Table.lua
--- LKS_EletricidadeConstrucao V2 - Table Utility Functions
--- Deep copy, merge, count, search, etc.
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Utils_Table.lua
+-- OBJETIVO: Funções utilitárias de manipulação de tabelas (cópia profunda, mesclagem, contagem, etc.)
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Utils_Table] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Utils_Table] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- COPYING
+-- CÓPIA DE TABELAS
 -- ============================================================================
 
---- Shallow copy table (1 level deep)
---- @param tbl table Table to copy
---- @return table Shallow copy
-function LKS_EletricidadeConstrucao.Utils.Table.ShallowCopy(tbl)
-    if type(tbl) ~= "table" then
-        return tbl
+--- Realiza uma cópia rasa (shallow copy) de uma tabela (apenas o primeiro nível).
+--- @param tabela table A tabela a ser copiada.
+--- @return table A nova tabela contendo a cópia rasa.
+function LKS_EletricidadeConstrucao.Utils.Table.ShallowCopy(tabela)
+    if type(tabela) ~= "table" then
+        return tabela
     end
     
-    local copy = {}
-    for key, value in pairs(tbl) do
-        copy[key] = value
+    local copia = {}
+    for chave, valor in pairs(tabela) do
+        copia[chave] = valor
     end
-    return copy
+    return copia
 end
 
---- Deep copy table (recursive)
---- @param tbl table Table to copy
---- @param seen table Internal - tracks circular references
---- @return table Deep copy
-function LKS_EletricidadeConstrucao.Utils.Table.DeepCopy(tbl, seen)
-    if type(tbl) ~= "table" then
-        return tbl
+--- Realiza uma cópia profunda (deep copy) de uma tabela de forma recursiva, tratando referências circulares.
+--- @param tabela table A tabela a ser copiada.
+--- @param visitados table|nil Uso interno para rastreamento de referências circulares.
+--- @return table A nova tabela contendo a cópia profunda.
+function LKS_EletricidadeConstrucao.Utils.Table.DeepCopy(tabela, visitados)
+    if type(tabela) ~= "table" then
+        return tabela
     end
     
-    -- Avoid infinite recursion on circular references
-    seen = seen or {}
-    if seen[tbl] then
-        return seen[tbl]
+    -- Evita recursão infinita se houver referências circulares
+    visitados = visitados or {}
+    if visitados[tabela] then
+        return visitados[tabela]
     end
     
-    local copy = {}
-    seen[tbl] = copy
+    local copia = {}
+    visitados[tabela] = copia
     
-    for key, value in pairs(tbl) do
-        copy[LKS_EletricidadeConstrucao.Utils.Table.DeepCopy(key, seen)] = 
-            LKS_EletricidadeConstrucao.Utils.Table.DeepCopy(value, seen)
+    for chave, valor in pairs(tabela) do
+        copia[LKS_EletricidadeConstrucao.Utils.Table.DeepCopy(chave, visitados)] = 
+            LKS_EletricidadeConstrucao.Utils.Table.DeepCopy(valor, visitados)
     end
     
-    return copy
+    return copia
 end
 
 -- ============================================================================
--- MERGING
+-- MESCLAGEM DE TABELAS
 -- ============================================================================
 
---- Merge two tables (shallow, dest modified in place)
---- @param dest table Destination table
---- @param src table Source table
---- @return table Modified destination table
-function LKS_EletricidadeConstrucao.Utils.Table.Merge(dest, src)
-    for key, value in pairs(src) do
-        dest[key] = value
+--- Mescla duas tabelas (cópia rasa), modificando a tabela de destino no local.
+--- @param destino table A tabela que receberá os novos valores.
+--- @param origem table A tabela que contém os valores a serem copiados.
+--- @return table A tabela de destino modificada.
+function LKS_EletricidadeConstrucao.Utils.Table.Merge(destino, origem)
+    for chave, valor in pairs(origem) do
+        destino[chave] = valor
     end
-    return dest
+    return destino
 end
 
---- Deep merge two tables (recursive)
---- @param dest table Destination table
---- @param src table Source table
---- @return table Modified destination table
-function LKS_EletricidadeConstrucao.Utils.Table.DeepMerge(dest, src)
-    for key, value in pairs(src) do
-        if type(value) == "table" and type(dest[key]) == "table" then
-            LKS_EletricidadeConstrucao.Utils.Table.DeepMerge(dest[key], value)
+--- Mescla profundamente (deep merge) duas tabelas de forma recursiva.
+--- @param destino table A tabela que receberá as alterações.
+--- @param origem table A tabela que contém os novos valores.
+--- @return table A tabela de destino modificada.
+function LKS_EletricidadeConstrucao.Utils.Table.DeepMerge(destino, origem)
+    for chave, valor in pairs(origem) do
+        if type(valor) == "table" and type(destino[chave]) == "table" then
+            LKS_EletricidadeConstrucao.Utils.Table.DeepMerge(destino[chave], valor)
         else
-            dest[key] = value
+            destino[chave] = valor
         end
     end
-    return dest
+    return destino
 end
 
 -- ============================================================================
--- COUNTING & CHECKING
+-- CONTAGEM E VERIFICAÇÕES
 -- ============================================================================
 
---- Count elements in table (works for both arrays and dictionaries)
---- @param tbl table Table to count
---- @return number Number of elements
-function LKS_EletricidadeConstrucao.Utils.Table.Count(tbl)
-    local count = 0
-    for _ in pairs(tbl) do
-        count = count + 1
+--- Conta a quantidade total de elementos em uma tabela (funciona para índices numéricos e associativos).
+--- @param tabela table A tabela a ser contada.
+--- @return number O número total de elementos.
+function LKS_EletricidadeConstrucao.Utils.Table.Count(tabela)
+    local contador = 0
+    for _ in pairs(tabela) do
+        contador = contador + 1
     end
-    return count
+    return contador
 end
 
---- Check if table is empty
---- @param tbl table Table to check
---- @return boolean True if empty
-function LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(tbl)
-    -- next() is not available in Kahlua; use pairs-loop instead
-    for _ in pairs(tbl) do return false end
+--- Verifica se uma tabela está vazia.
+--- Nota: A engine Kahlua do Project Zomboid não possui a função global next(). Por isso, usamos pairs().
+--- @param tabela table A tabela a ser verificada.
+--- @return boolean Retorna true se a tabela estiver vazia, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(tabela)
+    for _ in pairs(tabela) do 
+        return false 
+    end
     return true
 end
 
---- Check if table contains value
---- @param tbl table Table to search
---- @param value any Value to find
---- @return boolean True if found
-function LKS_EletricidadeConstrucao.Utils.Table.Contains(tbl, value)
-    for _, v in pairs(tbl) do
-        if v == value then
+--- Verifica se a tabela contém um valor específico.
+--- @param tabela table A tabela a ser pesquisada.
+--- @param valorDesejado any O valor a ser encontrado na tabela.
+--- @return boolean Retorna true se o valor for encontrado, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Table.Contains(tabela, valorDesejado)
+    for _, valor in pairs(tabela) do
+        if valor == valorDesejado then
             return true
         end
     end
     return false
 end
 
---- Find index of value in array
---- @param tbl table Array to search
---- @param value any Value to find
---- @return number Index or nil if not found
-function LKS_EletricidadeConstrucao.Utils.Table.IndexOf(tbl, value)
-    for i, v in ipairs(tbl) do
-        if v == value then
-            return i
+--- Procura a primeira ocorrência de um valor em um vetor/array e retorna seu índice numérico.
+--- @param tabela table A lista onde a pesquisa será realizada.
+--- @param valorDesejado any O valor a ser localizado.
+--- @return number|nil O índice da primeira ocorrência, ou nil caso não seja encontrado.
+function LKS_EletricidadeConstrucao.Utils.Table.IndexOf(tabela, valorDesejado)
+    for indice, valor in ipairs(tabela) do
+        if valor == valorDesejado then
+            return indice
         end
     end
     return nil
 end
 
 -- ============================================================================
--- FILTERING & MAPPING
+-- FILTRAGEM E MAPEAMENTO
 -- ============================================================================
 
---- Filter table elements by predicate function
---- @param tbl table Table to filter
---- @param predicate function Function(value, key) returns true to keep
---- @return table Filtered table
-function LKS_EletricidadeConstrucao.Utils.Table.Filter(tbl, predicate)
-    local result = {}
-    for key, value in pairs(tbl) do
-        if predicate(value, key) then
-            result[key] = value
+--- Filtra os elementos de uma tabela usando uma função predicado de callback.
+--- @param tabela table A tabela a ser filtrada.
+--- @param predicado function A função de validação com assinatura (valor, chave) -> boolean.
+--- @return table Uma nova tabela apenas com os elementos que passaram no predicado.
+function LKS_EletricidadeConstrucao.Utils.Table.Filter(tabela, predicado)
+    local resultado = {}
+    for chave, valor in pairs(tabela) do
+        if predicado(valor, chave) then
+            resultado[chave] = valor
         end
     end
-    return result
+    return resultado
 end
 
---- Map table elements through transform function
---- @param tbl table Table to map
---- @param transform function Function(value, key) returns new value
---- @return table Transformed table
-function LKS_EletricidadeConstrucao.Utils.Table.Map(tbl, transform)
-    local result = {}
-    for key, value in pairs(tbl) do
-        result[key] = transform(value, key)
+--- Mapeia e transforma os elementos de uma tabela aplicando uma função de callback em cada um.
+--- @param tabela table A tabela a ser mapeada.
+--- @param transformador function A função transformadora com assinatura (valor, chave) -> novoValor.
+--- @return table Uma nova tabela contendo os elementos transformados.
+function LKS_EletricidadeConstrucao.Utils.Table.Map(tabela, transformador)
+    local resultado = {}
+    for chave, valor in pairs(tabela) do
+        resultado[chave] = transformador(valor, chave)
     end
-    return result
+    return resultado
 end
 
---- Find first element matching predicate
---- @param tbl table Table to search
---- @param predicate function Function(value, key) returns true for match
---- @return any, any Value and key of first match, or nil
-function LKS_EletricidadeConstrucao.Utils.Table.Find(tbl, predicate)
-    for key, value in pairs(tbl) do
-        if predicate(value, key) then
-            return value, key
+--- Procura pelo primeiro elemento na tabela que satisfaça a função predicado de callback.
+--- @param tabela table A tabela a ser pesquisada.
+--- @param predicado function A função de busca com assinatura (valor, chave) -> boolean.
+--- @return any, any O valor e a chave do primeiro elemento correspondente, ou nil, nil.
+function LKS_EletricidadeConstrucao.Utils.Table.Find(tabela, predicado)
+    for chave, valor in pairs(tabela) do
+        if predicado(valor, chave) then
+            return valor, chave
         end
     end
     return nil, nil
 end
 
 -- ============================================================================
--- KEYS & VALUES
+-- CHAVES E VALORES
 -- ============================================================================
 
---- Get all keys from table
---- @param tbl table Table to extract keys from
---- @return table Array of keys
-function LKS_EletricidadeConstrucao.Utils.Table.Keys(tbl)
-    local keys = {}
-    for key, _ in pairs(tbl) do
-        table.insert(keys, key)
+--- Retorna todas as chaves (keys) presentes na tabela como um vetor numérico.
+--- @param tabela table A tabela para extrair as chaves.
+--- @return table Um vetor contendo todas as chaves.
+function LKS_EletricidadeConstrucao.Utils.Table.Keys(tabela)
+    local chaves = {}
+    for chave, _ in pairs(tabela) do
+        table.insert(chaves, chave)
     end
-    return keys
+    return chaves
 end
 
---- Get all values from table
---- @param tbl table Table to extract values from
---- @return table Array of values
-function LKS_EletricidadeConstrucao.Utils.Table.Values(tbl)
-    local values = {}
-    for _, value in pairs(tbl) do
-        table.insert(values, value)
+--- Retorna todos os valores (values) presentes na tabela como um vetor numérico.
+--- @param tabela table A tabela para extrair os valores.
+--- @return table Um vetor contendo todos os valores.
+function LKS_EletricidadeConstrucao.Utils.Table.Values(tabela)
+    local valores = {}
+    for _, valor in pairs(tabela) do
+        table.insert(valores, valor)
     end
-    return values
+    return valores
 end
 
---- Convert table to string (for debugging, shallow)
---- @param tbl table Table to convert
---- @param maxDepth number Max recursion depth (default 3)
---- @param currentDepth number Internal recursion tracker
---- @return string String representation
-function LKS_EletricidadeConstrucao.Utils.Table.ToString(tbl, maxDepth, currentDepth)
-    maxDepth = maxDepth or 3
-    currentDepth = currentDepth or 0
+--- Converte uma tabela em uma representação textual estruturada (usado para depuração).
+--- @param tabela table A tabela a ser serializada para texto.
+--- @param profundidadeMaxima number|nil O limite máximo de recursão estrutural (padrão: 3).
+--- @param profundidadeAtual number|nil Rastreamento interno da profundidade atual de execução.
+--- @return string A representação em texto estruturado da tabela.
+function LKS_EletricidadeConstrucao.Utils.Table.ToString(tabela, profundidadeMaxima, profundidadeAtual)
+    profundidadeMaxima = profundidadeMaxima or 3
+    profundidadeAtual = profundidadeAtual or 0
     
-    if type(tbl) ~= "table" then
-        return tostring(tbl)
+    if type(tabela) ~= "table" then
+        return tostring(tabela)
     end
     
-    if currentDepth >= maxDepth then
+    if profundidadeAtual >= profundidadeMaxima then
         return "{...}"
     end
     
-    local parts = {}
-    for key, value in pairs(tbl) do
-        local keyStr = tostring(key)
-        local valueStr
+    local partes = {}
+    for chave, valor in pairs(tabela) do
+        local chaveTexto = tostring(chave)
+        local valorTexto
         
-        if type(value) == "table" then
-            valueStr = LKS_EletricidadeConstrucao.Utils.Table.ToString(value, maxDepth, currentDepth + 1)
+        if type(valor) == "table" then
+            valorTexto = LKS_EletricidadeConstrucao.Utils.Table.ToString(valor, profundidadeMaxima, profundidadeAtual + 1)
         else
-            valueStr = tostring(value)
+            valorTexto = tostring(valor)
         end
         
-        table.insert(parts, keyStr .. " = " .. valueStr)
+        table.insert(partes, chaveTexto .. " = " .. valorTexto)
     end
     
-    return "{" .. table.concat(parts, ", ") .. "}"
+    return "{" .. table.concat(partes, ", ") .. "}"
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO E REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Utils.Table", "2.0.0")

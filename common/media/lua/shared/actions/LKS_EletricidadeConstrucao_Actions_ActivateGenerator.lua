@@ -1,50 +1,54 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Actions_ActivateGenerator.lua
--- TimedAction for activating/deactivating generators
--- Works with both building-connected and standalone generators
--- LOCATION: shared/actions/
+-- ARQUIVO: LKS_EletricidadeConstrucao_Actions_ActivateGenerator.lua
+-- OBJETIVO: Ação Temporizada (TimedAction) para ligar e desligar geradores elétricos.
+-- DETALHE TÉCNICO: Integra tanto geradores convencionais/avulsos quanto geradores associados
+-- a redes elétricas de prédios e malhas de energia complexas.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
+-- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Actions_ActivateGenerator] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Actions_ActivateGenerator] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
-print("[LKS_EletricidadeConstrucao_Actions_ActivateGenerator] Loading Activate Generator action...")
-
--- Load required modules
+-- Carrega dependência nativa do jogo
 require "TimedActions/ISBaseTimedAction"
 
--- Register module
-LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Actions_ActivateGenerator")
+LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Actions_ActivateGenerator", "2.0.0")
 
--- Create namespace
 LKS_EletricidadeConstrucao.Actions = LKS_EletricidadeConstrucao.Actions or {}
 
--- ============================================================
--- ACTIVATE GENERATOR TIMED ACTION
--- ============================================================
+-- ============================================================================
+-- DEFINIÇÃO DA CLASSE DE AÇÃO TEMPORIZADA
+-- ============================================================================
 
 LKS_EletricidadeConstrucao_ActivateGenerator = ISBaseTimedAction:derive("LKS_EletricidadeConstrucao_ActivateGenerator")
 
--- ============================================================
--- VALIDATION
--- ============================================================
+-- ============================================================================
+-- VERIFICAÇÕES DE VALIDAÇÃO
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_ActivateGenerator:isValid()
-    -- Generator must still exist
+    -- O gerador físico deve continuar existindo no mundo
     if not self.generator then return false end
     
-    -- Generator must be at same location
-    local square = self.generator:getSquare()
-    if not square then return false end
+    -- O gerador deve estar presente no quadrado (grid square) ativo
+    local quadrado = self.generator:getSquare()
+    if not quadrado then return false end
     
-    -- If activating, check fuel and condition
+    -- Se estiver ativando (ligando), valida combustível e condição mecânica
     if self.activate then
         if self.generator:getFuel() <= 0 then return false end
         if self.generator:getCondition() <= 0 then return false end
@@ -63,9 +67,9 @@ function LKS_EletricidadeConstrucao_ActivateGenerator:update()
     self.character:setMetabolicTarget(Metabolics.HeavyDomestic)
 end
 
--- ============================================================
--- ANIMATION
--- ============================================================
+-- ============================================================================
+-- ANIMAÇÕES
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_ActivateGenerator:start()
     self:setActionAnim("Loot")
@@ -81,73 +85,85 @@ function LKS_EletricidadeConstrucao_ActivateGenerator:perform()
     ISBaseTimedAction.perform(self)
 end
 
--- ============================================================
--- ACTION EXECUTION
--- ============================================================
+-- ============================================================================
+-- AUXILIARES DE EXECUÇÃO DE AÇÃO
+-- ============================================================================
 
-local function CopyBoundingBox(source)
-    if type(source) ~= "table" then
+--- Cria uma cópia profunda de uma tabela contendo as coordenadas da caixa delimitadora (BoundingBox).
+--- @param origem table A tabela contendo os limites geométricos.
+--- @return table|nil Retorna a cópia estruturada ou nil se inválida.
+local function CopiarCaixaDelimitadora(origem)
+    if type(origem) ~= "table" then
         return nil
     end
 
-    local minX = tonumber(source.minX or source[1])
-    local minY = tonumber(source.minY or source[2])
-    local maxX = tonumber(source.maxX or source[3])
-    local maxY = tonumber(source.maxY or source[4])
-    if not (minX and minY and maxX and maxY) then
+    local xMinimo = tonumber(origem.minX or origem[1])
+    local yMinimo = tonumber(origem.minY or origem[2])
+    local xMaximo = tonumber(origem.maxX or origem[3])
+    local yMaximo = tonumber(origem.maxY or origem[4])
+    
+    if not (xMinimo and yMinimo and xMaximo and yMaximo) then
         return nil
     end
 
     return {
-        minX = minX,
-        minY = minY,
-        maxX = maxX,
-        maxY = maxY,
+        minX = xMinimo,
+        minY = yMinimo,
+        maxX = xMaximo,
+        maxY = yMaximo,
     }
 end
 
-local function TableContainsValue(t, value)
-    if type(t) ~= "table" then
+--- Verifica se uma tabela genérica contém um determinado valor.
+--- @param tabela table A tabela a pesquisar.
+--- @param valor any O valor a localizar.
+--- @return boolean Retorna true se o valor estiver presente na tabela.
+local function TabelaContemValor(tabela, valor)
+    if type(tabela) ~= "table" then
         return false
     end
-    for _, entry in pairs(t) do
-        if entry == value then
+    for _, entrada in pairs(tabela) do
+        if entrada == valor then
             return true
         end
     end
     return false
 end
 
-local function ResolvePoolDataForBuilding(buildingPoolID, generator)
-    local LKS_EletricidadeConstrucao = LKS_EletricidadeConstrucao
-    local stateManager = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    local currentMD = generator and generator:getModData() or nil
-    if currentMD and currentMD.LKS_EletricidadeConstrucao_PoolData then
-        return currentMD.LKS_EletricidadeConstrucao_PoolData
+--- Tenta recuperar os metadados elétricos (PoolData) vinculados a uma construção a partir dos geradores ativos do mundo.
+--- @param identificadorPoolConstrucao string O ID da piscina de construção.
+--- @param gerador any O objeto do gerador ativo.
+--- @return table|nil O arquivo de estado recuperado ou nil.
+local function ResolverDadosPoolConstrucao(identificadorPoolConstrucao, gerador)
+    local dadosModAtuais = gerador and gerador:getModData() or nil
+    if dadosModAtuais and dadosModAtuais.LKS_EletricidadeConstrucao_PoolData then
+        return dadosModAtuais.LKS_EletricidadeConstrucao_PoolData
     end
-    if not stateManager or not stateManager.GetAllGenerators then
+    
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado or not gerenciadorEstado.GetAllGenerators then
         return nil
     end
 
-    local currentX = generator and generator.getX and generator:getX() or nil
-    local currentY = generator and generator.getY and generator:getY() or nil
-    local currentZ = generator and generator.getZ and generator:getZ() or nil
+    local xAtual = gerador and gerador.getX and gerador:getX() or nil
+    local yAtual = gerador and gerador.getY and gerador:getY() or nil
+    local zAtual = gerador and gerador.getZ and gerador:getZ() or nil
 
-    for _, genData in pairs(stateManager.GetAllGenerators() or {}) do
-        if genData and TableContainsValue(genData.connectedBuildings, buildingPoolID) then
-            local gx = tonumber(genData.x)
-            local gy = tonumber(genData.y)
-            local gz = tonumber(genData.z) or 0
-            if not (gx == currentX and gy == currentY and gz == currentZ) then
-                local sq = getSquare(gx, gy, gz)
-                if sq then
-                    local objects = sq:getObjects()
-                    for i = 0, objects:size() - 1 do
-                        local obj = objects:get(i)
-                        if obj and instanceof(obj, "IsoGenerator") then
-                            local objMD = obj:getModData()
-                            if objMD and objMD.LKS_EletricidadeConstrucao_PoolData then
-                                return objMD.LKS_EletricidadeConstrucao_PoolData
+    for _, dadosGerador in pairs(gerenciadorEstado.GetAllGenerators() or {}) do
+        if dadosGerador and TabelaContemValor(dadosGerador.connectedBuildings, identificadorPoolConstrucao) then
+            local xGerador = tonumber(dadosGerador.x)
+            local yGerador = tonumber(dadosGerador.y)
+            local zGerador = tonumber(dadosGerador.z) or 0
+            if not (xGerador == xAtual and yGerador == yAtual and zGerador == zAtual) then
+                local quadrado = getSquare(xGerador, yGerador, zGerador)
+                if quadrado then
+                    local objetos = quadrado:getObjects()
+                    for indiceObjeto = 0, objetos:size() - 1 do
+                        local objeto = objetos:get(indiceObjeto)
+                        if objeto and instanceof(objeto, "IsoGenerator") then
+                            local dadosModObjeto = objeto:getModData()
+                            if dadosModObjeto and dadosModObjeto.LKS_EletricidadeConstrucao_PoolData then
+                                return dadosModObjeto.LKS_EletricidadeConstrucao_PoolData
                             end
                         end
                     end
@@ -159,188 +175,205 @@ local function ResolvePoolDataForBuilding(buildingPoolID, generator)
     return nil
 end
 
-local function RestoreBuildingFromPoolData(buildingPoolID, stateManager, poolData, anchorX, anchorY, anchorZ, reason)
-    if not poolData then
+--- Recria uma construção no gerenciador a partir de metadados recuperados (PoolData).
+--- @param identificadorPoolConstrucao string O ID da construção.
+--- @param gerenciadorEstado table O gerenciador de estado.
+--- @param dadosPool table Os metadados de simulação recuperados.
+--- @param xAncora number Coordenada X âncora padrão.
+--- @param yAncora number Coordenada Y âncora padrão.
+--- @param zAncora number Coordenada Z âncora padrão.
+--- @param motivo string Descritivo textual do motivo da reestruturação.
+--- @return table|nil O estado de dados da construção recriada.
+local function RestaurarConstrucaoDosDadosPool(identificadorPoolConstrucao, gerenciadorEstado, dadosPool, xAncora, yAncora, zAncora, motivo)
+    if not dadosPool then
         return nil
     end
 
-    local buildingX = poolData.x
-    local buildingY = poolData.y
-    local buildingZ = poolData.z
-    if buildingX == nil then buildingX = anchorX end
-    if buildingY == nil then buildingY = anchorY end
-    if buildingZ == nil then buildingZ = anchorZ or 0 end
-    if buildingX == nil or buildingY == nil then
+    local xConstrucao = dadosPool.x
+    local yConstrucao = dadosPool.y
+    local zConstrucao = dadosPool.z
+    if xConstrucao == nil then xConstrucao = xAncora end
+    if yConstrucao == nil then yConstrucao = yAncora end
+    if zConstrucao == nil then zConstrucao = zAncora or 0 end
+    if xConstrucao == nil or yConstrucao == nil then
         return nil
     end
 
-    local buildingData = {
-        id = buildingPoolID,
-        x = buildingX,
-        y = buildingY,
-        z = buildingZ,
+    local dadosConstrucao = {
+        id = identificadorPoolConstrucao,
+        x = xConstrucao,
+        y = yConstrucao,
+        z = zConstrucao,
         generatorId = nil,
         powerConsumers = {},
         totalPowerDraw = 0,
         heatingPowerDraw = 0,
         isPowered = false,
-        borderRadius = tonumber(poolData.borderRadius) or 30,
+        borderRadius = tonumber(dadosPool.borderRadius) or 30,
         lastScanTime = getTimestampMs(),
-        boundingBox = CopyBoundingBox(poolData.boundingBox),
-        isRVInterior = poolData.isRVInterior == true,
+        boundingBox = CopiarCaixaDelimitadora(dadosPool.boundingBox),
+        isRVInterior = dadosPool.isRVInterior == true,
         heatingEnabled = false,
         heatingSourceCount = 0,
         heatingTargetTemp = 22,
         connectedGenerators = {},
     }
 
-    if stateManager.AddBuilding then
-        stateManager.AddBuilding(buildingData)
+    if gerenciadorEstado.AddBuilding then
+        gerenciadorEstado.AddBuilding(dadosConstrucao)
     end
 
-    if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Logger and LKS_EletricidadeConstrucao.Core.Logger.Warn then
+    if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Logger then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-            "[ActivateGenerator] %s: restored building %s from LKS_EletricidadeConstrucao_PoolData%s",
-            tostring(reason or "update"),
-            tostring(buildingPoolID),
-            buildingData.boundingBox and " with bounding box" or ""
+            "[ActivateGenerator] %s: Reconstrução efetuada do prédio %s a partir dos metadados elétricos%s",
+            tostring(motivo or "update"),
+            tostring(identificadorPoolConstrucao),
+            dadosConstrucao.boundingBox and " com caixa delimitadora integrada" or ""
         ), "Power")
     end
 
-    return stateManager.GetBuilding and stateManager.GetBuilding(buildingPoolID) or buildingData
+    return gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(identificadorPoolConstrucao) or dadosConstrucao
 end
 
-local function EnsureGeneratorLinked(buildingData, generator, stateManager)
-    if not (buildingData and generator and generator.getSquare) then
-        return buildingData
+--- Garante o vínculo físico e lógico entre um gerador ativo e a malha de uma construção.
+--- @param dadosConstrucao table Os dados de representação do prédio.
+--- @param gerador any O gerador físico.
+--- @param gerenciadorEstado table O gerenciador de estado.
+--- @return table Os dados atualizados da construção.
+local function GarantirGeradorVinculado(dadosConstrucao, gerador, gerenciadorEstado)
+    if not (dadosConstrucao and gerador and gerador.getSquare) then
+        return dadosConstrucao
     end
 
-    local sq = generator:getSquare()
-    if not sq then
-        return buildingData
+    local quadrado = gerador:getSquare()
+    if not quadrado then
+        return dadosConstrucao
     end
 
-    local genKey = string.format("%d_%d_%d", sq:getX(), sq:getY(), sq:getZ())
-    buildingData.connectedGenerators = buildingData.connectedGenerators or {}
+    local chaveGerador = string.format("%d_%d_%d", quadrado:getX(), quadrado:getY(), quadrado:getZ())
+    dadosConstrucao.connectedGenerators = dadosConstrucao.connectedGenerators or {}
 
-    local hasGenerator = false
-    for _, existingKey in pairs(buildingData.connectedGenerators) do
-        if existingKey == genKey then
-            hasGenerator = true
+    local possuiGerador = false
+    for _, chaveExistente in pairs(dadosConstrucao.connectedGenerators) do
+        if chaveExistente == chaveGerador then
+            possuiGerador = true
             break
         end
     end
 
-    if not hasGenerator then
-        table.insert(buildingData.connectedGenerators, genKey)
-        if stateManager and stateManager.MarkDirty then
-            stateManager.MarkDirty()
+    if not possuiGerador then
+        table.insert(dadosConstrucao.connectedGenerators, chaveGerador)
+        if gerenciadorEstado and gerenciadorEstado.MarkDirty then
+            gerenciadorEstado.MarkDirty()
         end
     end
 
-    return buildingData
+    return dadosConstrucao
 end
 
-local function EnsureBuildingState(buildingPoolID, generator, reason)
-    local LKS_EletricidadeConstrucao = LKS_EletricidadeConstrucao
-    local StateManager = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not StateManager or not buildingPoolID then
+--- Recupera ou reconstrói o estado lógico de um edifício garantindo sua integridade estrutural.
+--- @param identificadorPoolConstrucao string O ID da piscina de construção.
+--- @param gerador any O objeto do gerador ativo.
+--- @param motivo string Descritivo técnico do motivo da verificação.
+--- @return table|nil O estado da construção estruturada.
+local function GarantirEstadoConstrucao(identificadorPoolConstrucao, gerador, motivo)
+    local gerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not gerenciadorEstado or not identificadorPoolConstrucao then
         return nil
     end
 
-    local md = generator and generator:getModData() or nil
-    local poolData = ResolvePoolDataForBuilding(buildingPoolID, generator)
-    local buildingData = StateManager.GetBuilding and StateManager.GetBuilding(buildingPoolID) or nil
-    local restoredBoundingBox = CopyBoundingBox(poolData and poolData.boundingBox)
+    local dadosPool = ResolverDadosPoolConstrucao(identificadorPoolConstrucao, gerador)
+    local dadosConstrucao = gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(identificadorPoolConstrucao) or nil
+    local caixaDelimitadoraRestaurada = CopiarCaixaDelimitadora(dadosPool and dadosPool.boundingBox)
 
-    if buildingData then
-        local repaired = false
-        if restoredBoundingBox and not buildingData.boundingBox then
-            buildingData.boundingBox = restoredBoundingBox
-            repaired = true
+    if dadosConstrucao then
+        local reparado = false
+        if caixaDelimitadoraRestaurada and not dadosConstrucao.boundingBox then
+            dadosConstrucao.boundingBox = caixaDelimitadoraRestaurada
+            reparado = true
         end
-        if poolData then
-            if buildingData.x == nil and poolData.x ~= nil then
-                buildingData.x = poolData.x
-                repaired = true
+        if dadosPool then
+            if dadosConstrucao.x == nil and dadosPool.x ~= nil then
+                dadosConstrucao.x = dadosPool.x
+                reparado = true
             end
-            if buildingData.y == nil and poolData.y ~= nil then
-                buildingData.y = poolData.y
-                repaired = true
+            if dadosConstrucao.y == nil and dadosPool.y ~= nil then
+                dadosConstrucao.y = dadosPool.y
+                reparado = true
             end
-            if buildingData.z == nil and poolData.z ~= nil then
-                buildingData.z = poolData.z
-                repaired = true
+            if dadosConstrucao.z == nil and dadosPool.z ~= nil then
+                dadosConstrucao.z = dadosPool.z
+                reparado = true
             end
-            if (not buildingData.borderRadius or buildingData.borderRadius <= 0)
-                    and poolData.borderRadius ~= nil then
-                buildingData.borderRadius = tonumber(poolData.borderRadius) or buildingData.borderRadius
-                repaired = true
+            if (not dadosConstrucao.borderRadius or dadosConstrucao.borderRadius <= 0)
+                    and dadosPool.borderRadius ~= nil then
+                dadosConstrucao.borderRadius = tonumber(dadosPool.borderRadius) or dadosConstrucao.borderRadius
+                reparado = true
             end
         end
-        if repaired and StateManager.MarkDirty then
-            StateManager.MarkDirty()
+        if reparado and gerenciadorEstado.MarkDirty then
+            gerenciadorEstado.MarkDirty()
         end
     end
 
-    if buildingData and buildingData.boundingBox then
-        return EnsureGeneratorLinked(buildingData, generator, StateManager)
-    elseif buildingData and restoredBoundingBox then
-        buildingData.boundingBox = restoredBoundingBox
-        if StateManager.MarkDirty then
-            StateManager.MarkDirty()
+    if dadosConstrucao and dadosConstrucao.boundingBox then
+        return GarantirGeradorVinculado(dadosConstrucao, gerador, gerenciadorEstado)
+    elseif dadosConstrucao and caixaDelimitadoraRestaurada then
+        dadosConstrucao.boundingBox = caixaDelimitadoraRestaurada
+        if gerenciadorEstado.MarkDirty then
+            gerenciadorEstado.MarkDirty()
         end
-        return EnsureGeneratorLinked(buildingData, generator, StateManager)
-    elseif buildingData then
-        return EnsureGeneratorLinked(buildingData, generator, StateManager)
+        return GarantirGeradorVinculado(dadosConstrucao, gerador, gerenciadorEstado)
+    elseif dadosConstrucao then
+        return GarantirGeradorVinculado(dadosConstrucao, gerador, gerenciadorEstado)
     end
 
-    local anchorX, anchorY, anchorZ = nil, nil, nil
+    local xAncora, yAncora, zAncora = nil, nil, nil
 
-    if poolData and poolData.x ~= nil and poolData.y ~= nil then
-        anchorX = poolData.x
-        anchorY = poolData.y
-        anchorZ = poolData.z or (generator and generator:getZ()) or 0
+    if dadosPool and dadosPool.x ~= nil and dadosPool.y ~= nil then
+        xAncora = dadosPool.x
+        yAncora = dadosPool.y
+        zAncora = dadosPool.z or (gerador and gerador:getZ()) or 0
     else
-        local bx, by, bz = string.match(tostring(buildingPoolID), "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-        anchorX, anchorY, anchorZ = tonumber(bx), tonumber(by), tonumber(bz)
+        local xBusca, yBusca, zBusca = string.match(tostring(identificadorPoolConstrucao), "^bld_(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+        xAncora, yAncora, zAncora = tonumber(xBusca), tonumber(yBusca), tonumber(zBusca)
     end
 
-    if not buildingData and poolData then
-        buildingData = RestoreBuildingFromPoolData(
-            buildingPoolID,
-            StateManager,
-            poolData,
-            anchorX,
-            anchorY,
-            anchorZ,
-            reason
+    if not dadosConstrucao and dadosPool then
+        dadosConstrucao = RestaurarConstrucaoDosDadosPool(
+            identificadorPoolConstrucao,
+            gerenciadorEstado,
+            dadosPool,
+            xAncora,
+            yAncora,
+            zAncora,
+            motivo
         )
     end
 
-    local Scanner = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
-    if anchorX ~= nil and anchorY ~= nil and Scanner and Scanner.ScanBuilding then
-        if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Logger and LKS_EletricidadeConstrucao.Core.Logger.Warn then
+    local Scanner = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
+    if xAncora ~= nil and yAncora ~= nil and Scanner and Scanner.ScanBuilding then
+        if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Logger then
             LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-                "[ActivateGenerator] %s: verifying building %s from anchor (%d,%d,%d)",
-                tostring(reason or "update"), tostring(buildingPoolID), anchorX, anchorY, anchorZ or 0
+                "[ActivateGenerator] %s: Varrendo estrutura do prédio %s a partir da âncora (%d,%d,%d)",
+                tostring(motivo or "update"), tostring(identificadorPoolConstrucao), xAncora, yAncora, zAncora or 0
             ), "Power")
         end
 
-        local ok, scanned = pcall(Scanner.ScanBuilding, anchorX, anchorY, anchorZ or 0, buildingPoolID)
-        if ok and scanned then
-            buildingData = scanned
+        local sucesso, varrida = pcall(Scanner.ScanBuilding, xAncora, yAncora, zAncora or 0, identificadorPoolConstrucao)
+        if sucesso and varrida then
+            dadosConstrucao = varrida
         else
-            buildingData = StateManager.GetBuilding and StateManager.GetBuilding(buildingPoolID) or buildingData
+            dadosConstrucao = gerenciadorEstado.GetBuilding and gerenciadorEstado.GetBuilding(identificadorPoolConstrucao) or dadosConstrucao
         end
     end
 
-    if not buildingData and anchorX ~= nil and anchorY ~= nil then
-        buildingData = {
-            id = buildingPoolID,
-            x = anchorX,
-            y = anchorY,
-            z = anchorZ or 0,
+    if not dadosConstrucao and xAncora ~= nil and yAncora ~= nil then
+        dadosConstrucao = {
+            id = identificadorPoolConstrucao,
+            x = xAncora,
+            y = yAncora,
+            z = zAncora or 0,
             generatorId = nil,
             powerConsumers = {},
             totalPowerDraw = 0,
@@ -355,108 +388,103 @@ local function EnsureBuildingState(buildingPoolID, generator, reason)
             heatingTargetTemp = 22,
             connectedGenerators = {},
         }
-        if StateManager.AddBuilding then
-            StateManager.AddBuilding(buildingData)
+        if gerenciadorEstado.AddBuilding then
+            gerenciadorEstado.AddBuilding(dadosConstrucao)
         end
     end
 
-    return EnsureGeneratorLinked(buildingData, generator, StateManager)
+    return GarantirGeradorVinculado(dadosConstrucao, gerador, gerenciadorEstado)
 end
 
-local function RefreshBuildingPower(buildingPoolID, generator, reason)
-    if not buildingPoolID then
+--- Força a atualização do fornecimento elétrico de uma construção após ligar/desligar um gerador da piscina.
+--- @param identificadorPoolConstrucao string O ID da piscina de construção.
+--- @param gerador any O objeto do gerador.
+--- @param motivo string Descritivo do motivo do disparo.
+--- @return table|nil A construção atualizada.
+local function AtualizarEnergiaConstrucao(identificadorPoolConstrucao, gerador, motivo)
+    if not identificadorPoolConstrucao then
         return nil
     end
 
-    local LKS_EletricidadeConstrucao = LKS_EletricidadeConstrucao
-    local buildingData = EnsureBuildingState(buildingPoolID, generator, reason)
-    local Distributor = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-    if Distributor then
-        if Distributor.ForceUpdateBuilding then
-            Distributor.ForceUpdateBuilding(buildingPoolID)
-        elseif Distributor.ForceUpdate then
-            Distributor.ForceUpdate()
+    local dadosConstrucao = GarantirEstadoConstrucao(identificadorPoolConstrucao, gerador, motivo)
+    local DistribuidorEnergia = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+    
+    if DistribuidorEnergia then
+        if DistribuidorEnergia.ForceUpdateBuilding then
+            DistribuidorEnergia.ForceUpdateBuilding(identificadorPoolConstrucao)
+        elseif DistribuidorEnergia.ForceUpdate then
+            DistribuidorEnergia.ForceUpdate()
         end
     end
 
-    return buildingData
+    return dadosConstrucao
 end
 
-local function ExecuteActivateGenerator(generator, activate)
-    if not generator then return false end
+--- Efetua fisicamente a ativação ou desativação lógica do gerador no mapa do Project Zomboid.
+--- @param gerador any O objeto gerador (IsoGenerator).
+--- @param ativar boolean True para ligar, false para desligar.
+--- @return boolean Retorna true se a operação ocorreu com sucesso.
+local function ExecutarAtivacaoGerador(gerador, ativar)
+    if not gerador then return false end
 
-    -- Get generator ModData
-    local md = generator:getModData()
-    local buildingPoolID = md.Gen_BuildingPoolID
-    local isInBuildingMode = buildingPoolID ~= nil
+    local dadosMod = gerador:getModData()
+    local identificadorPoolConstrucao = dadosMod.Gen_BuildingPoolID
+    local estaNoModoConstrucao = identificadorPoolConstrucao ~= nil
 
-    if activate then
-        -- ========================================
-        -- ACTIVATE GENERATOR
-        -- ========================================
+    if ativar then
+        -- LIGA O GERADOR
+        gerador:setActivated(true)
 
-        -- Set generator state
-        generator:setActivated(true)
-
-        -- Update GeneratorData for chunk-independent pool counting
+        -- Atualiza dados em tempo de execução para contagem independente de chunks
         if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
-            local SM = LKS_EletricidadeConstrucao.Core.StateManager
-            local gid = LKS_EletricidadeConstrucao.Data.Generator.MakeId(
-                generator:getX(), generator:getY(), generator:getZ())
-            local gd = SM.GetGenerator(gid)
-            if gd then
-                gd.activated = true
-                SM.MarkDirty()
+            local GerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+            local identificadorGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(
+                gerador:getX(), gerador:getY(), gerador:getZ())
+            local dadosGerador = GerenciadorEstado.GetGenerator(identificadorGerador)
+            if dadosGerador then
+                dadosGerador.activated = true
+                GerenciadorEstado.MarkDirty()
             end
         end
 
-        -- Sync immediately BEFORE updating other generators so they see this one as active
-        -- In SP: No network sync needed. In MP: transmit to clients.
+        -- Transmite alterações aos clientes em partidas Multiplayer
         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-            generator:transmitModData()
+            gerador:transmitModData()
             if isServer() then
-                generator:sync()
+                gerador:sync()
             end
         end
 
-        -- Apply heat sources immediately on activation if heating is enabled.
-        -- LKS_EletricidadeConstrucao_HeatingClient.UpdateAll() only runs every 600 ticks (~60 s); without
-        -- this call the building would stay cold for up to a minute after the
-        -- generator is turned back on.  LKS_EletricidadeConstrucao_HeatingClient is client-only (nil on
-        -- dedicated server), so the guard keeps this safe in MP.
+        -- Ativa os sistemas térmicos de aquecimento de imediato
         if LKS_EletricidadeConstrucao_HeatingClient and LKS_EletricidadeConstrucao_HeatingClient.Apply then
-            local _md = generator:getModData()
-            if _md.HeatingEnabled == true then
-                LKS_EletricidadeConstrucao_HeatingClient.Apply(generator)
+            local dadosModAux = gerador:getModData()
+            if dadosModAux.HeatingEnabled == true then
+                LKS_EletricidadeConstrucao_HeatingClient.Apply(gerador)
             end
         end
 
-        -- If in building mode, apply power to building
-        if isInBuildingMode and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
-            -- Check if other generators in the pool are already active.
-            -- Immediately recalculate their fuel rate so the Info Window reflects
-            -- the new pool size (one more active generator).
-            local hasOtherActiveGen = false
+        -- Se estiver vinculado a uma rede elétrica de construção, energiza o circuito
+        if estaNoModoConstrucao and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
+            local possuiOutroGeradorAtivo = false
             if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
-                local buildingData = EnsureBuildingState(buildingPoolID, generator, "activation")
-                if buildingData and buildingData.connectedGenerators then
-                    for _, genKey in pairs(buildingData.connectedGenerators) do
-                        local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                        if gx and gy and gz then
-                            gx, gy, gz = tonumber(gx), tonumber(gy), tonumber(gz)
-                            local sq = getSquare(gx, gy, gz)
-                            if sq then
-                                local objects = sq:getObjects()
-                                for i = 0, objects:size() - 1 do
-                                    local obj = objects:get(i)
-                                    if obj and instanceof(obj, "IsoGenerator") and obj ~= generator then
-                                        if obj:isActivated() then
-                                            hasOtherActiveGen = true
-                                            -- Directly recalculate rate for this generator (no 0-flash)
-                                            local ogx, ogy, ogz = obj:getX(), obj:getY(), obj:getZ()
+                local dadosConstrucao = GarantirEstadoConstrucao(identificadorPoolConstrucao, gerador, "activation")
+                if dadosConstrucao and dadosConstrucao.connectedGenerators then
+                    for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+                        local xGerador, yGerador, zGerador = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        if xGerador and yGerador and zGerador then
+                            xGerador, yGerador, zGerador = tonumber(xGerador), tonumber(yGerador), tonumber(zGerador)
+                            local quadrado = getSquare(xGerador, yGerador, zGerador)
+                            if quadrado then
+                                local objetos = quadrado:getObjects()
+                                for indiceObjeto = 0, objetos:size() - 1 do
+                                    local objeto = objetos:get(indiceObjeto)
+                                    if objeto and instanceof(objeto, "IsoGenerator") and objeto ~= gerador then
+                                        if objeto:isActivated() then
+                                            possuiOutroGeradorAtivo = true
+                                            local xOutro, yOutro, zOutro = objeto:getX(), objeto:getY(), objeto:getZ()
                                             if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager
                                                and LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator then
-                                                LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(ogx, ogy, ogz)
+                                                LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(xOutro, yOutro, zOutro)
                                             end
                                         end
                                     end
@@ -467,85 +495,73 @@ local function ExecuteActivateGenerator(generator, activate)
                 end
             end
 
-            -- Activation only affects this pool. Repair missing state first, then
-            -- re-apply power to the specific building instead of relying on a global pass.
-            RefreshBuildingPower(buildingPoolID, generator, hasOtherActiveGen and "activation-pool" or "activation-first-generator")
+            AtualizarEnergiaConstrucao(identificadorPoolConstrucao, gerador, possuiOutroGeradorAtivo and "activation-pool" or "activation-first-generator")
 
-            -- Update fuel rate for this generator immediately (avoids empty display on first open)
+            -- Atualiza a taxa de consumo de combustível do gerador ativado de imediato
             if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager
                and LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator then
                 LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(
-                    generator:getX(), generator:getY(), generator:getZ())
+                    gerador:getX(), gerador:getY(), gerador:getZ())
             end
         end
 
-        LKS_EletricidadeConstrucao.Print("[ActivateGenerator] Generator activated at " ..
-            generator:getX() .. "," .. generator:getY() .. "," .. generator:getZ())
+        LKS_EletricidadeConstrucao.Print(string.format(
+            "[ActivateGenerator] Gerador ativado em (%d,%d,%d)", 
+            gerador:getX(), gerador:getY(), gerador:getZ()))
     else
-        -- ========================================
-        -- DEACTIVATE GENERATOR
-        -- ========================================
+        -- DESLIGA O GERADOR
+        gerador:setActivated(false)
 
-        -- Set generator state
-        generator:setActivated(false)
-
-        -- Update GeneratorData for chunk-independent pool counting
+        -- Atualiza dados de execução
         if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
-            local SM = LKS_EletricidadeConstrucao.Core.StateManager
-            local gid = LKS_EletricidadeConstrucao.Data.Generator.MakeId(
-                generator:getX(), generator:getY(), generator:getZ())
-            local gd = SM.GetGenerator(gid)
-            if gd then
-                gd.activated = false
-                SM.MarkDirty()
+            local GerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+            local identificadorGerador = LKS_EletricidadeConstrucao.Data.Generator.MakeId(
+                gerador:getX(), gerador:getY(), gerador:getZ())
+            local dadosGerador = GerenciadorEstado.GetGenerator(identificadorGerador)
+            if dadosGerador then
+                dadosGerador.activated = false
+                GerenciadorEstado.MarkDirty()
             end
         end
 
-        -- Sync immediately BEFORE updating other generators so they see this one as inactive
-        -- In SP: No network sync needed. In MP: transmit to clients.
+        -- Transmite alterações aos clientes em partidas Multiplayer
         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-            generator:transmitModData()
+            gerador:transmitModData()
             if isServer() then
-                generator:sync()
+                gerador:sync()
             end
         end
 
-        -- Remove heat sources immediately on deactivation.
-        -- LKS_EletricidadeConstrucao_HeatingClient.UpdateAll() only runs every 600 ticks (~60 s); without
-        -- this call the building stays warm for up to a minute after shutdown.
+        -- Remove as fontes térmicas vinculadas de imediato
         if LKS_EletricidadeConstrucao_HeatingClient and LKS_EletricidadeConstrucao_HeatingClient.Remove then
-            local _sq = generator:getSquare()
-            if _sq then
-                LKS_EletricidadeConstrucao_HeatingClient.Remove(_sq:getX() .. "_" .. _sq:getY() .. "_" .. _sq:getZ())
+            local quadradoAux = gerador:getSquare()
+            if quadradoAux then
+                LKS_EletricidadeConstrucao_HeatingClient.Remove(quadradoAux:getX() .. "_" .. quadradoAux:getY() .. "_" .. quadradoAux:getZ())
             end
         end
 
-        -- If in building mode, remove power from building
-        if isInBuildingMode and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
-            -- Check if other generators in the pool are still active.
-            -- Immediately recalculate their fuel rate so the Info Window reflects
-            -- the new pool size (one fewer active generator) without a 0-flash.
-            local hasOtherActiveGen = false
+        -- Corta ou reduz a energia da malha elétrica do edifício
+        if estaNoModoConstrucao and LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
+            local possuiOutroGeradorAtivo = false
             if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager then
-                local buildingData = EnsureBuildingState(buildingPoolID, generator, "deactivation")
-                if buildingData and buildingData.connectedGenerators then
-                    for _, genKey in pairs(buildingData.connectedGenerators) do
-                        local gx, gy, gz = string.match(genKey, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                        if gx and gy and gz then
-                            gx, gy, gz = tonumber(gx), tonumber(gy), tonumber(gz)
-                            local sq = getSquare(gx, gy, gz)
-                            if sq then
-                                local objects = sq:getObjects()
-                                for i = 0, objects:size() - 1 do
-                                    local obj = objects:get(i)
-                                    if obj and instanceof(obj, "IsoGenerator") and obj ~= generator then
-                                        if obj:isActivated() then
-                                            hasOtherActiveGen = true
-                                            -- Directly recalculate rate for this generator (no 0-flash)
-                                            local ogx, ogy, ogz = obj:getX(), obj:getY(), obj:getZ()
+                local dadosConstrucao = GarantirEstadoConstrucao(identificadorPoolConstrucao, gerador, "deactivation")
+                if dadosConstrucao and dadosConstrucao.connectedGenerators then
+                    for _, chaveGerador in pairs(dadosConstrucao.connectedGenerators) do
+                        local xGerador, yGerador, zGerador = string.match(chaveGerador, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        if xGerador and yGerador and zGerador then
+                            xGerador, yGerador, zGerador = tonumber(xGerador), tonumber(yGerador), tonumber(zGerador)
+                            local quadrado = getSquare(xGerador, yGerador, zGerador)
+                            if quadrado then
+                                local objetos = quadrado:getObjects()
+                                for indiceObjeto = 0, objetos:size() - 1 do
+                                    local objeto = objetos:get(indiceObjeto)
+                                    if objeto and instanceof(objeto, "IsoGenerator") and objeto ~= gerador then
+                                        if objeto:isActivated() then
+                                            possuiOutroGeradorAtivo = true
+                                            local xOutro, yOutro, zOutro = objeto:getX(), objeto:getY(), objeto:getZ()
                                             if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager
                                                and LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator then
-                                                LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(ogx, ogy, ogz)
+                                                LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(xOutro, yOutro, zOutro)
                                             end
                                         end
                                     end
@@ -556,65 +572,65 @@ local function ExecuteActivateGenerator(generator, activate)
                 end
             end
 
-            RefreshBuildingPower(buildingPoolID, generator, hasOtherActiveGen and "deactivation-pool" or "deactivation-last-generator")
+            AtualizarEnergiaConstrucao(identificadorPoolConstrucao, gerador, possuiOutroGeradorAtivo and "deactivation-pool" or "deactivation-last-generator")
         end
 
-        LKS_EletricidadeConstrucao.Print("[ActivateGenerator] Generator deactivated at " ..
-            generator:getX() .. "," .. generator:getY() .. "," .. generator:getZ())
+        LKS_EletricidadeConstrucao.Print(string.format(
+            "[ActivateGenerator] Gerador desativado em (%d,%d,%d)", 
+            gerador:getX(), gerador:getY(), gerador:getZ()))
     end
 
     return true
 end
 
 function LKS_EletricidadeConstrucao_ActivateGenerator:complete()
-    local Runtime = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
-    local isMPClient = Runtime and Runtime.IsMultiplayerClient and Runtime.IsMultiplayerClient()
+    local AmbienteExecucao = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
+    local ehClienteMultiplayer = AmbienteExecucao and AmbienteExecucao.IsMultiplayerClient and AmbienteExecucao.IsMultiplayerClient()
 
-    if isMPClient then
-        local sq = self.generator and self.generator:getSquare()
-        if sq and isClient() then
+    if ehClienteMultiplayer then
+        local quadrado = self.generator and self.generator:getSquare()
+        if quadrado and isClient() then
             sendClientCommand(self.character, "LKS_EletricidadeConstrucao", "ActivateGenerator", {
-                genX = sq:getX(),
-                genY = sq:getY(),
-                genZ = sq:getZ(),
+                genX = quadrado:getX(),
+                genY = quadrado:getY(),
+                genZ = quadrado:getZ(),
                 activate = self.activate == true,
             })
         end
         return true
     end
 
-    return ExecuteActivateGenerator(self.generator, self.activate)
+    return ExecutarAtivacaoGerador(self.generator, self.activate)
 end
 
--- ============================================================
--- DURATION & CONSTRUCTOR
--- ============================================================
+-- ============================================================================
+-- CONSTRUTOR E CÁLCULO DE DURABILIDADE
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_ActivateGenerator:getDuration()
     if self.character:isTimedActionInstant() then
         return 1
     end
-    
-    -- Activation takes ~5 seconds (50 ticks)
+    -- Ação de ligar/desligar dura aproximadamente 5 segundos físicos (50 ticks)
     return 50
 end
 
 function LKS_EletricidadeConstrucao_ActivateGenerator:new(character, generator, activate)
-    local o = ISBaseTimedAction.new(self, character)
-    o.character = character
-    o.generator = generator
-    o.activate = activate
-    o.stopOnWalk = true
-    o.stopOnRun = true
-    o.maxTime = o:getDuration()
-    return o
+    local objetoInstanciado = ISBaseTimedAction.new(self, character)
+    objetoInstanciado.character = character
+    objetoInstanciado.generator = generator
+    objetoInstanciado.activate = activate
+    objetoInstanciado.stopOnWalk = true
+    objetoInstanciado.stopOnRun = true
+    objetoInstanciado.maxTime = objetoInstanciado:getDuration()
+    return objetoInstanciado
 end
 
--- ============================================================
--- EXPORT TO NAMESPACE
--- ============================================================
+-- ============================================================================
+-- EXPORTAÇÃO PARA O NAMESPACE
+-- ============================================================================
 
-LKS_EletricidadeConstrucao_ActivateGenerator.Execute = ExecuteActivateGenerator
+LKS_EletricidadeConstrucao_ActivateGenerator.Execute = ExecutarAtivacaoGerador
 LKS_EletricidadeConstrucao.Actions.ActivateGenerator = LKS_EletricidadeConstrucao_ActivateGenerator
 
-print("[LKS_EletricidadeConstrucao_Actions_ActivateGenerator] Activate Generator action loaded successfully")
+LKS_EletricidadeConstrucao.Print("Ação ActivateGenerator carregada no namespace")

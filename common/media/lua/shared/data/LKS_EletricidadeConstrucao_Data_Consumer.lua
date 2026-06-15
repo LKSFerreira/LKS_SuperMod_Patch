@@ -1,38 +1,42 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mi.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Data_Consumer.lua
--- LKS_EletricidadeConstrucao V2 - Consumer Data Model
--- Schema definition and operations for power consumer data (lights, appliances, etc.)
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Data_Consumer.lua
+-- OBJETIVO: Modelo de dados (Schema) e operações para Consumidores de Energia (luzes, eletrodomésticos, etc.)
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Data_Consumer] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Data_Consumer] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- SCHEMA DEFINITION
+-- DEFINIÇÃO DO SCHEMA
 -- ============================================================================
 
---- Consumer data schema
+--- Schema de dados de um Consumidor de Energia.
 --- @class ConsumerData
---- @field squareX number Grid square X coordinate
---- @field squareY number Grid square Y coordinate
---- @field squareZ number Grid square Z coordinate
---- @field objectType string Type of consumer ("light", "appliance", "lamp", etc.)
---- @field applianceType string|nil Specific appliance subtype ("fridge", "tv", "radio", "stove", "washer", "dryer", "freezer", "microwave")
---- @field isActive boolean Current active state (on/off)
---- @field powerDraw number Power consumption value (for strain calculation)
---- @field fuelConsumptionLph number Fuel consumption in L/h (vanilla-specific rate)
---- @field objectIndex number|nil Object index in square (for multiple objects)
---- @field sprite string|nil Sprite name for identification
+--- @field squareX number Coordenada X do quadrado (tile) na grade do mundo
+--- @field squareY number Coordenada Y do quadrado (tile) na grade do mundo
+--- @field squareZ number Coordenada Z do quadrado (tile) na grade do mundo
+--- @field objectType string Tipo do consumidor ("light", "appliance", "lamp", etc.)
+--- @field applianceType string|nil Subtipo específico do eletrodoméstico ("fridge", "tv", "radio", "stove", "washer", "dryer", "freezer", "microwave")
+--- @field isActive boolean Estado de atividade atual (ligado/desligado)
+--- @field powerDraw number Consumo elétrico do consumidor (para cálculo de esforço/strain)
+--- @field fuelConsumptionLph number Taxa de consumo de combustível em L/h (específico do vanilla)
+--- @field objectIndex number|nil Índice do objeto físico no quadrado do grid (para múltiplos objetos)
+--- @field sprite string|nil Nome do sprite de identificação visual do objeto
 
 local ConsumerSchema = {
     squareX = 0,
@@ -48,7 +52,7 @@ local ConsumerSchema = {
 }
 
 -- ============================================================================
--- CONSUMER TYPES
+-- TIPOS DE CONSUMIDORES
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.Data.Consumer.Types = {
@@ -59,274 +63,286 @@ LKS_EletricidadeConstrucao.Data.Consumer.Types = {
 }
 
 -- ============================================================================
--- CONSTRUCTOR
+-- CONSTRUTOR
 -- ============================================================================
 
---- Create new consumer data instance
---- @param square IsoGridSquare Grid square containing consumer
---- @param objectType string Type of consumer
---- @param objectIndex number|nil Object index (optional)
---- @return ConsumerData New consumer data
-function LKS_EletricidadeConstrucao.Data.Consumer.New(square, objectType, objectIndex)
+--- Cria uma nova instância de dados de um consumidor (ConsumerData) em um determinado quadrado.
+--- @param quadrado IsoGridSquare O quadrado da grade contendo o consumidor.
+--- @param tipoObjeto string O tipo do consumidor elétrico.
+--- @param indiceObjeto number|nil O índice do objeto no quadrado (opcional).
+--- @return ConsumerData A nova instância populada com o estado do consumidor.
+function LKS_EletricidadeConstrucao.Data.Consumer.New(quadrado, tipoObjeto, indiceObjeto)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     local Table = LKS_EletricidadeConstrucao.Utils.Table
     
-    -- Validate input
-    Validation.AssertNotNil(square, "Grid square cannot be nil")
-    Validation.Assert(Validation.IsGridSquare(square), "Object must be IsoGridSquare")
+    -- Validação de entrada
+    Validation.AssertNotNil(quadrado, "O quadrado do grid não pode ser nulo")
+    Validation.Assert(Validation.IsGridSquare(quadrado), "O objeto fornecido deve ser do tipo IsoGridSquare")
     
-    -- Create data instance
-    local data = Table.DeepCopy(ConsumerSchema)
+    -- Clona a estrutura do Schema
+    local dadosConsumidor = Table.DeepCopy(ConsumerSchema)
     
-    -- Set coordinates
-    data.squareX = square:getX()
-    data.squareY = square:getY()
-    data.squareZ = square:getZ()
+    -- Define coordenadas do quadrado
+    dadosConsumidor.squareX = quadrado:getX()
+    dadosConsumidor.squareY = quadrado:getY()
+    dadosConsumidor.squareZ = quadrado:getZ()
     
-    -- Set type
-    data.objectType = objectType or LKS_EletricidadeConstrucao.Data.Consumer.Types.UNKNOWN
+    -- Define tipo de objeto
+    dadosConsumidor.objectType = tipoObjeto or LKS_EletricidadeConstrucao.Data.Consumer.Types.UNKNOWN
     
-    -- Set object index
-    data.objectIndex = objectIndex
+    -- Define índice do objeto
+    dadosConsumidor.objectIndex = indiceObjeto
     
-    -- Detect initial state and power draw
-    LKS_EletricidadeConstrucao.Data.Consumer.UpdateFromSquare(data, square)
+    -- Detecta estado operacional inicial e calcula o consumo elétrico
+    LKS_EletricidadeConstrucao.Data.Consumer.UpdateFromSquare(dadosConsumidor, quadrado)
     
-    return data
+    return dadosConsumidor
 end
 
 -- ============================================================================
--- VALIDATION
+-- VALIDAÇÃO DE INTEGRIDADE
 -- ============================================================================
 
---- Validate consumer data structure
---- @param data ConsumerData Data to validate
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Data.Consumer.Validate(data)
+--- Valida se a estrutura de dados de um consumidor está correta e com valores válidos.
+--- @param dadosConsumidor ConsumerData A tabela de dados do consumidor.
+--- @return boolean, string|nil Retorna true se estiver correto, ou false com a mensagem descritiva do erro.
+function LKS_EletricidadeConstrucao.Data.Consumer.Validate(dadosConsumidor)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     
-    -- Check if table
-    if not Validation.IsTable(data) then
-        return false, "Consumer data must be a table"
+    -- Verifica se é do tipo tabela
+    if not Validation.IsTable(dadosConsumidor) then
+        return false, "Os dados do consumidor devem estar estruturados em uma tabela"
     end
     
-    -- Validate required fields
-    local valid, err = Validation.ValidateKeys(data, {
+    -- Valida chaves obrigatórias requeridas pelo Schema
+    local valido, erro = Validation.ValidateKeys(dadosConsumidor, {
         "squareX", "squareY", "squareZ", "objectType", 
         "isActive", "powerDraw"
-    }, "Consumer data")
+    }, "Dados do consumidor")
     
-    if not valid then return false, err end
-    
-    -- Validate coordinates
-    valid, err = Validation.ValidateCoordinates(data.squareX, data.squareY, data.squareZ)
-    if not valid then return false, err end
-    
-    -- Validate object type
-    valid, err = Validation.ValidateNotEmpty(data.objectType, "objectType")
-    if not valid then return false, err end
-    
-    -- Validate boolean
-    if not Validation.IsBoolean(data.isActive) then
-        return false, "isActive must be boolean"
+    if not valido then
+        return false, erro
     end
     
-    -- Validate power draw
-    valid, err = Validation.ValidateNonNegative(data.powerDraw, "powerDraw")
-    if not valid then return false, err end
+    -- Valida se as coordenadas são numéricas e geográficas
+    valido, erro = Validation.ValidateCoordinates(dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ)
+    if not valido then
+        return false, erro
+    end
+    
+    -- Valida formato do tipo de objeto
+    valido, erro = Validation.ValidateNotEmpty(dadosConsumidor.objectType, "objectType")
+    if not valido then
+        return false, erro
+    end
+    
+    -- Valida tipo do estado ativo
+    if not Validation.IsBoolean(dadosConsumidor.isActive) then
+        return false, "O campo 'isActive' deve ser um booleano"
+    end
+    
+    -- Valida se a potência elétrica desenhada não é negativa
+    valido, erro = Validation.ValidateNonNegative(dadosConsumidor.powerDraw, "powerDraw")
+    if not valido then
+        return false, erro
+    end
     
     return true, nil
 end
 
 -- ============================================================================
--- SERIALIZATION
+-- SERIALIZAÇÃO E DESSERIALIZAÇÃO (PERSISTÊNCIA MODDATA)
 -- ============================================================================
 
---- Serialize consumer data for ModData storage
---- @param data ConsumerData Data to serialize
---- @return table Serialized data
-function LKS_EletricidadeConstrucao.Data.Consumer.Serialize(data)
+--- Serializa os dados do consumidor em um formato de tabela limpa para armazenamento no ModData.
+--- @param dadosConsumidor ConsumerData A estrutura de dados do consumidor.
+--- @return table Uma cópia limpa e serializável dos dados do consumidor.
+function LKS_EletricidadeConstrucao.Data.Consumer.Serialize(dadosConsumidor)
     local Table = LKS_EletricidadeConstrucao.Utils.Table
-    return Table.DeepCopy(data)
+    return Table.DeepCopy(dadosConsumidor)
 end
 
---- Deserialize consumer data from ModData
---- @param serialized table Serialized data
---- @return ConsumerData|nil Deserialized data or nil if invalid
-function LKS_EletricidadeConstrucao.Data.Consumer.Deserialize(serialized)
-    if not serialized then return nil end
-    
-    local Table = LKS_EletricidadeConstrucao.Utils.Table
-    local data = Table.DeepCopy(serialized)
-    
-    -- Validate deserialized data
-    local valid, err = LKS_EletricidadeConstrucao.Data.Consumer.Validate(data)
-    if not valid then
-        LKS_EletricidadeConstrucao.Error("[Consumer.Deserialize] Invalid data: " .. err)
+--- Desserializa a estrutura de dados de um consumidor a partir dos dados lidos do ModData.
+--- @param dadosSerializados table Tabela de dados brutos carregados do ModData.
+--- @return ConsumerData|nil Retorna os dados desserializados ou nil se for inválido.
+function LKS_EletricidadeConstrucao.Data.Consumer.Deserialize(dadosSerializados)
+    if not dadosSerializados then
         return nil
     end
     
-    return data
+    local Table = LKS_EletricidadeConstrucao.Utils.Table
+    local dadosConsumidor = Table.DeepCopy(dadosSerializados)
+    
+    -- Realiza validação final dos dados carregados
+    local valido, erro = LKS_EletricidadeConstrucao.Data.Consumer.Validate(dadosConsumidor)
+    if not valido then
+        LKS_EletricidadeConstrucao.Error("[Consumer.Deserialize] Dados do consumidor inválidos: " .. erro)
+        return nil
+    end
+    
+    return dadosConsumidor
 end
 
 -- ============================================================================
--- UPDATE OPERATIONS
+-- OPERAÇÕES DE ATUALIZAÇÃO E DETECÇÃO DE ESTADO FÍSICO
 -- ============================================================================
 
---- Detect the active (user-on) state of an appliance directly from the ISO
---- objects on a grid square without requiring a powered building check.
---- Mirrors the logic in LKS_EletricidadeConstrucao_Power_Distributor.GetApplianceActiveState so that
---- newly-scanned consumers start with the correct state even before ForceUpdate.
---- @param square IsoGridSquare Grid square to inspect
---- @return boolean True if any recognised appliance on the square is on
-function LKS_EletricidadeConstrucao.Data.Consumer.GetApplianceStateFromSquare(square)
-    if not square then return false end
-    local objects = square:getObjects()
-    if not objects then return false end
-    for i = 0, objects:size() - 1 do
-        local obj = objects:get(i)
-        if obj then
-            -- Television / world-gen TV (IsoRadio)
-            if instanceof(obj, "IsoTelevision") or instanceof(obj, "IsoRadio") then
-                if obj.getDeviceData then
-                    local dev = obj:getDeviceData()
-                    if dev and dev.getIsTurnedOn then
-                        return dev:getIsTurnedOn()
+--- Detecta se o eletrodoméstico está ligado fisicamente avaliando os objetos Java no grid.
+--- Ignora validações de fornecimento de energia (ligado/desligado geral do prédio) para obter o estado definido pelo jogador.
+--- @param quadrado IsoGridSquare O quadrado de grade onde o consumidor está instalado.
+--- @return boolean Retorna true se o eletrodoméstico reconhecido estiver ligado.
+function LKS_EletricidadeConstrucao.Data.Consumer.GetApplianceStateFromSquare(quadrado)
+    if not quadrado then
+        return false
+    end
+    local listaObjetos = quadrado:getObjects()
+    if not listaObjetos then
+        return false
+    end
+    for indice = 0, listaObjetos:size() - 1 do
+        local objetoGrid = listaObjetos:get(indice)
+        if objetoGrid then
+            -- Televisões e rádios (interoperabilidade com IsoTelevision / IsoRadio)
+            if instanceof(objetoGrid, "IsoTelevision") or instanceof(objetoGrid, "IsoRadio") then
+                if objetoGrid.getDeviceData then
+                    local dadosDispositivo = objetoGrid:getDeviceData()
+                    if dadosDispositivo and dadosDispositivo.getIsTurnedOn then
+                        return dadosDispositivo:getIsTurnedOn()
                     end
                 end
                 return false
             end
-            -- Stove
-            if instanceof(obj, "IsoStove") then
-                return obj.Activated and obj:Activated() or false
+            -- Fogões (IsoStove)
+            if instanceof(objetoGrid, "IsoStove") then
+                return objetoGrid.Activated and objetoGrid:Activated() or false
             end
-            -- Moveable washer / dryer
-            if instanceof(obj, "IsoClothingDryer")
-            or instanceof(obj, "IsoClothingWasher")
-            or instanceof(obj, "IsoCombinationWasherDryer")
-            or instanceof(obj, "IsoStackedWasherDryer") then
-                return obj.isActivated and obj:isActivated() or false
+            -- Lavadoras e secadoras portáteis (moveable)
+            if instanceof(objetoGrid, "IsoClothingDryer")
+            or instanceof(objetoGrid, "IsoClothingWasher")
+            or instanceof(objetoGrid, "IsoCombinationWasherDryer")
+            or instanceof(objetoGrid, "IsoStackedWasherDryer") then
+                return objetoGrid.isActivated and objetoGrid:isActivated() or false
             end
-            -- World-gen containers (fridge, freezer, washer, dryer)
-            if obj.getContainerByType then
-                if obj:getContainerByType("clothingdryer")  ~= nil
-                or obj:getContainerByType("clothingwasher") ~= nil then
-                    return obj.isActivated and obj:isActivated() or false
+            -- Contêineres de eletrodomésticos nativos do mundo (geladeiras, secadoras, lavadoras)
+            if objetoGrid.getContainerByType then
+                if objetoGrid:getContainerByType("clothingdryer")  ~= nil
+                or objetoGrid:getContainerByType("clothingwasher") ~= nil then
+                    return objetoGrid.isActivated and objetoGrid:isActivated() or false
                 end
-                if obj:getContainerByType("fridge")   ~= nil
-                or obj:getContainerByType("freezer")  ~= nil then
-                    return true   -- fridges are always active when powered
+                if objetoGrid:getContainerByType("fridge")   ~= nil
+                or objetoGrid:getContainerByType("freezer")  ~= nil then
+                    return true   -- Geladeiras/freezers sempre consomem energia quando há energia disponível
                 end
             end
         end
     end
-    return false   -- sprite-only / unknown appliance: default inactive
+    return false   -- Eletrodomésticos desconhecidos ou puramente estéticos (sprites): inativos por padrão
 end
 
---- Update consumer data from grid square
---- @param data ConsumerData Consumer data
---- @param square IsoGridSquare Grid square
-function LKS_EletricidadeConstrucao.Data.Consumer.UpdateFromSquare(data, square)
+--- Sincroniza e atualiza o estado operacional e de consumo do dispositivo a partir de seu quadrado físico.
+--- @param dadosConsumidor ConsumerData A tabela contendo os dados locais do consumidor.
+--- @param quadrado IsoGridSquare O quadrado físico no grid do mapa.
+function LKS_EletricidadeConstrucao.Data.Consumer.UpdateFromSquare(dadosConsumidor, quadrado)
     local Validation = LKS_EletricidadeConstrucao.Utils.Validation
     
-    Validation.AssertNotNil(square, "Grid square cannot be nil")
+    Validation.AssertNotNil(quadrado, "O quadrado físico não pode ser nulo")
     
-    -- NOTE: square:haveElectricity() checks vanilla PZ power, NOT generator power.
-    -- This mod manages its own power state, so we derive isActive differently:
-    --   • Appliances: inspect the actual ISO object's on/off state right now.
-    --   • Lights / lamps: default to active (true); the Distributor will correct
-    --     this on the next UpdateBuildingPower pass for light-switches.
-    if data.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.APPLIANCE then
-        data.isActive = LKS_EletricidadeConstrucao.Data.Consumer.GetApplianceStateFromSquare(square)
+    -- Nota técnica: square:haveElectricity() avalia o grid de energia nativo (vanilla).
+    -- Este mod gerencia sua própria malha de fornecimento. Derivamos a ativação:
+    --   • Eletrodomésticos: avalia o estado real ligado/desligado definido no objeto físico.
+    --   • Luzes/Lâmpadas: assume ativas por padrão. O distribuidor ajusta após avaliar interruptores.
+    if dadosConsumidor.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.APPLIANCE then
+        dadosConsumidor.isActive = LKS_EletricidadeConstrucao.Data.Consumer.GetApplianceStateFromSquare(quadrado)
     else
-        data.isActive = true   -- lights / lamps: assume on until proven otherwise
+        dadosConsumidor.isActive = true   -- Assume ativa até validação com interruptor (UpdateBuildingPower)
     end
     
-    -- Always recalculate power draw from type.
-    data.powerDraw = LKS_EletricidadeConstrucao.Data.Consumer.CalculatePowerDraw(data, square)
+    -- Recalcula a demanda de carga com base nas configurações
+    dadosConsumidor.powerDraw = LKS_EletricidadeConstrucao.Data.Consumer.CalculatePowerDraw(dadosConsumidor, quadrado)
 end
 
---- Calculate power draw for consumer
---- @param data ConsumerData Consumer data
---- @param square IsoGridSquare|nil Grid square (optional)
---- @return number Power draw value
-function LKS_EletricidadeConstrucao.Data.Consumer.CalculatePowerDraw(data, square)
+--- Calcula o consumo elétrico desenhado pelo consumidor de acordo com o seu tipo.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @param quadrado IsoGridSquare|nil O quadrado físico de grade (opcional).
+--- @return number O consumo elétrico correspondente do dispositivo.
+function LKS_EletricidadeConstrucao.Data.Consumer.CalculatePowerDraw(dadosConsumidor, quadrado)
     local Constants = LKS_EletricidadeConstrucao.Constants.FUEL
     
-    -- Base power draw by type
-    if data.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.LIGHT then
+    -- Consumo elétrico base por tipo
+    if dadosConsumidor.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.LIGHT then
         return Constants.POWER_DRAW_LIGHT or 1
-    elseif data.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.LAMP then
+    elseif dadosConsumidor.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.LAMP then
         return Constants.POWER_DRAW_LAMP or 1
-    elseif data.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.APPLIANCE then
-        -- Use appliance-specific power draw if available
-        if data.applianceType then
-            if data.applianceType == "fridge" then
+    elseif dadosConsumidor.objectType == LKS_EletricidadeConstrucao.Data.Consumer.Types.APPLIANCE then
+        -- Valida se existe um subtipo de eletrodoméstico específico configurado
+        if dadosConsumidor.applianceType then
+            local tipo = dadosConsumidor.applianceType
+            if tipo == "fridge" then
                 return Constants.POWER_DRAW_FRIDGE or 10
-            elseif data.applianceType == "freezer" then
+            elseif tipo == "freezer" then
                 return Constants.POWER_DRAW_FREEZER or 10
-            elseif data.applianceType == "fridgeFreezer" then
+            elseif tipo == "fridgeFreezer" then
                 return Constants.POWER_DRAW_FRIDGE_FREEZER or 15
-            elseif data.applianceType == "stove" then
+            elseif tipo == "stove" then
                 return Constants.POWER_DRAW_STOVE or 6
-            elseif data.applianceType == "microwave" then
+            elseif tipo == "microwave" then
                 return Constants.POWER_DRAW_MICROWAVE or 5
-            elseif data.applianceType == "washer" then
+            elseif tipo == "washer" then
                 return Constants.POWER_DRAW_WASHER or 7
-            elseif data.applianceType == "dryer" then
+            elseif tipo == "dryer" then
                 return Constants.POWER_DRAW_DRYER or 7
-            elseif data.applianceType == "tv" then
+            elseif tipo == "tv" then
                 return Constants.POWER_DRAW_TV or 3
-            elseif data.applianceType == "radio" then
+            elseif tipo == "radio" then
                 return Constants.POWER_DRAW_RADIO or 2
             end
         end
-        -- Default appliance power draw
+        -- Consumo padrão para eletrodomésticos genéricos
         return Constants.POWER_DRAW_APPLIANCE or 2
     else
-        return 1 -- Default
+        return 1 -- Fallback padrão
     end
 end
 
 -- ============================================================================
--- STATE OPERATIONS
+-- OPERAÇÕES DE ESTADO
 -- ============================================================================
 
---- Set consumer active state
---- @param data ConsumerData Consumer data
---- @param active boolean Active state
-function LKS_EletricidadeConstrucao.Data.Consumer.SetActive(data, active)
-    data.isActive = active
+--- Define o estado de ativação operacional do consumidor elétrico.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @param ativo boolean Retorna true para ligar o consumidor.
+function LKS_EletricidadeConstrucao.Data.Consumer.SetActive(dadosConsumidor, ativo)
+    dadosConsumidor.isActive = ativo
 end
 
---- Toggle consumer active state
---- @param data ConsumerData Consumer data
-function LKS_EletricidadeConstrucao.Data.Consumer.Toggle(data)
-    data.isActive = not data.isActive
+--- Inverte (alterna) o estado operacional ativo atual do consumidor elétrico.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+function LKS_EletricidadeConstrucao.Data.Consumer.Toggle(dadosConsumidor)
+    dadosConsumidor.isActive = not dadosConsumidor.isActive
 end
 
 -- ============================================================================
--- TYPE DETECTION
+-- DETECÇÃO E VARREDURA DE TIPOS
 -- ============================================================================
 
---- Detect consumer type from grid square
---- @param square IsoGridSquare Grid square to analyze
---- @return string Consumer type
-function LKS_EletricidadeConstrucao.Data.Consumer.DetectType(square)
-    if not square then
+--- Detecta o tipo de consumidor elétrico instalado em um quadrado de grade do mapa.
+--- @param quadrado IsoGridSquare O quadrado a ser inspecionado.
+--- @return string O tipo de consumidor identificado.
+function LKS_EletricidadeConstrucao.Data.Consumer.DetectType(quadrado)
+    if not quadrado then
         return LKS_EletricidadeConstrucao.Data.Consumer.Types.UNKNOWN
     end
     
-    -- Check for lamp objects
-    local objects = square:getObjects()
-    if objects then
-        for i = 0, objects:size() - 1 do
-            local obj = objects:get(i)
-            if obj then
-                local sprite = obj:getSprite()
+    -- Procura por objetos de luminárias portáteis (lâmpadas/abajures)
+    local listaObjetos = quadrado:getObjects()
+    if listaObjetos then
+        for indice = 0, listaObjetos:size() - 1 do
+            local objetoGrid = listaObjetos:get(indice)
+            if objetoGrid then
+                local sprite = objetoGrid:getSprite()
                 if sprite then
-                    local spriteName = sprite:getName()
-                    if spriteName and spriteName:contains("lamp") then
+                    local nomeSprite = sprite:getName()
+                    if nomeSprite and nomeSprite:contains("lamp") then
                         return LKS_EletricidadeConstrucao.Data.Consumer.Types.LAMP
                     end
                 end
@@ -334,98 +350,95 @@ function LKS_EletricidadeConstrucao.Data.Consumer.DetectType(square)
         end
     end
     
-    -- Check if square can have lights
-    if square:canHaveLight() then
+    -- Verifica se o quadrado suporta iluminação nativa de teto
+    if quadrado:canHaveLight() then
         return LKS_EletricidadeConstrucao.Data.Consumer.Types.LIGHT
     end
     
-    -- Check for appliances (stove, fridge, etc.)
-    -- This would require more sophisticated detection
-    -- For now, default to light
+    -- Fallback padrão: iluminação comum
     return LKS_EletricidadeConstrucao.Data.Consumer.Types.LIGHT
 end
 
 -- ============================================================================
--- COMPARISON
+-- COMPARAÇÕES E IDENTIFICAÇÃO ÚNICA
 -- ============================================================================
 
---- Check if two consumers are the same
---- @param consumer1 ConsumerData First consumer
---- @param consumer2 ConsumerData Second consumer
---- @return boolean True if same position
-function LKS_EletricidadeConstrucao.Data.Consumer.IsSame(consumer1, consumer2)
-    return consumer1.squareX == consumer2.squareX
-        and consumer1.squareY == consumer2.squareY
-        and consumer1.squareZ == consumer2.squareZ
-        and consumer1.objectIndex == consumer2.objectIndex
+--- Verifica se dois consumidores compartilham a mesma posição geográfica e índice no grid.
+--- @param consumidor1 ConsumerData O primeiro consumidor.
+--- @param consumidor2 ConsumerData O segundo consumidor.
+--- @return boolean Retorna true se forem o mesmo dispositivo físico.
+function LKS_EletricidadeConstrucao.Data.Consumer.IsSame(consumidor1, consumidor2)
+    return consumidor1.squareX == consumidor2.squareX
+        and consumidor1.squareY == consumidor2.squareY
+        and consumidor1.squareZ == consumidor2.squareZ
+        and consumidor1.objectIndex == consumidor2.objectIndex
 end
 
---- Generate unique key for consumer
---- @param data ConsumerData Consumer data
---- @return string Unique key
-function LKS_EletricidadeConstrucao.Data.Consumer.MakeKey(data)
-    if data.objectIndex then
+--- Gera uma chave descritiva única de texto para indexação do consumidor elétrico.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @return string A chave única gerada.
+function LKS_EletricidadeConstrucao.Data.Consumer.MakeKey(dadosConsumidor)
+    if dadosConsumidor.objectIndex then
         return string.format("%d_%d_%d_%d", 
-            data.squareX, data.squareY, data.squareZ, data.objectIndex)
+            dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ, dadosConsumidor.objectIndex)
     else
         return string.format("%d_%d_%d", 
-            data.squareX, data.squareY, data.squareZ)
+            dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ)
     end
 end
 
 -- ============================================================================
--- HELPER FUNCTIONS
+-- INTEROPERABILIDADE COM O MAPA (GRID SQUARE)
 -- ============================================================================
 
---- Get grid square for consumer
---- @param data ConsumerData Consumer data
---- @return IsoGridSquare|nil Grid square or nil if not found
-function LKS_EletricidadeConstrucao.Data.Consumer.GetSquare(data)
-    local square = getSquare(data.squareX, data.squareY, data.squareZ)
-    return square
+--- Obtém o quadrado da grade física do mapa associado ao consumidor elétrico.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @return IsoGridSquare|nil O quadrado físico IsoGridSquare ou nulo se descarregado.
+function LKS_EletricidadeConstrucao.Data.Consumer.GetSquare(dadosConsumidor)
+    return getSquare(dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ)
 end
 
---- Check if consumer is valid (grid square exists)
---- @param data ConsumerData Consumer data
---- @return boolean True if valid
-function LKS_EletricidadeConstrucao.Data.Consumer.IsValid(data)
-    local square = LKS_EletricidadeConstrucao.Data.Consumer.GetSquare(data)
-    return square ~= nil
+--- Verifica se o consumidor está atualmente em um quadrado físico carregado na memória do jogo.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @return boolean Retorna true se o quadrado estiver carregado e acessível.
+function LKS_EletricidadeConstrucao.Data.Consumer.IsValid(dadosConsumidor)
+    local quadrado = LKS_EletricidadeConstrucao.Data.Consumer.GetSquare(dadosConsumidor)
+    return quadrado ~= nil
 end
 
---- Get current power contribution
---- @param data ConsumerData Consumer data
---- @return number Power contribution (0 if inactive)
-function LKS_EletricidadeConstrucao.Data.Consumer.GetCurrentPower(data)
-    if data.isActive then
-        return data.powerDraw
+--- Obtém a demanda real instantânea de consumo elétrico do consumidor (retorna zero se inativo).
+--- @param dadosConsumidor ConsumerData Os dados do consumidor.
+--- @return number O consumo elétrico instantâneo correspondente.
+function LKS_EletricidadeConstrucao.Data.Consumer.GetCurrentPower(dadosConsumidor)
+    if dadosConsumidor.isActive then
+        return dadosConsumidor.powerDraw
     else
         return 0
     end
 end
 
 -- ============================================================================
--- DEBUG
+-- DEPURAÇÃO
 -- ============================================================================
 
---- Convert consumer data to string for debugging
---- @param data ConsumerData Consumer data
---- @return string String representation
-function LKS_EletricidadeConstrucao.Data.Consumer.ToString(data)
-    local indexStr = data.objectIndex and string.format("[%d]", data.objectIndex) or ""
+--- Converte o estado operacional do consumidor em uma string descritiva formatada.
+--- @param dadosConsumidor ConsumerData Os dados do consumidor analisado.
+--- @return string Representação descritiva.
+function LKS_EletricidadeConstrucao.Data.Consumer.ToString(dadosConsumidor)
+    local textoIndice = dadosConsumidor.objectIndex and string.format("[%d]", dadosConsumidor.objectIndex) or ""
     
     return string.format(
-        "Consumer%s at (%d,%d,%d) | Type:%s Active:%s Power:%.1f",
-        indexStr,
-        data.squareX, data.squareY, data.squareZ,
-        data.objectType,
-        tostring(data.isActive),
-        data.powerDraw
+        "Consumidor%s em (%d,%d,%d) | Tipo:%s Ativo:%s Carga:%.1f",
+        textoIndice,
+        dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ,
+        dadosConsumidor.objectType,
+        tostring(dadosConsumidor.isActive),
+        dadosConsumidor.powerDraw
     )
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO E REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Data.Consumer", "2.0.0")

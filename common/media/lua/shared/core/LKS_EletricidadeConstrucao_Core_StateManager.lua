@@ -1,313 +1,336 @@
+---@diagnostic disable: undefined-global
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Core_StateManager.lua
--- LKS_EletricidadeConstrucao V2 - State Manager
--- Central interface for ModData persistence and state management
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Core_StateManager.lua
+-- OBJETIVO: Gerenciador de estado centralizado e persistência de dados via ModData.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Core_StateManager] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Core_StateManager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- MODDATA KEYS
+-- CHAVES DO MODDATA
 -- ============================================================================
 
-local MODDATA_KEY = "LKS_EletricidadeConstrucaoV2"
-local MODDATA_KEY_BACKUP = "LKS_EletricidadeConstrucaoV2_Backup"
-local MODDATA_KEY_GEN_INDEX = "LKS_EletricidadeConstrucaoV2_GeneratorIndex"
+local CHAVE_MODDATA = "LKS_EletricidadeConstrucaoV2"
+local CHAVE_MODDATA_BACKUP = "LKS_EletricidadeConstrucaoV2_Backup"
+local CHAVE_MODDATA_INDICE_GERADORES = "LKS_EletricidadeConstrucaoV2_GeneratorIndex"
 
-local function NormalizeWorldId(value)
-    if value == nil then return nil end
+-- ============================================================================
+-- AUXILIARES DE ANÁLISE DE SALVAMENTO
+-- ============================================================================
 
-    value = tostring(value)
-    if value == "" or value == "nil" then
+--- Normaliza o identificador do mundo removendo nulos ou vazios técnicos.
+--- @param valor any O valor bruto do identificador.
+--- @return string|nil O identificador normalizado ou nil.
+local function NormalizarIdentificadorMundo(valor)
+    if valor == nil then return nil end
+
+    valor = tostring(valor)
+    if valor == "" or valor == "nil" then
         return nil
     end
 
-    return value
+    return valor
 end
 
--- Per-save guard: detect cross-save contamination when users hop between worlds.
--- Returns "unknown" when called too early in the boot sequence (getWorld not ready).
-local function GetWorldId()
-    -- Try getWorld() first (available once the world is loaded)
-    local world = getWorld and getWorld()
-    if world then
-        if world.getWorldName then
-            local name = NormalizeWorldId(world:getWorldName())
-            if name then return name end
+--- Obtém o identificador exclusivo do mundo atual (save slot).
+---
+--- Esta verificação previne a contaminação cruzada de estado entre diferentes
+--- arquivos de salvamento quando o jogador transita entre mundos na mesma sessão de jogo.
+---
+--- @return string Retorna o identificador do mundo ou "unknown" se chamado muito cedo.
+local function ObterIdentificadorMundo()
+    local mundo = getWorld and getWorld()
+    if mundo then
+        if mundo.getWorldName then
+            local nomeMundo = NormalizarIdentificadorMundo(mundo:getWorldName())
+            if nomeMundo then return nomeMundo end
         end
-        -- fallback: some PZ versions expose getDir()
-        if world.getDir then
-            local d = NormalizeWorldId(world:getDir())
-            if d then return d end
+        if mundo.getDir then
+            local diretorioMundo = NormalizarIdentificadorMundo(mundo:getDir())
+            if diretorioMundo then return diretorioMundo end
         end
     end
-    -- Dedicated servers can expose the active save slot through getServerName()
-    -- even when getWorld():getWorldName() is empty.
+
+    -- Servidores dedicados podem expor a pasta do slot ativo por getServerName
     if getServerName then
-        local serverName = NormalizeWorldId(getServerName())
-        if serverName then return serverName end
+        local nomeServidor = NormalizarIdentificadorMundo(getServerName())
+        if nomeServidor then return nomeServidor end
     end
-    -- GameTime is available earlier than getWorld() – use world age as a
-    -- tiebreaker only if nothing else worked.
-    return "unknown"   -- genuinely too early; caller must skip world-isolation check
+
+    -- GameTime e outras estruturas ficam disponíveis antes do World, mas não servem
+    -- como identificador de salvamento único.
+    return "unknown"
 end
 
--- Tracks the global-data load lifecycle for this session.
---   "pending"  → Initialize() ran but GlobalModData not yet read (world ID unknown).
---   "loaded"   → ConfirmAndLoadState() completed a world-verified load.
---   "fresh"    → ConfirmAndLoadState() detected a world mismatch and cleared data.
--- Save() guards against writing back while "pending" to prevent overwriting the
--- saved state with an empty snapshot before the real data has been loaded.
-local _dataLoadState = "pending"
+-- Rastreia o ciclo de vida do carregamento de dados globais nesta sessão.
+--   "pending"  -> Initialize() executado mas GlobalModData não foi lido (Mundo ainda desconhecido).
+--   "loaded"   -> ConfirmAndLoadState() carregou dados validados pelo mundo ativo.
+--   "fresh"    -> ConfirmAndLoadState() detectou incompatibilidade de mundo e resetou os dados.
+-- O salvamento é protegido contra escrita enquanto estiver em "pending" para evitar sobrescrever
+-- dados saudáveis com um snapshot vazio.
+local _estadoCarregamentoDados = "pending"
 
--- Legacy alias kept so Load() still compiles; not used by the new boot path.
-local _loadedWithUnknownWorldId = false
+-- Variável legada mantida para compatibilidade com a assinatura do carregador antigo.
+local _carregadoComIdentificadorMundoDesconhecido = false
 
 -- ============================================================================
--- LOCAL STATE
+-- ESTADO LOCAL
 -- ============================================================================
 
-local _state = nil  -- Current runtime state
-local _isDirty = false  -- Tracks if state needs saving
-local _initialized = false  -- Tracks initialization status
-local _genIndexCache = nil -- Cached reference to generator ModData index
+local _estado = nil                  -- Estado ativo em tempo de execução
+local _estaModificado = false        -- Sinaliza que há alterações que precisam de salvamento
+local _inicializado = false          -- Indica se o módulo foi inicializado
+local _cacheIndiceGeradores = nil    -- Referência em cache para o índice ModData de geradores
 
 -- ============================================================================
--- INTERNAL HELPERS
+-- UTILITÁRIOS INTERNOS
 -- ============================================================================
 
--- Get or create the generator ModData index blob.
-local function GetGeneratorIndex()
-    if not _genIndexCache then
-        _genIndexCache = ModData.getOrCreate(MODDATA_KEY_GEN_INDEX)
+--- Obtém ou cria a tabela de índice de geradores no ModData global do jogo.
+--- @return table O índice de geradores e chaves de chunk.
+local function ObterIndiceGeradores()
+    if not _cacheIndiceGeradores then
+        _cacheIndiceGeradores = ModData.getOrCreate(CHAVE_MODDATA_INDICE_GERADORES)
     end
 
-    _genIndexCache.generators = _genIndexCache.generators or {}
-    _genIndexCache.chunkIndex = _genIndexCache.chunkIndex or {}
+    _cacheIndiceGeradores.generators = _cacheIndiceGeradores.generators or {}
+    _cacheIndiceGeradores.chunkIndex = _cacheIndiceGeradores.chunkIndex or {}
 
-    return _genIndexCache
+    return _cacheIndiceGeradores
 end
 
--- Count generators in current runtime state.
-local function CountGenerators()
-    local count = 0
-    if not _state or not _state.generators then return 0 end
-    for _ in pairs(_state.generators) do
-        count = count + 1
+--- Conta a quantidade de geradores presentes no estado ativo.
+--- @return integer A quantidade de geradores.
+local function ContarGeradores()
+    if not _estado or not _estado.generators then return 0 end
+    local contagem = 0
+    for _ in pairs(_estado.generators) do
+        contagem = contagem + 1
     end
-    return count
+    return contagem
 end
 
--- Count buildings in current runtime state.
-local function CountBuildings()
-    local count = 0
-    if not _state or not _state.buildings then return 0 end
-    for _ in pairs(_state.buildings) do
-        count = count + 1
+--- Conta a quantidade de construções registradas no estado ativo.
+--- @return integer A quantidade de construções.
+local function ContarConstrucoes()
+    if not _estado or not _estado.buildings then return 0 end
+    local contagem = 0
+    for _ in pairs(_estado.buildings) do
+        contagem = contagem + 1
     end
-    return count
+    return contagem
 end
 
--- Add a generator to the ModData index for fast rehydration and chunk lookup.
-local function IndexAddGenerator(genData)
-    if not genData or not genData.id then return end
-    local Geometry = LKS_EletricidadeConstrucao.Utils and LKS_EletricidadeConstrucao.Utils.Geometry
-    if (not genData.chunkKey or genData.chunkKey == "") and Geometry then
-        genData.chunkKey = Geometry.GetChunkKey(genData.x, genData.y)
+--- Adiciona um gerador ao índice do ModData para carregamento rápido e buscas por chunk.
+--- @param dadosGerador table Os dados estruturados do gerador.
+local function AdicionarGeradorAoIndice(dadosGerador)
+    if not dadosGerador or not dadosGerador.id then return end
+    
+    local Geometria = LKS_EletricidadeConstrucao.Utils and LKS_EletricidadeConstrucao.Utils.Geometry
+    if (not dadosGerador.chunkKey or dadosGerador.chunkKey == "") and Geometria then
+        dadosGerador.chunkKey = Geometria.GetChunkKey(dadosGerador.x, dadosGerador.y)
     end
 
-    local index = GetGeneratorIndex()
-    index.generators[genData.id] = LKS_EletricidadeConstrucao.Data.Generator.Serialize(genData)
+    local indice = ObterIndiceGeradores()
+    indice.generators[dadosGerador.id] = LKS_EletricidadeConstrucao.Data.Generator.Serialize(dadosGerador)
 
-    if genData.chunkKey then
-        index.chunkIndex[genData.chunkKey] = index.chunkIndex[genData.chunkKey] or {}
-        local list = index.chunkIndex[genData.chunkKey]
-        local exists = false
-        for _, gid in ipairs(list) do
-            if gid == genData.id then exists = true; break end
-        end
-        if not exists then
-            table.insert(list, genData.id)
-        end
-    end
-end
-
--- Remove a generator from the ModData index.
-local function IndexRemoveGenerator(generatorId, chunkKey)
-    if not generatorId then return end
-    local index = GetGeneratorIndex()
-    index.generators[generatorId] = nil
-
-    if chunkKey and index.chunkIndex[chunkKey] then
-        local list = index.chunkIndex[chunkKey]
-        for i = #list, 1, -1 do
-            if list[i] == generatorId then
-                table.remove(list, i)
+    if dadosGerador.chunkKey then
+        indice.chunkIndex[dadosGerador.chunkKey] = indice.chunkIndex[dadosGerador.chunkKey] or {}
+        local lista = indice.chunkIndex[dadosGerador.chunkKey]
+        local existe = false
+        for _, identificadorGerador in ipairs(lista) do
+            if identificadorGerador == dadosGerador.id then 
+                existe = true
+                break 
             end
         end
-        if #list == 0 then
-            index.chunkIndex[chunkKey] = nil
+        if not existe then
+            table.insert(lista, dadosGerador.id)
         end
     end
 end
 
--- Attempt to rebuild runtime state generators from the ModData index blob.
-local function HydrateGeneratorsFromIndex()
-    local index = ModData.get(MODDATA_KEY_GEN_INDEX)
-    if not index or not index.generators then
+--- Remove um gerador das tabelas de índice do ModData.
+--- @param identificadorGerador string O identificador único do gerador.
+--- @param chaveChunk string A chave de chunk associada (opcional).
+local function RemoverGeradorDoIndice(identificadorGerador, chaveChunk)
+    if not identificadorGerador then return end
+    
+    local indice = ObterIndiceGeradores()
+    indice.generators[identificadorGerador] = nil
+
+    if chaveChunk and indice.chunkIndex[chaveChunk] then
+        local lista = indice.chunkIndex[chaveChunk]
+        for indiceLoop = #lista, 1, -1 do
+            if lista[indiceLoop] == identificadorGerador then
+                table.remove(lista, indiceLoop)
+            end
+        end
+        if #lista == 0 then
+            indice.chunkIndex[chaveChunk] = nil
+        end
+    end
+end
+
+--- Tenta reconstruir a lista de geradores no estado baseado no índice do ModData.
+--- @return integer A quantidade de geradores recuperados.
+local function HidratarGeradoresDoIndice()
+    local indice = ModData.get(CHAVE_MODDATA_INDICE_GERADORES)
+    if not indice or not indice.generators then
         return 0
     end
 
-    if not _state then
-        _state = LKS_EletricidadeConstrucao.Data.State.New()
+    if not _estado then
+        _estado = LKS_EletricidadeConstrucao.Data.State.New()
     end
 
-    local restored = 0
-    for genId, serialized in pairs(index.generators) do
-        local genData = LKS_EletricidadeConstrucao.Data.Generator.Deserialize(serialized)
-        if genData then
-            LKS_EletricidadeConstrucao.Data.State.AddGenerator(_state, genData)
-            restored = restored + 1
+    local geradoresRestaurados = 0
+    for identificadorGerador, dadosSerializados in pairs(indice.generators) do
+        local dadosGerador = LKS_EletricidadeConstrucao.Data.Generator.Deserialize(dadosSerializados)
+        if dadosGerador then
+            LKS_EletricidadeConstrucao.Data.State.AddGenerator(_estado, dadosGerador)
+            geradoresRestaurados = geradoresRestaurados + 1
         end
     end
 
-    if restored > 0 then
-        _isDirty = true
-        LKS_EletricidadeConstrucao.Print(string.format("[StateManager] Restored %d generator(s) from ModData index", restored))
+    if geradoresRestaurados > 0 then
+        _estaModificado = true
+        LKS_EletricidadeConstrucao.Print(string.format(
+            "[StateManager] Restaurados %d gerador(es) a partir do índice de ModData", 
+            geradoresRestaurados))
     end
 
-    return restored
+    return geradoresRestaurados
 end
 
 -- ============================================================================
--- DUPLICATE BUILDING PURGE
+-- PURGA DE PRÉDIOS E CONSTRUÇÕES DUPLICADAS
 -- ============================================================================
 
---- Remove stale duplicate building entries that share coordinates with a canonical
---- bld_X_Y_Z entry (legacy bld_def_... IDs created by TryRestoreFromIsoModData).
---- For each duplicated location:
----   1. The canonical (non-bld_def_) building is kept.
----   2. The stale building's connectedGenerators are merged into the canonical one.
----   3. Every generator whose connectedBuildings listed the stale ID is updated to
----      point at the canonical ID instead.
----   4. The stale building entry is removed from state.
---- Returns the number of stale entries purged.
-local function PurgeDuplicateBuildings()
-    if not _state then return 0 end
-    local SM = LKS_EletricidadeConstrucao.Core.StateManager
-    local allBlds = LKS_EletricidadeConstrucao.Data.State.GetAllBuildings(_state)
-    if not allBlds then return 0 end
+--- Varre e expurga registros obsoletos de construções duplicadas que compartilham coordenadas.
+---
+--- Esse método resolve resquícios do carregador antigo, agrupando construções por
+--- coordenadas físicas e mesclando os geradores e dados elétricos na entidade canônica.
+---
+--- @return integer A quantidade de construções duplicadas expurgadas.
+local function ExpurgarConstrucoesDuplicadas()
+    if not _estado then return 0 end
+    
+    local todasConstrucoes = LKS_EletricidadeConstrucao.Data.State.GetAllBuildings(_estado)
+    if not todasConstrucoes then return 0 end
 
-    -- Group building IDs by "x_y_z" coordinate key
-    local byLoc = {}  -- locKey -> {canonical=id, stales={id,...}}
-    for bid, bd in pairs(allBlds) do
-        local locKey = (bd.x or 0) .. "_" .. (bd.y or 0) .. "_" .. (bd.z or 0)
-        if not byLoc[locKey] then
-            byLoc[locKey] = { canonical = nil, stales = {} }
+    -- Agrupa IDs de construções pela chave de localização "x_y_z"
+    local porLocalizacao = {}  -- chaveLocalizacao -> {canonical = idCanonica, stales = {idObsoleto, ...}}
+    for identificadorConstrucao, dadosConstrucao in pairs(todasConstrucoes) do
+        local chaveLocalizacao = (dadosConstrucao.x or 0) .. "_" .. (dadosConstrucao.y or 0) .. "_" .. (dadosConstrucao.z or 0)
+        if not porLocalizacao[chaveLocalizacao] then
+            porLocalizacao[chaveLocalizacao] = { canonical = nil, stales = {} }
         end
-        -- A canonical ID matches the bld_X_Y_Z pattern (no "def")
-        if bid:match("^bld_%d+_%d+_%d+$") then
-            byLoc[locKey].canonical = bid
+        -- O ID canônico corresponde ao padrão 'bld_X_Y_Z' (sem o prefixo legando 'def')
+        if identificadorConstrucao:match("^bld_%d+_%d+_%d+$") then
+            porLocalizacao[chaveLocalizacao].canonical = identificadorConstrucao
         else
-            table.insert(byLoc[locKey].stales, bid)
+            table.insert(porLocalizacao[chaveLocalizacao].stales, identificadorConstrucao)
         end
     end
 
-    local purged = 0
-    for locKey, entry in pairs(byLoc) do
-        if entry.canonical and #entry.stales > 0 then
-            local canonBd = allBlds[entry.canonical]
-            for _, staleId in ipairs(entry.stales) do
-                local staleBd = allBlds[staleId]
-                if staleBd then
-                    -- Merge connectedGenerators from stale into canonical.
-                    -- Use pairs() not ipairs(): after GlobalModData deserialization in
-                    -- Kahlua (PZ's Lua VM) array-style tables may have string numeric
-                    -- keys, making ipairs() return nothing and silently losing data.
-                    if staleBd.connectedGenerators then
-                        canonBd.connectedGenerators = canonBd.connectedGenerators or {}
-                        local cgSet = {}
-                        for _, gk in pairs(canonBd.connectedGenerators) do cgSet[gk] = true end
-                        for _, gk in pairs(staleBd.connectedGenerators) do
-                            if not cgSet[gk] then
-                                table.insert(canonBd.connectedGenerators, gk)
-                                cgSet[gk] = true
+    local construcoesExpurgadas = 0
+    for chaveLocalizacao, entrada in pairs(porLocalizacao) do
+        if entrada.canonical and #entrada.stales > 0 then
+            local dadosConstrucaoCanonica = todasConstrucoes[entrada.canonical]
+            for _, identificadorObsoleto in ipairs(entrada.stales) do
+                local dadosConstrucaoObsoleta = todasConstrucoes[identificadorObsoleto]
+                if dadosConstrucaoObsoleta then
+                    -- Mescla geradores conectados da obsoleta na canônica.
+                    -- Nota: Usamos pairs() em vez de ipairs() pois após a desserialização de ModData no Kahlua
+                    -- (a máquina virtual Lua do PZ), tabelas numéricas podem ter chaves convertidas para strings.
+                    if dadosConstrucaoObsoleta.connectedGenerators then
+                        dadosConstrucaoCanonica.connectedGenerators = dadosConstrucaoCanonica.connectedGenerators or {}
+                        local conjuntoGeradoresConectados = {}
+                        for _, chaveGerador in pairs(dadosConstrucaoCanonica.connectedGenerators) do 
+                            conjuntoGeradoresConectados[chaveGerador] = true 
+                        end
+                        for _, chaveGerador in pairs(dadosConstrucaoObsoleta.connectedGenerators) do
+                            if not conjuntoGeradoresConectados[chaveGerador] then
+                                table.insert(dadosConstrucaoCanonica.connectedGenerators, chaveGerador)
+                                conjuntoGeradoresConectados[chaveGerador] = true
                             end
                         end
                     end
-                    -- Merge heatingSourceCount if canonical has none
-                    if (not canonBd.heatingSourceCount or canonBd.heatingSourceCount == 0)
-                        and staleBd.heatingSourceCount and staleBd.heatingSourceCount > 0 then
-                        canonBd.heatingEnabled      = staleBd.heatingEnabled
-                        canonBd.heatingSourceCount  = staleBd.heatingSourceCount
-                        canonBd.heatingTargetTemp   = staleBd.heatingTargetTemp
+                    -- Mescla dados de aquecimento caso a canônica esteja zerada
+                    if (not dadosConstrucaoCanonica.heatingSourceCount or dadosConstrucaoCanonica.heatingSourceCount == 0)
+                        and dadosConstrucaoObsoleta.heatingSourceCount and dadosConstrucaoObsoleta.heatingSourceCount > 0 then
+                        dadosConstrucaoCanonica.heatingEnabled      = dadosConstrucaoObsoleta.heatingEnabled
+                        dadosConstrucaoCanonica.heatingSourceCount  = dadosConstrucaoObsoleta.heatingSourceCount
+                        dadosConstrucaoCanonica.heatingTargetTemp   = dadosConstrucaoObsoleta.heatingTargetTemp
                     end
                 end
-                -- Rewrite all generator connectedBuildings: stale -> canonical.
-                -- Combined with dedup in a single pass to avoid a second full scan.
-                -- Uses pairs() for safe iteration over deserialized Kahlua tables,
-                -- and rebuilds a clean Lua array regardless of the input key type.
-                -- CRITICAL: must NOT run on generators unrelated to this duplicate —
-                -- only rewrite entries that actually contain the stale ID.
-                local allGens = LKS_EletricidadeConstrucao.Data.State.GetAllGenerators(_state)
-                if allGens then
-                    for _, gd in pairs(allGens) do
-                        if gd.connectedBuildings then
-                            local needRebuild = false
-                            -- Check whether this generator references the stale ID at all
-                            for _, bid in pairs(gd.connectedBuildings) do
-                                if bid == staleId then needRebuild = true; break end
+                
+                -- Atualiza a referência em todos os geradores associados de obsoleto para canônico
+                local todosGeradores = LKS_EletricidadeConstrucao.Data.State.GetAllGenerators(_estado)
+                if todosGeradores then
+                    for _, dadosGerador in pairs(todosGeradores) do
+                        if dadosGerador.connectedBuildings then
+                            local precisaReconstruir = false
+                            for _, identificadorConstrucao in pairs(dadosGerador.connectedBuildings) do
+                                if identificadorConstrucao == identificadorObsoleto then 
+                                    precisaReconstruir = true
+                                    break 
+                                end
                             end
-                            if needRebuild then
-                                local seen = {}
-                                local rebuilt = {}
-                                for _, bid in pairs(gd.connectedBuildings) do
-                                    local effective = (bid == staleId) and entry.canonical or bid
-                                    if not seen[effective] then
-                                        seen[effective] = true
-                                        table.insert(rebuilt, effective)
-                                        if bid == staleId then
+                            if precisaReconstruir then
+                                local vistos = {}
+                                local reconstruidos = {}
+                                for _, identificadorConstrucao in pairs(dadosGerador.connectedBuildings) do
+                                    local identificadorEfetivo = (identificadorConstrucao == identificadorObsoleto) and entrada.canonical or identificadorConstrucao
+                                    if not vistos[identificadorEfetivo] then
+                                        vistos[identificadorEfetivo] = true
+                                        table.insert(reconstruidos, identificadorEfetivo)
+                                        if identificadorConstrucao == identificadorObsoleto then
                                             LKS_EletricidadeConstrucao.Print(string.format(
                                                 "[StateManager.Purge] gen=%s connectedBuildings: %s -> %s",
-                                                gd.id or "?", staleId, entry.canonical))
+                                                dadosGerador.id or "?", identificadorObsoleto, entrada.canonical))
                                         end
                                     end
                                 end
-                                gd.connectedBuildings = rebuilt
-                                -- Stamp canonical Gen_BuildingPoolID on the IsoObject so that
-                                -- scanAllGenerators() in the UI finds the correct pool after purge.
-                                -- Without this, generators that referenced the stale bld_def_... ID
-                                -- keep it on their IsoObject permanently, causing the UI pool count
-                                -- to flip 3 -> 1 when the info window refreshes. (B-70)
-                                if gd.x and gd.y and gd.z then
-                                    local cell = getCell and getCell()
-                                    if cell then
-                                        local sq = cell:getGridSquare(gd.x, gd.y, gd.z)
-                                        if sq then
-                                            local objs = sq:getObjects()
-                                            for oi = 0, objs:size() - 1 do
-                                                local obj = objs:get(oi)
-                                                if obj and instanceof(obj, "IsoGenerator") then
-                                                    local md = obj:getModData()
-                                                    if md then
-                                                        md.Gen_BuildingPoolID = entry.canonical
-                                                        if obj.transmitModData then
-                                                            obj:transmitModData()
+                                dadosGerador.connectedBuildings = reconstruidos
+                                
+                                -- Atualiza o metadado Gen_BuildingPoolID diretamente no objeto físico Java/nativo
+                                -- para que a interface de informações (UI) exiba a piscina correta.
+                                if dadosGerador.x and dadosGerador.y and dadosGerador.z then
+                                    local celula = getCell and getCell()
+                                    if celula then
+                                        local quadrado = celula:getGridSquare(dadosGerador.x, dadosGerador.y, dadosGerador.z)
+                                        if quadrado then
+                                            local objetos = quadrado:getObjects()
+                                            for indiceObjeto = 0, objetos:size() - 1 do
+                                                local objeto = objetos:get(indiceObjeto)
+                                                if objeto and instanceof(objeto, "IsoGenerator") then
+                                                    local dadosMod = objeto:getModData()
+                                                    if dadosMod then
+                                                        dadosMod.Gen_BuildingPoolID = entrada.canonical
+                                                        if objeto.transmitModData then
+                                                            objeto:transmitModData()
                                                         end
                                                         LKS_EletricidadeConstrucao.Print(string.format(
-                                                            "[StateManager.Purge] IsoObject gen=%s Gen_BuildingPoolID -> %s",
-                                                            gd.id or "?", entry.canonical))
+                                                            "[StateManager.Purge] Objeto IsoObject gen=%s Gen_BuildingPoolID -> %s",
+                                                            dadosGerador.id or "?", entrada.canonical))
                                                     end
                                                     break
                                                 end
@@ -319,206 +342,183 @@ local function PurgeDuplicateBuildings()
                         end
                     end
                 end
-                -- Remove the stale building entry
-                LKS_EletricidadeConstrucao.Data.State.RemoveBuilding(_state, staleId)
+                
+                -- Remove a construção obsoleta do estado
+                LKS_EletricidadeConstrucao.Data.State.RemoveBuilding(_estado, identificadorObsoleto)
                 LKS_EletricidadeConstrucao.Print(string.format(
-                    "[StateManager.Purge] Removed stale building %s (dup of %s at %s)",
-                    staleId, entry.canonical, locKey))
-                purged = purged + 1
+                    "[StateManager.Purge] Removida construção duplicada obsoleta %s (duplicada de %s em %s)",
+                    identificadorObsoleto, entrada.canonical, chaveLocalizacao))
+                construcoesExpurgadas = construcoesExpurgadas + 1
             end
         end
     end
 
-    if purged > 0 then
-        _isDirty = true
+    if construcoesExpurgadas > 0 then
+        _estaModificado = true
     end
-    return purged
+    return construcoesExpurgadas
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- MÉTODOS PÚBLICOS DO GERENCIADOR DE ESTADO
 -- ============================================================================
 
---- Initialize state manager
---- @return boolean True if successful
+--- Inicializa a infraestrutura básica do gerenciador de estado.
+--- @return boolean Retorna true se inicializado com sucesso.
 function LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
-    if _initialized then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Initialize] Already initialized")
+    if _inicializado then
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Initialize] Gerenciador de estado já inicializado anteriormente")
         return true
     end
 
-    -- Boot with completely empty state.  GetWorldId() returns "unknown" during
-    -- OnGameBoot, so reading GlobalModData here is unsafe: we cannot verify
-    -- world isolation and would load stale data from the previous save.
-    -- ConfirmAndLoadState() will do the real load once GetWorldId() is valid.
-    _state         = LKS_EletricidadeConstrucao.Data.State.New()
-    _isDirty       = false
-    _initialized   = true
-    _dataLoadState = "pending"
+    -- Cria o contêiner vazio. O carregamento dos dados reais é diferido até o mundo estar pronto.
+    _estado = LKS_EletricidadeConstrucao.Data.State.New()
+    _estaModificado = false
+    _inicializado = true
+    _estadoCarregamentoDados = "pending"
 
-    LKS_EletricidadeConstrucao.Print("[StateManager.Initialize] State manager ready (world confirmation pending)")
+    LKS_EletricidadeConstrucao.Print("[StateManager.Initialize] Gerenciador pronto (aguardando confirmação do mundo)")
     return true
 end
 
---- Check if state manager is initialized
---- @return boolean True if initialized
+--- Verifica se o gerenciador de estado foi devidamente inicializado.
+--- @return boolean Retorna true se estiver inicializado.
 function LKS_EletricidadeConstrucao.Core.StateManager.IsInitialized()
-    return _initialized
+    return _inicializado
 end
 
---- Expose the current world ID for other modules (Distributor, ChunkTracker, actions).
---- Returns "unknown" when the world is not yet available (early boot).
+--- Expõe o identificador único do mundo atual para outros submódulos.
+--- @return string O identificador ou "unknown".
 function LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId()
-    return GetWorldId()
+    return ObterIdentificadorMundo()
 end
 
--- ============================================================================
--- MODDATA OPERATIONS
--- ============================================================================
-
---- Load state from ModData
---- @return boolean True if loaded successfully
+--- Carrega os dados persistidos no ModData do jogo.
+--- @return boolean Retorna true se os dados foram desserializados com sucesso.
 function LKS_EletricidadeConstrucao.Core.StateManager.Load()
-    local Runtime = LKS_EletricidadeConstrucao.Core.Runtime
+    local Contexto = LKS_EletricidadeConstrucao.Core.Runtime
     
-    -- Get ModData (server-side or singleplayer)
-    local modData = nil
-    -- In singleplayer, isServer() is false even in the server Lua state, so allow
-    -- loads when the game mode is not multiplayer. Block only true MP clients.
-    if Runtime.IsMultiplayerClient and Runtime.IsMultiplayerClient() then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Multiplayer client cannot load directly, waiting for sync")
+    -- Clientes em servidores multiplayer não leem o ModData físico diretamente
+    if Contexto.IsMultiplayerClient and Contexto.IsMultiplayerClient() then
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Clientes de servidores Multiplayer não carregam diretamente do ModData, aguardando sincronização da rede")
         return false
     end
 
-    modData = ModData.getOrCreate(MODDATA_KEY)
+    local dadosMod = ModData.getOrCreate(CHAVE_MODDATA)
 
-    -- World-isolation check: if ModData belongs to a different save, discard it.
-    -- IMPORTANT: only wipe when both IDs are known. During OnGameBoot, getWorld()
-    -- is not yet available so GetWorldId() returns "unknown" -- we must NOT treat
-    -- that as a mismatch or we destroy the state on every normal game restart.
-    local currentWorldId = GetWorldId()
-    local storedWorldId = modData.worldId
-    if currentWorldId == "unknown" then
-        -- World not fully initialised yet; skip the guard and remember to re-check
-        -- once OnGameStart fires and getWorld() is available.
-        _loadedWithUnknownWorldId = true
-        LKS_EletricidadeConstrucao.Print("[StateManager.Load] World ID not available yet (early boot) - skipping isolation check")
-    elseif storedWorldId and storedWorldId ~= currentWorldId then
-        LKS_EletricidadeConstrucao.Warn(string.format("[StateManager.Load] Detected world mismatch (stored=%s, current=%s) - resetting LKS_EletricidadeConstrucao state for this save", tostring(storedWorldId), tostring(currentWorldId)))
-        modData.state = nil
-        modData.worldId = currentWorldId
-        -- Clear generator index to avoid leaking pool links across saves
-        local idx = ModData.getOrCreate(MODDATA_KEY_GEN_INDEX)
-        idx.generators = {}
-        idx.chunkIndex = {}
-        _loadedWithUnknownWorldId = false
+    -- Verifica isolamento de mundo para prevenir quebras se o jogador alternar salvamentos na mesma sessão
+    local identificadorMundoAtual = ObterIdentificadorMundo()
+    local identificadorMundoArmazenado = dadosMod.worldId
+    
+    if identificadorMundoAtual == "unknown" then
+        _carregadoComIdentificadorMundoDesconhecido = true
+        LKS_EletricidadeConstrucao.Print("[StateManager.Load] Identificador de mundo indisponível (boot inicial) - pulando validação de isolamento")
+    elseif identificadorMundoArmazenado and identificadorMundoArmazenado ~= identificadorMundoAtual then
+        LKS_EletricidadeConstrucao.Warn(string.format(
+            "[StateManager.Load] Detectada inconsistência de mundo (salvo=%s, atual=%s) - limpando dados anteriores para este save",
+            tostring(identificadorMundoArmazenado), tostring(identificadorMundoAtual)))
+        dadosMod.state = nil
+        dadosMod.worldId = identificadorMundoAtual
+        
+        -- Limpa índice de geradores para evitar problemas de links órfãos
+        local indice = ModData.getOrCreate(CHAVE_MODDATA_INDICE_GERADORES)
+        indice.generators = {}
+        indice.chunkIndex = {}
+        _carregadoComIdentificadorMundoDesconhecido = false
         return false
     else
-        _loadedWithUnknownWorldId = false
+        _carregadoComIdentificadorMundoDesconhecido = false
     end
     
-    if not modData or not modData.state then
-        -- Main state blob is nil (e.g. PZ failed to persist it across game exit).
-        -- The backup key is written first in Save() so it often survives when the
-        -- main key doesn't.  Try it before giving up entirely.
-        local backup = ModData.get(MODDATA_KEY_BACKUP)
-        if backup and backup.state then
-            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Main state missing – attempting restore from backup")
-            local backupDeserialized = LKS_EletricidadeConstrucao.Data.State.Deserialize(backup.state)
-            if backupDeserialized then
-                _state = backupDeserialized
-                if currentWorldId ~= "unknown" then
-                    modData.worldId = currentWorldId
+    if not dadosMod or not dadosMod.state then
+        -- Em caso de corrupção ou falha do salvamento nativo do PZ, tenta restaurar
+        -- a partir do backup auxiliar gravado previamente.
+        local dadosBackup = ModData.get(CHAVE_MODDATA_BACKUP)
+        if dadosBackup and dadosBackup.state then
+            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Estado principal ausente - tentando recuperar através do backup")
+            local dadosBackupDesserializados = LKS_EletricidadeConstrucao.Data.State.Deserialize(dadosBackup.state)
+            if dadosBackupDesserializados then
+                _estado = dadosBackupDesserializados
+                if identificadorMundoAtual ~= "unknown" then
+                    dadosMod.worldId = identificadorMundoAtual
                 end
-                -- Mark dirty so the next Save() repopulates the main key from
-                -- the restored state, closing the window where main is still nil.
-                _isDirty = true
-                LKS_EletricidadeConstrucao.Warn("[StateManager.Load] State restored from backup successfully")
+                _estaModificado = true
+                LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Estado restaurado do backup com sucesso")
                 return true
             end
-            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Backup deserialization failed")
+            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Falha ao desserializar dados do backup")
         end
-        LKS_EletricidadeConstrucao.Print("[StateManager.Load] No saved state found")
+        LKS_EletricidadeConstrucao.Print("[StateManager.Load] Nenhum salvamento anterior localizado")
         return false
     end
     
-    -- Deserialize state
-    local deserialized = LKS_EletricidadeConstrucao.Data.State.Deserialize(modData.state)
-    
-    if not deserialized then
-        LKS_EletricidadeConstrucao.Error("[StateManager.Load] Failed to deserialize state")
+    -- Desserializa o estado persistido
+    local desserializado = LKS_EletricidadeConstrucao.Data.State.Deserialize(dadosMod.state)
+    if not desserializado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.Load] Falha ao desserializar dados do estado principal")
         
-        -- Try backup
-        local backup = ModData.get(MODDATA_KEY_BACKUP)
-        if backup and backup.state then
-            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Attempting to restore from backup")
-            deserialized = LKS_EletricidadeConstrucao.Data.State.Deserialize(backup.state)
+        -- Segunda tentativa via backup
+        local dadosBackup = ModData.get(CHAVE_MODDATA_BACKUP)
+        if dadosBackup and dadosBackup.state then
+            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Tentando restaurar a partir do backup")
+            desserializado = LKS_EletricidadeConstrucao.Data.State.Deserialize(dadosBackup.state)
         end
         
-        if not deserialized then
+        if not desserializado then
             return false
         end
     end
     
-    _state = deserialized
-    -- Only stamp worldId if we actually know it; leave the stored value intact
-    -- when getWorld() wasn't ready so a later reload can verify it properly.
-    if currentWorldId ~= "unknown" then
-        modData.worldId = currentWorldId
+    _estado = desserializado
+    if identificadorMundoAtual ~= "unknown" then
+        dadosMod.worldId = identificadorMundoAtual
     end
-    _isDirty = false
+    _estaModificado = false
     
-    LKS_EletricidadeConstrucao.Print("[StateManager.Load] State loaded successfully")
+    LKS_EletricidadeConstrucao.Print("[StateManager.Load] Estado carregado com sucesso")
     return true
 end
 
---- Confirm the current world ID and load GlobalModData into state.
---- Call this from OnGameStart and EveryOneMinute until it returns true.
---- Fires exactly once per session; subsequent calls are no-ops (return false).
---- Returns true the first time the load (or fresh-world wipe) completes.
+--- Valida o identificador do mundo e dispara a desserialização definitiva de dados.
+---
+--- Deve ser chamado a partir dos eventos OnInitWorld ou OnGameStart quando a API do PZ está pronta.
+--- @return boolean Retorna true se o carregamento foi efetuado com sucesso nesta chamada.
 function LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
-    if _dataLoadState ~= "pending" then return false end
+    if _estadoCarregamentoDados ~= "pending" then return false end
 
-    local currentWorldId = GetWorldId()
-    if currentWorldId == "unknown" then
-        LKS_EletricidadeConstrucao.Debug("[StateManager.ConfirmAndLoadState] World ID still unavailable, retrying later")
+    local identificadorMundoAtual = ObterIdentificadorMundo()
+    if identificadorMundoAtual == "unknown" then
+        LKS_EletricidadeConstrucao.Debug("[StateManager.ConfirmAndLoadState] Mundo indisponível no momento, diferindo carregamento")
         return false
     end
 
-    LKS_EletricidadeConstrucao.Print("[StateManager.ConfirmAndLoadState] World confirmed (" .. currentWorldId .. ") - loading state")
+    LKS_EletricidadeConstrucao.Print("[StateManager.ConfirmAndLoadState] Confirmado mundo: " .. identificadorMundoAtual)
 
-    -- ConfirmAndLoadState is the only caller of Load() in the new boot path.
-    -- getWorld() is ready now, so the isolation check inside Load() works correctly.
-    local loaded = LKS_EletricidadeConstrucao.Core.StateManager.Load()
-
-    if not loaded then
-        -- No data or world-mismatch wipe (Load() cleared GlobalModData internally).
-        LKS_EletricidadeConstrucao.Print("[StateManager.ConfirmAndLoadState] No state loaded - starting fresh for this world")
-        _state = LKS_EletricidadeConstrucao.Data.State.New()
-        _isDirty = true
-        _dataLoadState = "fresh"
+    local carregado = LKS_EletricidadeConstrucao.Core.StateManager.Load()
+    if not carregado then
+        LKS_EletricidadeConstrucao.Print("[StateManager.ConfirmAndLoadState] Iniciando novo estado limpo para este salvamento")
+        _estado = LKS_EletricidadeConstrucao.Data.State.New()
+        _estaModificado = true
+        _estadoCarregamentoDados = "fresh"
     else
-        -- Hydrate from generator index if the state blob had no generators.
-        if CountGenerators() == 0 then
-            local restored = HydrateGeneratorsFromIndex()
-            if restored > 0 then
+        -- Hidrata os geradores a partir do índice persistido caso o estado estivesse vazio
+        if ContarGeradores() == 0 then
+            local geradoresRestaurados = HidratarGeradoresDoIndice()
+            if geradoresRestaurados > 0 then
                 LKS_EletricidadeConstrucao.Print(string.format(
-                    "[StateManager.ConfirmAndLoadState] Hydrated %d generator(s) from index", restored))
+                    "[StateManager.ConfirmAndLoadState] Recuperados %d geradores a partir do índice ModData", 
+                    geradoresRestaurados))
             end
         end
-        -- Option A (B-99): PurgeDuplicateBuildings() removed.  powerConsumers is
-        -- never saved so stale duplicates cannot accumulate across saves.  Legacy
-        -- bld_def_ ID migration is handled per-generator in TryRestoreFromIsoModData.
-        _dataLoadState = "loaded"
+        _estadoCarregamentoDados = "loaded"
     end
 
     LKS_EletricidadeConstrucao.Print(string.format(
-        "[StateManager.ConfirmAndLoadState] Complete: %d generator(s), %d building(s), state=%s",
-        CountGenerators(), CountBuildings(), _dataLoadState))
-    LKS_EletricidadeConstrucao.Debug("[StateManager] " .. LKS_EletricidadeConstrucao.Data.State.GetSummary(_state))
+        "[StateManager.ConfirmAndLoadState] Finalizado: %d gerador(es), %d construções, estado=%s",
+        ContarGeradores(), ContarConstrucoes(), _estadoCarregamentoDados))
+    LKS_EletricidadeConstrucao.Debug("[StateManager] " .. LKS_EletricidadeConstrucao.Data.State.GetSummary(_estado))
 
-    -- Trigger startup generator refresh: scans squares of generators already in
-    -- state so their buildings are populated before the player walks to them.
+    -- Aciona a atualização em massa preventiva dos geradores salvos no mapa
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.ChunkTracker
             and LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefresh then
         LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefresh()
@@ -527,469 +527,407 @@ function LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
     return true
 end
 
---- Legacy alias kept for backward compatibility.
---- Forwards to ConfirmAndLoadState(); old callers continue to work unchanged.
+--- Atalho legado mantido para compatibilidade com outros arquivos do patch.
 function LKS_EletricidadeConstrucao.Core.StateManager.ReloadIfWorldWasUnknown()
     return LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
 end
 
---- Return true when the world-verified state load has completed for this session.
+--- Verifica se o estado já foi lido e verificado para este mundo de jogo.
+--- @return boolean Retorna true se o carregamento definitivo foi concluído.
 function LKS_EletricidadeConstrucao.Core.StateManager.IsStateLoaded()
-    return _dataLoadState ~= "pending"
+    return _estadoCarregamentoDados ~= "pending"
 end
 
---- Save state to ModData
---- @param force boolean Force save even if not dirty
---- @param createBackup boolean Create backup before saving (default: true)
---- @return boolean True if saved successfully
-function LKS_EletricidadeConstrucao.Core.StateManager.Save(force, createBackup)
-    local Runtime = LKS_EletricidadeConstrucao.Core.Runtime
+--- Persiste o estado ativo de volta nas tabelas de ModData do Project Zomboid.
+--- @param forcar boolean Se true, força a escrita mesmo se nenhuma alteração tiver sido registrada.
+--- @param criarBackup boolean Se true, cria um snapshot de backup antes de sobrescrever (padrão: true).
+--- @return boolean Retorna true se o salvamento foi gravado com sucesso.
+function LKS_EletricidadeConstrucao.Core.StateManager.Save(forcar, criarBackup)
+    local Contexto = LKS_EletricidadeConstrucao.Core.Runtime
     
-    if not _initialized then
-        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Not initialized")
+    if not _inicializado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Gerenciador de estado não inicializado")
         return false
     end
 
-    -- Guard: never write back while state is still pending world confirmation.
-    -- An early-boot Save() (e.g. from OnSave firing before ConfirmAndLoadState)
-    -- would overwrite GlobalModData with an empty snapshot, destroying the saved
-    -- consumer/heating data for the current save.
-    if _dataLoadState == "pending" then
+    -- Impede salvamentos acidentais enquanto o mundo não for confirmado
+    if _estadoCarregamentoDados == "pending" then
         LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
     end
-    if _dataLoadState == "pending" then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] World confirmation still pending - skipping save to prevent data loss")
+    if _estadoCarregamentoDados == "pending" then
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Validação do mundo pendente - gravação cancelada para evitar perda de dados")
         return false
     end
 
-    if not _isDirty and not force then
-        LKS_EletricidadeConstrucao.Debug("[StateManager.Save] State is clean, skipping save")
+    if not _estaModificado and not forcar then
+        LKS_EletricidadeConstrucao.Debug("[StateManager.Save] Estado limpo, pulando gravação")
         return true
     end
     
-    -- In PZ singleplayer, isServer() returns false even in the server Lua state.
-    -- Allow saves if: dedicated server (isServer()=true) OR singleplayer (SP host).
-    -- Block ONLY on a true multiplayer client.
-    if not Runtime.IsServer() and not Runtime.IsSingleplayer() then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Only server can save state")
+    -- Apenas o servidor ou sessões Singleplayer podem escrever dados persistentes globais
+    if not Contexto.IsServer() and not Contexto.IsSingleplayer() then
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Apenas o servidor de jogo pode gravar alterações globais")
         return false
     end
     
-    if not _state then
-        LKS_EletricidadeConstrucao.Error("[StateManager.Save] No state to save")
+    if not _estado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Nenhum estado válido disponível para gravação")
         return false
     end
     
-    -- Update statistics before saving
-    LKS_EletricidadeConstrucao.Data.State.UpdateStatistics(_state)
+    -- Atualiza as estatísticas acumuladas antes de persistir
+    LKS_EletricidadeConstrucao.Data.State.UpdateStatistics(_estado)
     
-    -- Serialize state
-    local serialized = LKS_EletricidadeConstrucao.Data.State.Serialize(_state)
+    -- Serializa a estrutura para gravação
+    local serializado = LKS_EletricidadeConstrucao.Data.State.Serialize(_estado)
     
-    -- Create backup of current state (default: true, can be disabled for frequent auto-saves)
-    if createBackup == nil then createBackup = true end
-    if createBackup then
-        local currentModData = ModData.get(MODDATA_KEY)
-        if currentModData and currentModData.state then
-            local backupData = ModData.getOrCreate(MODDATA_KEY_BACKUP)
-            backupData.state = currentModData.state
+    -- Gerenciamento de backups rápidos
+    if criarBackup == nil then criarBackup = true end
+    if criarBackup then
+        local dadosModAtuais = ModData.get(CHAVE_MODDATA)
+        if dadosModAtuais and dadosModAtuais.state then
+            local dadosBackup = ModData.getOrCreate(CHAVE_MODDATA_BACKUP)
+            dadosBackup.state = dadosModAtuais.state
         end
     end
     
-    -- Save new state
-    local modData = ModData.getOrCreate(MODDATA_KEY)
-    modData.state = serialized
-    -- Only write worldId when getWorld() is available; don't overwrite a correct
-    -- world name with "unknown" from an early-boot Save() call.
-    local wid = GetWorldId()
-    if wid ~= "unknown" then
-        modData.worldId = wid
+    -- Gravação física no ModData global
+    local dadosMod = ModData.getOrCreate(CHAVE_MODDATA)
+    dadosMod.state = serializado
+    
+    local identificadorMundo = ObterIdentificadorMundo()
+    if identificadorMundo ~= "unknown" then
+        dadosMod.worldId = identificadorMundo
     end
 
-    -- Option A (B-99): LKS_EletricidadeConstrucao_PoolData IsoObject writes removed.  Building geometry
-    -- (boundingBox, borderRadius, isRVInterior, light-switch coords) is derived
-    -- fresh on every chunk load by ScanBuilding.  The secondary IsoObject storage
-    -- was the original source of the bld_def_ / stale-consumer drift bugs.
-
-    _isDirty = false
-
-    LKS_EletricidadeConstrucao.Debug("[StateManager.Save] State saved successfully" .. (createBackup and " (with backup)" or " (no backup)"))
+    _estaModificado = false
+    LKS_EletricidadeConstrucao.Debug("[StateManager.Save] Estado salvo com sucesso" .. (criarBackup and " (com backup)" or " (sem backup)"))
     return true
 end
 
---- Mark state as dirty (needs saving)
+--- Sinaliza que o estado sofreu alterações e precisa ser persistido na próxima oportunidade.
 function LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-    _isDirty = true
+    _estaModificado = true
 end
 
---- Check if state is dirty
---- @return boolean True if dirty
+--- Verifica se o estado de tempo de execução possui dados pendentes de salvamento.
+--- @return boolean Retorna true se houver alterações não salvas.
 function LKS_EletricidadeConstrucao.Core.StateManager.IsDirty()
-    return _isDirty
+    return _estaModificado
 end
 
 -- ============================================================================
--- STATE ACCESS
+-- LEITURA E CONFIGURAÇÕES
 -- ============================================================================
 
---- Get current state
---- @return StateData|nil Current state or nil if not initialized
+--- Retorna a tabela do estado ativo.
+--- @return table|nil O estado de simulação ativo ou nil.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetState()
-    if not _initialized then
-        LKS_EletricidadeConstrucao.Error("[StateManager.GetState] Not initialized")
+    if not _inicializado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.GetState] Gerenciador de estado não inicializado")
         return nil
     end
-    
-    return _state
+    return _estado
 end
 
---- Get state configuration
---- @return table Configuration table
+--- Retorna a tabela de parâmetros de configuração do estado ativo.
+--- @return table Tabela de parâmetros e preferências sandbox.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetConfig()
-    if not _state then
+    if not _estado then
         return {}
     end
-    
-    return _state.config
+    return _estado.config
 end
 
---- Update state configuration
---- @param config table New configuration
-function LKS_EletricidadeConstrucao.Core.StateManager.SetConfig(config)
-    if not _state then
-        LKS_EletricidadeConstrucao.Error("[StateManager.SetConfig] No state")
+--- Atualiza as preferências sandbox armazenadas no estado ativo.
+--- @param configuracao table Nova tabela de parâmetros sandbox.
+function LKS_EletricidadeConstrucao.Core.StateManager.SetConfig(configuracao)
+    if not _estado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.SetConfig] Nenhum estado ativo para configuração")
         return
     end
-    
-    _state.config = config
+    _estado.config = configuracao
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
 end
 
 -- ============================================================================
--- GENERATOR OPERATIONS
+-- OPERAÇÕES DE GERADORES
 -- ============================================================================
 
---- Add or update generator
---- @param generatorData GeneratorData Generator data to add
-function LKS_EletricidadeConstrucao.Core.StateManager.AddGenerator(generatorData)
-    if not _state then
-        LKS_EletricidadeConstrucao.Error("[StateManager.AddGenerator] No state")
+--- Registra ou atualiza um gerador nas tabelas de simulação de rede e nos índices de busca.
+--- @param dadosGerador table Os dados estruturados do gerador.
+function LKS_EletricidadeConstrucao.Core.StateManager.AddGenerator(dadosGerador)
+    if not _estado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.AddGenerator] Estado ausente")
         return
     end
     
-    LKS_EletricidadeConstrucao.Data.State.AddGenerator(_state, generatorData)
-    IndexAddGenerator(generatorData)
+    LKS_EletricidadeConstrucao.Data.State.AddGenerator(_estado, dadosGerador)
+    AdicionarGeradorAoIndice(dadosGerador)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
-    LKS_EletricidadeConstrucao.Debug("[StateManager] Added generator: " .. generatorData.id)
+    LKS_EletricidadeConstrucao.Debug("[StateManager] Gerador indexado: " .. dadosGerador.id)
 end
 
---- Remove generator
---- @param generatorId string Generator ID
---- @return GeneratorData|nil Removed generator data
-function LKS_EletricidadeConstrucao.Core.StateManager.RemoveGenerator(generatorId)
-    if not _state then
-        LKS_EletricidadeConstrucao.Error("[StateManager.RemoveGenerator] No state")
+--- Remove um gerador ativo das tabelas do estado e do índice persistente.
+--- @param identificadorGerador string O identificador único do gerador.
+--- @return table|nil Retorna os dados do gerador removido, ou nil se não encontrado.
+function LKS_EletricidadeConstrucao.Core.StateManager.RemoveGenerator(identificadorGerador)
+    if not _estado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.RemoveGenerator] Estado ausente")
         return nil
     end
     
-    local removed = LKS_EletricidadeConstrucao.Data.State.RemoveGenerator(_state, generatorId)
-    
-    if removed then
-        IndexRemoveGenerator(generatorId, removed.chunkKey)
+    local geradorRemovido = LKS_EletricidadeConstrucao.Data.State.RemoveGenerator(_estado, identificadorGerador)
+    if geradorRemovido then
+        RemoverGeradorDoIndice(identificadorGerador, geradorRemovido.chunkKey)
         LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-        LKS_EletricidadeConstrucao.Debug("[StateManager] Removed generator: " .. generatorId)
+        LKS_EletricidadeConstrucao.Debug("[StateManager] Gerador desvinculado: " .. identificadorGerador)
     end
     
-    return removed
+    return geradorRemovido
 end
 
---- Get generator by ID
---- @param generatorId string Generator ID
---- @return GeneratorData|nil Generator data
-function LKS_EletricidadeConstrucao.Core.StateManager.GetGenerator(generatorId)
-    if not _state then
+--- Recupera os dados estruturados de um gerador pelo seu identificador.
+--- @param identificadorGerador string O ID do gerador.
+--- @return table|nil Os dados do gerador ou nil.
+function LKS_EletricidadeConstrucao.Core.StateManager.GetGenerator(identificadorGerador)
+    if not _estado then
         return nil
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetGenerator(_state, generatorId)
+    return LKS_EletricidadeConstrucao.Data.State.GetGenerator(_estado, identificadorGerador)
 end
 
---- Get all generators
---- @return table Map of generator ID to GeneratorData
+--- Retorna o mapa contendo todos os geradores ativos indexados por identificador.
+--- @return table Mapa de geradores cadastrados.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetAllGenerators()
-    if not _state then
+    if not _estado then
         return {}
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetAllGenerators(_state)
+    return LKS_EletricidadeConstrucao.Data.State.GetAllGenerators(_estado)
 end
 
---- Get active generators
---- @return table Array of GeneratorData
+--- Retorna a lista contendo apenas os geradores ligados (ativos).
+--- @return table Lista contendo dados dos geradores ligados.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetActiveGenerators()
-    if not _state then
+    if not _estado then
         return {}
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetActiveGenerators(_state)
+    return LKS_EletricidadeConstrucao.Data.State.GetActiveGenerators(_estado)
 end
 
---- Get generators in chunk
---- @param chunkKey string Chunk key
---- @return table Array of GeneratorData
-function LKS_EletricidadeConstrucao.Core.StateManager.GetGeneratorsInChunk(chunkKey)
-    if not _state then
+--- Retorna os geradores cujas coordenadas físicas coincidem com a chave de chunk informada.
+--- @param chaveChunk string A coordenada/chave do chunk do mapa.
+--- @return table Lista de geradores vinculados ao chunk.
+function LKS_EletricidadeConstrucao.Core.StateManager.GetGeneratorsInChunk(chaveChunk)
+    if not _estado then
         return {}
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetGeneratorsInChunk(_state, chunkKey)
+    return LKS_EletricidadeConstrucao.Data.State.GetGeneratorsInChunk(_estado, chaveChunk)
 end
 
---- Rehydrate generators from the ModData index (V1-style resilience)
---- @return number Number of generators restored
+--- Força a reidratação/restauração dos geradores a partir da tabela de índice do ModData.
+--- @return integer A quantidade de geradores recuperados.
 function LKS_EletricidadeConstrucao.Core.StateManager.HydrateGeneratorsFromIndex()
-    return HydrateGeneratorsFromIndex()
+    return HidratarGeradoresDoIndice()
 end
 
 -- ============================================================================
--- BUILDING OPERATIONS
+-- OPERAÇÕES DE CONSTRUÇÕES
 -- ============================================================================
 
---- Add or update building
---- @param buildingData BuildingData Building data to add
-function LKS_EletricidadeConstrucao.Core.StateManager.AddBuilding(buildingData)
-    if not _state then
-        LKS_EletricidadeConstrucao.Error("[StateManager.AddBuilding] No state")
+--- Registra ou atualiza os limites geométricos de uma construção no estado.
+--- @param dadosConstrucao table Os limites e dados de consumo elétrico da construção.
+function LKS_EletricidadeConstrucao.Core.StateManager.AddBuilding(dadosConstrucao)
+    if not _estado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.AddBuilding] Estado ausente")
         return
     end
     
-    LKS_EletricidadeConstrucao.Data.State.AddBuilding(_state, buildingData)
+    LKS_EletricidadeConstrucao.Data.State.AddBuilding(_estado, dadosConstrucao)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
-    LKS_EletricidadeConstrucao.Debug("[StateManager] Added building: " .. buildingData.id)
+    LKS_EletricidadeConstrucao.Debug("[StateManager] Construção vinculada: " .. dadosConstrucao.id)
 end
 
---- Remove building
---- @param buildingId string Building ID
---- @return BuildingData|nil Removed building data
-function LKS_EletricidadeConstrucao.Core.StateManager.RemoveBuilding(buildingId)
-    if not _state then
-        LKS_EletricidadeConstrucao.Error("[StateManager.RemoveBuilding] No state")
+--- Remove os registros associados a uma construção do estado global.
+--- @param identificadorConstrucao string O identificador único da construção.
+--- @return table|nil Os dados da construção removida, ou nil.
+function LKS_EletricidadeConstrucao.Core.StateManager.RemoveBuilding(identificadorConstrucao)
+    if not _estado then
+        LKS_EletricidadeConstrucao.Error("[StateManager.RemoveBuilding] Estado ausente")
         return nil
     end
     
-    local removed = LKS_EletricidadeConstrucao.Data.State.RemoveBuilding(_state, buildingId)
-    
-    if removed then
+    local geradorRemovido = LKS_EletricidadeConstrucao.Data.State.RemoveBuilding(_estado, identificadorConstrucao)
+    if geradorRemovido then
         LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-        LKS_EletricidadeConstrucao.Debug("[StateManager] Removed building: " .. buildingId)
+        LKS_EletricidadeConstrucao.Debug("[StateManager] Construção desvinculada: " .. identificadorConstrucao)
     end
     
-    return removed
+    return geradorRemovido
 end
 
---- Get building by ID
---- @param buildingId string Building ID
---- @return BuildingData|nil Building data
-function LKS_EletricidadeConstrucao.Core.StateManager.GetBuilding(buildingId)
-    if not _state then
+--- Busca uma construção registrada pelo seu identificador único.
+--- @param identificadorConstrucao string O ID da construção.
+--- @return table|nil Os dados estruturados da construção ou nil.
+function LKS_EletricidadeConstrucao.Core.StateManager.GetBuilding(identificadorConstrucao)
+    if not _estado then
         return nil
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetBuilding(_state, buildingId)
+    return LKS_EletricidadeConstrucao.Data.State.GetBuilding(_estado, identificadorConstrucao)
 end
 
---- Get all buildings
---- @return table Map of building ID to BuildingData
+--- Retorna todas as construções que estão cadastradas no gerenciador de rede.
+--- @return table O mapa contendo todas as construções.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetAllBuildings()
-    if not _state then
+    if not _estado then
         return {}
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetAllBuildings(_state)
+    return LKS_EletricidadeConstrucao.Data.State.GetAllBuildings(_estado)
 end
 
---- Get buildings connected to generator
---- @param generatorId string Generator ID
---- @return table Array of BuildingData
-function LKS_EletricidadeConstrucao.Core.StateManager.GetGeneratorBuildings(generatorId)
-    if not _state then
+--- Retorna os prédios cujos circuitos elétricos estejam sob o raio de alcance de um gerador.
+--- @param identificadorGerador string O ID do gerador ativo.
+--- @return table A lista contendo as construções associadas.
+function LKS_EletricidadeConstrucao.Core.StateManager.GetGeneratorBuildings(identificadorGerador)
+    if not _estado then
         return {}
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetGeneratorBuildings(_state, generatorId)
+    return LKS_EletricidadeConstrucao.Data.State.GetGeneratorBuildings(_estado, identificadorGerador)
 end
 
 -- ============================================================================
--- STATISTICS
+-- ESTATÍSTICAS DO SISTEMA
 -- ============================================================================
 
---- Get runtime statistics
---- @return table Statistics table
+--- Obtém a tabela de estatísticas históricas persistida no save.
+--- @return table Tabela contendo dados consolidados de consumo e uso.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetStatistics()
-    if not _state then
+    if not _estado then
         return {}
     end
-    
-    return _state.statistics
+    return _estado.statistics
 end
 
---- Record fuel consumption
---- @param amount number Fuel amount
-function LKS_EletricidadeConstrucao.Core.StateManager.RecordFuelConsumption(amount)
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.RecordFuelConsumption(_state, amount)
-    -- Don't mark dirty for statistics (saved on next regular save)
+--- Registra o consumo consolidado de combustível na simulação.
+--- @param quantidade number O volume em unidades de combustível.
+function LKS_EletricidadeConstrucao.Core.StateManager.RecordFuelConsumption(quantidade)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.RecordFuelConsumption(_estado, quantidade)
 end
 
---- Update uptime
---- @param deltaSeconds number Time delta
-function LKS_EletricidadeConstrucao.Core.StateManager.UpdateUptime(deltaSeconds)
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.UpdateUptime(_state, deltaSeconds)
-    -- Don't mark dirty for statistics
+--- Acumula o tempo de funcionamento ativo (uptime) nas estatísticas de rede.
+--- @param diferencaSegundos number Diferença de tempo físico a acumular.
+function LKS_EletricidadeConstrucao.Core.StateManager.UpdateUptime(diferencaSegundos)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.UpdateUptime(_estado, diferencaSegundos)
 end
 
 -- ============================================================================
--- SYNC OPERATIONS (Multiplayer)
+-- SINCRONIZAÇÃO DE REDE (MULTIPLAYER)
 -- ============================================================================
 
---- Mark full sync completed
+--- Atualiza a marca de tempo indicando conclusão de transmissão total de dados de rede.
 function LKS_EletricidadeConstrucao.Core.StateManager.MarkFullSync()
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.MarkFullSync(_state)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.MarkFullSync(_estado)
 end
 
---- Mark delta sync completed
+--- Atualiza a marca de tempo indicando sincronização delta (incremental) de rede.
 function LKS_EletricidadeConstrucao.Core.StateManager.MarkDeltaSync()
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.MarkDeltaSync(_state)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.MarkDeltaSync(_estado)
 end
 
---- Check if full sync is needed
---- @return boolean True if needed
+--- Verifica se o intervalo padrão para sincronização total de rede foi atingido.
+--- @return boolean Retorna true se for necessário despachar o pacote completo.
 function LKS_EletricidadeConstrucao.Core.StateManager.NeedsFullSync()
-    if not _state then
-        return false
-    end
-    
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local interval = Constants.NETWORK.FULL_SYNC_INTERVAL or 60000
-    
-    return LKS_EletricidadeConstrucao.Data.State.NeedsFullSync(_state, interval)
+    if not _estado then return false end
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    local intervalo = Constantes.NETWORK.FULL_SYNC_INTERVAL or 60000
+    return LKS_EletricidadeConstrucao.Data.State.NeedsFullSync(_estado, intervalo)
 end
 
---- Check if delta sync is needed
---- @return boolean True if needed
+--- Verifica se o intervalo padrão para sincronização incremental delta foi atingido.
+--- @return boolean Retorna true se for necessário despachar alterações de rede.
 function LKS_EletricidadeConstrucao.Core.StateManager.NeedsDeltaSync()
-    if not _state then
-        return false
-    end
-    
-    local Constants = LKS_EletricidadeConstrucao.Constants
-    local interval = Constants.NETWORK.DELTA_SYNC_INTERVAL or 5000
-    
-    return LKS_EletricidadeConstrucao.Data.State.NeedsDeltaSync(_state, interval)
+    if not _estado then return false end
+    local Constantes = LKS_EletricidadeConstrucao.Constants
+    local intervalo = Constantes.NETWORK.DELTA_SYNC_INTERVAL or 5000
+    return LKS_EletricidadeConstrucao.Data.State.NeedsDeltaSync(_estado, intervalo)
 end
 
 -- ============================================================================
--- CLEANUP
+-- OPERAÇÕES DE REDEFINIÇÃO E RESET
 -- ============================================================================
 
---- Clear all generators
+--- Exclui permanentemente todos os geradores cadastrados.
 function LKS_EletricidadeConstrucao.Core.StateManager.ClearGenerators()
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.ClearGenerators(_state)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.ClearGenerators(_estado)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-    
-    LKS_EletricidadeConstrucao.Print("[StateManager] Cleared all generators")
+    LKS_EletricidadeConstrucao.Print("[StateManager] Registros de geradores limpos permanentemente")
 end
 
---- Clear all buildings
+--- Exclui permanentemente todas as construções cadastradas.
 function LKS_EletricidadeConstrucao.Core.StateManager.ClearBuildings()
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.ClearBuildings(_state)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.ClearBuildings(_estado)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-    
-    LKS_EletricidadeConstrucao.Print("[StateManager] Cleared all buildings")
+    LKS_EletricidadeConstrucao.Print("[StateManager] Registros de construções limpos permanentemente")
 end
 
---- Clear all data
+--- Limpa todos os dados de rede cadastrados (Geradores e Construções).
 function LKS_EletricidadeConstrucao.Core.StateManager.ClearAll()
-    if not _state then
-        return
-    end
-    
-    LKS_EletricidadeConstrucao.Data.State.ClearAll(_state)
+    if not _estado then return end
+    LKS_EletricidadeConstrucao.Data.State.ClearAll(_estado)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-    
-    LKS_EletricidadeConstrucao.Print("[StateManager] Cleared all data")
+    LKS_EletricidadeConstrucao.Print("[StateManager] Todos os registros elétricos foram removidos")
 end
 
---- Reset state to defaults
+--- Reseta o contêiner de dados em execução de volta aos padrões originais.
 function LKS_EletricidadeConstrucao.Core.StateManager.Reset()
-    _state = LKS_EletricidadeConstrucao.Data.State.New()
-    -- Config is stored separately in LKS_EletricidadeConstrucao.Config, no need to copy
-    _isDirty = true
-    
-    LKS_EletricidadeConstrucao.Print("[StateManager] State reset to defaults")
+    _estado = LKS_EletricidadeConstrucao.Data.State.New()
+    _estaModificado = true
+    LKS_EletricidadeConstrucao.Print("[StateManager] Estado redefinido com sucesso")
 end
 
 -- ============================================================================
--- DEBUG
+-- AUDITORIA E DEBUG
 -- ============================================================================
 
---- Get state summary
---- @return string Summary string
+--- Obtém a descrição compacta do volume de dados em execução.
+--- @return string O resumo textual.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetSummary()
-    if not _state then
-        return "StateManager: Not initialized"
+    if not _estado then
+        return "StateManager: Módulo não inicializado"
     end
-    
-    return LKS_EletricidadeConstrucao.Data.State.GetSummary(_state)
+    return LKS_EletricidadeConstrucao.Data.State.GetSummary(_estado)
 end
 
---- Print debug information
+--- Consolida e imprime um log descritivo no console contendo as informações do gerenciador.
 function LKS_EletricidadeConstrucao.Core.StateManager.PrintDebugInfo()
-    if not _state then
-        LKS_EletricidadeConstrucao.Print("StateManager: Not initialized")
+    if not _estado then
+        LKS_EletricidadeConstrucao.Print("StateManager: Módulo não inicializado")
         return
     end
     
     LKS_EletricidadeConstrucao.Print("=== LKS_EletricidadeConstrucao State Manager ===")
-    LKS_EletricidadeConstrucao.Print("Initialized: " .. tostring(_initialized))
-    LKS_EletricidadeConstrucao.Print("Dirty: " .. tostring(_isDirty))
-    LKS_EletricidadeConstrucao.Print(LKS_EletricidadeConstrucao.Data.State.GetSummary(_state))
+    LKS_EletricidadeConstrucao.Print("Inicializado: " .. tostring(_inicializado))
+    LKS_EletricidadeConstrucao.Print("Modificado (Dirty): " .. tostring(_estaModificado))
+    LKS_EletricidadeConstrucao.Print(LKS_EletricidadeConstrucao.Data.State.GetSummary(_estado))
     
-    local stats = _state.statistics
-    LKS_EletricidadeConstrucao.Print("  Generators: " .. stats.totalGenerators .. " (" .. stats.activeGenerators .. " active)")
-    LKS_EletricidadeConstrucao.Print("  Buildings: " .. stats.totalBuildings)
-    LKS_EletricidadeConstrucao.Print("  Consumers: " .. stats.totalConsumers .. " (" .. stats.activeConsumers .. " active)")
-    LKS_EletricidadeConstrucao.Print("  Fuel Consumed: " .. stats.totalFuelConsumed)
-    LKS_EletricidadeConstrucao.Print("  Uptime: " .. string.format("%.1f", stats.uptime / 3600) .. " hours")
+    local estatisticas = _estado.statistics
+    LKS_EletricidadeConstrucao.Print("  Geradores: " .. estatisticas.totalGenerators .. " (" .. estatisticas.activeGenerators .. " ativos)")
+    LKS_EletricidadeConstrucao.Print("  Construções: " .. estatisticas.totalBuildings)
+    LKS_EletricidadeConstrucao.Print("  Consumidores: " .. estatisticas.totalConsumers .. " (" .. estatisticas.activeConsumers .. " ativos)")
+    LKS_EletricidadeConstrucao.Print("  Combustível Consumido: " .. estatisticas.totalFuelConsumed)
+    LKS_EletricidadeConstrucao.Print("  Tempo Ativo (Uptime): " .. string.format("%.1f", estatisticas.uptime / 3600) .. " horas")
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- CONCLUSÃO DA INICIALIZAÇÃO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Core.StateManager", "2.0.0")

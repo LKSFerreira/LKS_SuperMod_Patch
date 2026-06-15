@@ -1,104 +1,114 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Utils_Geometry.lua
--- LKS_EletricidadeConstrucao V2 - Geometric/Spatial Utility Functions
--- Tile calculations, distance, borders, etc.
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Utils_Geometry.lua
+-- OBJETIVO: Funções utilitárias geométricas e espaciais aplicadas à grade do Project Zomboid (tiles e chunks).
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace principal existe
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Utils_Geometry] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Utils_Geometry] Namespace LKS_EletricidadeConstrucao não encontrado - abortando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- TILE DISTANCE & PROXIMITY
+-- DISTÂNCIAS ENTRE TILES E PROXIMIDADE
 -- ============================================================================
 
---- Calculate Manhattan distance between two tiles
---- @param x1 number First tile X
---- @param y1 number First tile Y
---- @param x2 number Second tile X
---- @param y2 number Second tile Y
---- @return number Manhattan distance (sum of abs differences)
+--- Calcula a distância Manhattan entre dois blocos na grade do jogo (soma das diferenças absolutas dos eixos).
+---
+--- @param x1 number Coordenada X do primeiro bloco.
+--- @param y1 number Coordenada Y do primeiro bloco.
+--- @param x2 number Coordenada X do segundo bloco.
+--- @param y2 number Coordenada Y do segundo bloco.
+--- @return number A distância Manhattan calculada.
 function LKS_EletricidadeConstrucao.Utils.Geometry.ManhattanDistance(x1, y1, x2, y2)
     return math.abs(x2 - x1) + math.abs(y2 - y1)
 end
 
---- Calculate Euclidean distance between two tiles
---- @param x1 number First tile X
---- @param y1 number First tile Y
---- @param x2 number Second tile X
---- @param y2 number Second tile Y
---- @return number Euclidean distance
+--- Calcula a distância Euclidiana simples entre dois blocos na grade do jogo.
+---
+--- @param x1 number Coordenada X do primeiro bloco.
+--- @param y1 number Coordenada Y do primeiro bloco.
+--- @param x2 number Coordenada X do segundo bloco.
+--- @param y2 number Coordenada Y do segundo bloco.
+--- @return number A distância linear calculada.
 function LKS_EletricidadeConstrucao.Utils.Geometry.EuclideanDistance(x1, y1, x2, y2)
     return LKS_EletricidadeConstrucao.Utils.Math.Distance2D(x1, y1, x2, y2)
 end
 
---- Calculate Chebyshev distance (max of axis distances)
---- @param x1 number First tile X
---- @param y1 number First tile Y
---- @param x2 number Second tile X
---- @param y2 number Second tile Y
---- @return number Chebyshev distance
+--- Calcula a distância de Chebyshev entre dois blocos na grade (máximo das distâncias dos eixos individuais).
+---
+--- @param x1 number Coordenada X do primeiro bloco.
+--- @param y1 number Coordenada Y do primeiro bloco.
+--- @param x2 number Coordenada X do segundo bloco.
+--- @param y2 number Coordenada Y do segundo bloco.
+--- @return number A distância de Chebyshev calculada.
 function LKS_EletricidadeConstrucao.Utils.Geometry.ChebyshevDistance(x1, y1, x2, y2)
     return math.max(math.abs(x2 - x1), math.abs(y2 - y1))
 end
 
---- Check if two tiles are adjacent (including diagonals)
---- @param x1 number First tile X
---- @param y1 number First tile Y
---- @param x2 number Second tile X
---- @param y2 number Second tile Y
---- @return boolean True if adjacent
+--- Verifica se dois blocos (tiles) na grade do jogo são adjacentes (incluindo diagonais).
+---
+--- @param x1 number Coordenada X do primeiro bloco.
+--- @param y1 number Coordenada Y do primeiro bloco.
+--- @param x2 number Coordenada X do segundo bloco.
+--- @param y2 number Coordenada Y do segundo bloco.
+--- @return boolean Retorna true se os blocos estiverem encostados.
 function LKS_EletricidadeConstrucao.Utils.Geometry.IsAdjacent(x1, y1, x2, y2)
     return LKS_EletricidadeConstrucao.Utils.Geometry.ChebyshevDistance(x1, y1, x2, y2) == 1
 end
 
---- Check if tile is within radius of center
---- @param x number Tile X
---- @param y number Tile Y
---- @param centerX number Center X
---- @param centerY number Center Y
---- @param radius number Radius (Euclidean)
---- @return boolean True if within radius
+--- Verifica se um bloco específico está dentro do raio circular a partir do centro (Euclidiano).
+---
+--- @param x number Coordenada X do bloco a testar.
+--- @param y number Coordenada Y do bloco a testar.
+--- @param centerX number Coordenada X do centro do raio.
+--- @param centerY number Coordenada Y do centro do raio.
+--- @param radius number Raio de busca linear.
+--- @return boolean Retorna true se o bloco estiver dentro do círculo delimitado.
 function LKS_EletricidadeConstrucao.Utils.Geometry.IsWithinRadius(x, y, centerX, centerY, radius)
     local distSq = LKS_EletricidadeConstrucao.Utils.Math.DistanceSquared2D(x, y, centerX, centerY)
     return distSq <= (radius * radius)
 end
 
 -- ============================================================================
--- COORDINATE VALIDATION
+-- VALIDAÇÕES DE COORDENADAS DO PROJECT ZOMBOID
 -- ============================================================================
 
---- Check if coordinates are valid (RV Interior compatible)
---- RV Interior uses range -100000 to 200000
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate (optional)
---- @return boolean True if valid
+--- Verifica se as coordenadas informadas são seguras e válidas no mapa de Project Zomboid.
+--- Compatível com o mod RV Interior (que gera coordenadas especiais entre -100000 e 200000).
+---
+--- @param x number Coordenada X.
+--- @param y number Coordenada Y.
+--- @param z number Coordenada Z (andares de 0 a 8) (opcional).
+--- @return boolean Retorna true se as coordenadas estiverem dentro das faixas válidas e lógicas do mapa.
 function LKS_EletricidadeConstrucao.Utils.Geometry.IsValidCoordinate(x, y, z)
     if not x or not y then return false end
     
     local constants = LKS_EletricidadeConstrucao.Constants.BUILDING
     
-    -- Check X coordinate
+    -- Validação do eixo X
     if x < constants.RV_INTERIOR_MIN_COORD or x > constants.RV_INTERIOR_MAX_COORD then
         return false
     end
     
-    -- Check Y coordinate
+    -- Validação do eixo Y
     if y < constants.RV_INTERIOR_MIN_COORD or y > constants.RV_INTERIOR_MAX_COORD then
         return false
     end
     
-    -- Check Z coordinate if provided
+    -- Validação do andar (eixo Z) se informado
     if z then
         if z < constants.MIN_Z_LEVEL or z > constants.MAX_Z_LEVEL then
             return false
@@ -108,22 +118,26 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.IsValidCoordinate(x, y, z)
     return true
 end
 
---- Check if coordinate is in RV Interior range
---- @param x number X coordinate
---- @param y number Y coordinate
---- @return boolean True if RV Interior coordinate
+--- Verifica se as coordenadas informadas pertencem ao mapa especial de Interiores de RV (RV Interior).
+---
+--- **Detalhe Técnico:** O mod RV Interior tipicamente instancia seus cômodos fictícios em
+--- coordenadas negativas no plano cartesiano do mapa do PZ.
+---
+--- @param x number Coordenada X.
+--- @param y number Coordenada Y.
+--- @return boolean Retorna true se a coordenada representar uma sala do RV Interior.
 function LKS_EletricidadeConstrucao.Utils.Geometry.IsRVInteriorCoordinate(x, y)
-    -- RV Interior typically uses negative coordinates
     return x < 0 or y < 0
 end
 
 -- ============================================================================
--- BOUNDING BOX
+-- ENVOLTÓRIOS GRÁFICOS (BOUNDING BOX)
 -- ============================================================================
 
---- Create bounding box from list of coordinates
---- @param coordinates table Array of {x, y} or {x, y, z} tables
---- @return table Bounding box {minX, minY, maxX, maxY} or nil if empty
+--- Cria uma Bounding Box (caixa de enquadramento) bidimensional a partir de uma lista de coordenadas de tiles.
+---
+--- @param coordinates table Lista indexada contendo tabelas no formato {x, y} ou {x, y, z}.
+--- @return table Tabela contendo minX, minY, maxX, maxY, width e height, ou nil se a lista estiver vazia.
 function LKS_EletricidadeConstrucao.Utils.Geometry.GetBoundingBox(coordinates)
     if not coordinates or #coordinates == 0 then
         return nil
@@ -154,20 +168,22 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.GetBoundingBox(coordinates)
     }
 end
 
---- Check if point is inside bounding box
---- @param x number Point X
---- @param y number Point Y
---- @param bbox table Bounding box {minX, minY, maxX, maxY}
---- @return boolean True if inside
+--- Verifica se uma determinada coordenada de bloco está contida dentro de uma Bounding Box.
+---
+--- @param x number Coordenada X do bloco.
+--- @param y number Coordenada Y do bloco.
+--- @param bbox table A tabela de Bounding Box contendo minX, minY, maxX e maxY.
+--- @return boolean Retorna true se o bloco estiver localizado dentro dos limites do envoltório.
 function LKS_EletricidadeConstrucao.Utils.Geometry.IsInsideBBox(x, y, bbox)
     return x >= bbox.minX and x <= bbox.maxX and
            y >= bbox.minY and y <= bbox.maxY
 end
 
---- Expand bounding box by margin
---- @param bbox table Bounding box {minX, minY, maxX, maxY}
---- @param margin number Margin to add on all sides
---- @return table Expanded bounding box
+--- Expande os limites de uma Bounding Box adicionando uma margem em quadrados para todas as direções.
+---
+--- @param bbox table A Bounding Box de origem.
+--- @param margin number Margem em quadrados (tiles) a ser adicionada.
+--- @return table A nova Bounding Box expandida.
 function LKS_EletricidadeConstrucao.Utils.Geometry.ExpandBBox(bbox, margin)
     return {
         minX = bbox.minX - margin,
@@ -180,14 +196,15 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.ExpandBBox(bbox, margin)
 end
 
 -- ============================================================================
--- BORDER DETECTION
+-- VARREDURAS DE CONTORNO (BORDER DETECTION)
 -- ============================================================================
 
---- Get all tiles in radius around center (circular)
---- @param centerX number Center X
---- @param centerY number Center Y
---- @param radius number Radius
---- @return table Array of {x, y} coordinates
+--- Obtém as coordenadas de todos os blocos contidos em um raio circular a partir do centro.
+---
+--- @param centerX number Coordenada X do centro.
+--- @param centerY number Coordenada Y do centro.
+--- @param radius number Raio em blocos.
+--- @return table Lista contendo tabelas no formato {x, y}.
 function LKS_EletricidadeConstrucao.Utils.Geometry.GetTilesInRadius(centerX, centerY, radius)
     local tiles = {}
     
@@ -202,31 +219,30 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.GetTilesInRadius(centerX, cen
     return tiles
 end
 
---- Get border tiles around a structure (tile-by-tile approach)
---- More accurate than bounding box for L-shaped buildings
---- @param structureTiles table Array of {x, y, z} structure tiles
---- @param borderRadius number Border width in tiles
---- @return table Array of {x, y, z} border tiles
+--- Obtém todos os blocos de borda (contorno) ao redor de uma estrutura.
+--- Muito mais preciso que Bounding Box simples para edifícios complexos ou em formato de L.
+---
+--- @param structureTiles table Lista contendo as coordenadas {x, y, z} da construção.
+--- @param borderRadius number Espessura da borda a ser gerada ao redor do prédio (em tiles).
+--- @return table Lista contendo as coordenadas {x, y, z} dos blocos da borda.
 function LKS_EletricidadeConstrucao.Utils.Geometry.GetBorderTiles(structureTiles, borderRadius)
     local borderTiles = {}
-    local processedTiles = {}  -- Avoid duplicates
+    local processedTiles = {}  -- Tabela de hash rápida para evitar duplicados
     
-    -- For each structure tile, get surrounding tiles
+    -- Para cada tile pertencente à estrutura física do prédio, varre suas adjacências
     for _, tile in ipairs(structureTiles) do
         local x = tile.x or tile[1]
         local y = tile.y or tile[2]
         local z = tile.z or tile[3] or 0
         
-        -- Check tiles in square around this tile
         for offsetX = -borderRadius, borderRadius do
             for offsetY = -borderRadius, borderRadius do
-                -- Skip center tile (0,0) as it's the structure itself
+                -- Ignora o ponto central (0,0) pois este representa o próprio prédio
                 if offsetX ~= 0 or offsetY ~= 0 then
                     local borderX = x + offsetX
                     local borderY = y + offsetY
                     local key = borderX .. "," .. borderY .. "," .. z
                     
-                    -- Only add if not already processed
                     if not processedTiles[key] then
                         processedTiles[key] = true
                         table.insert(borderTiles, {x = borderX, y = borderY, z = z})
@@ -240,15 +256,16 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.GetBorderTiles(structureTiles
 end
 
 -- ============================================================================
--- DIRECTION & ANGLE
+-- DIREÇÃO E ÂNGULOS
 -- ============================================================================
 
---- Get direction from tile1 to tile2 (normalized vector)
---- @param x1 number First tile X
---- @param y1 number First tile Y
---- @param x2 number Second tile X
---- @param y2 number Second tile Y
---- @return number, number Normalized direction (dx, dy)
+--- Obtém o vetor de direção normalizado (direção de vetor unitário) partindo do ponto 1 para o ponto 2.
+---
+--- @param x1 number X do ponto de origem.
+--- @param y1 number Y do ponto de origem.
+--- @param x2 number X do ponto de destino.
+--- @param y2 number Y do ponto de destino.
+--- @return number, number O vetor normalizado (dx, dy).
 function LKS_EletricidadeConstrucao.Utils.Geometry.GetDirection(x1, y1, x2, y2)
     local dx = x2 - x1
     local dy = y2 - y1
@@ -261,19 +278,19 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.GetDirection(x1, y1, x2, y2)
     return dx / length, dy / length
 end
 
---- Get angle in degrees from tile1 to tile2
---- @param x1 number First tile X
---- @param y1 number First tile Y
---- @param x2 number Second tile X
---- @param y2 number Second tile Y
---- @return number Angle in degrees (0-360)
+--- Obtém o ângulo em graus (0° a 360°) partindo do ponto 1 para o ponto 2.
+---
+--- @param x1 number X do ponto de origem.
+--- @param y1 number Y do ponto de origem.
+--- @param x2 number X do ponto de destino.
+--- @param y2 number Y do ponto de destino.
+--- @return number O ângulo em graus trigonométricos.
 function LKS_EletricidadeConstrucao.Utils.Geometry.GetAngle(x1, y1, x2, y2)
     local dx = x2 - x1
     local dy = y2 - y1
     local radians = math.atan2(dy, dx)
     local degrees = math.deg(radians)
     
-    -- Normalize to 0-360
     if degrees < 0 then
         degrees = degrees + 360
     end
@@ -282,30 +299,35 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.GetAngle(x1, y1, x2, y2)
 end
 
 -- ============================================================================
--- GRID HELPERS
+-- CONVERSORES DE GRADE E CHUNKS DO PZ
 -- ============================================================================
 
---- Convert world coordinates to chunk coordinates
---- @param x number World X
---- @param y number World Y
---- @return number, number Chunk X, Chunk Y
+--- Converte coordenadas globais do mapa do jogo para coordenadas de Chunks.
+---
+--- **Nota da Engine:** No Project Zomboid, cada Chunk (região básica de carregamento)
+--- corresponde a um grid quadrado de exatamente 10x10 tiles.
+---
+--- @param x number Coordenada global X.
+--- @param y number Coordenada global Y.
+--- @return number, number A coordenada do Chunk (ChunkX, ChunkY).
 function LKS_EletricidadeConstrucao.Utils.Geometry.WorldToChunk(x, y)
-    -- PZ chunks are 10x10 tiles
     return math.floor(x / 10), math.floor(y / 10)
 end
 
---- Get chunk key string from coordinates
---- @param x number World X
---- @param y number World Y
---- @return string Chunk key "cx,cy"
+--- Gera uma chave textual única para identificação do Chunk.
+---
+--- @param x number Coordenada global X.
+--- @param y number Coordenada global Y.
+--- @return string A chave de chunk formatada como "cx,cy".
 function LKS_EletricidadeConstrucao.Utils.Geometry.GetChunkKey(x, y)
     local cx, cy = LKS_EletricidadeConstrucao.Utils.Geometry.WorldToChunk(x, y)
     return cx .. "," .. cy
 end
 
---- Parse tile key "x,y,z" into coordinates
---- @param key string Tile key
---- @return number, number, number X, Y, Z coordinates
+--- Converte uma chave de tile "x,y,z" de volta para coordenadas numéricas individuais.
+---
+--- @param key string A chave textual do tile.
+--- @return number, number, number As coordenadas numéricas X, Y e Z de volta.
 function LKS_EletricidadeConstrucao.Utils.Geometry.ParseTileKey(key)
     local parts = {}
     for part in string.gmatch(key, "[^,]+") do
@@ -314,18 +336,19 @@ function LKS_EletricidadeConstrucao.Utils.Geometry.ParseTileKey(key)
     return parts[1], parts[2], parts[3] or 0
 end
 
---- Create tile key from coordinates
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate
---- @return string Tile key "x,y,z"
+--- Cria uma chave textual única a partir de coordenadas espaciais informadas.
+---
+--- @param x number Coordenada X.
+--- @param y number Coordenada Y.
+--- @param z number Coordenada Z (andar).
+--- @return string A chave textual formatada como "x,y,z".
 function LKS_EletricidadeConstrucao.Utils.Geometry.MakeTileKey(x, y, z)
     z = z or 0
     return x .. "," .. y .. "," .. z
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- CONCLUSÃO DA INICIALIZAÇÃO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Utils.Geometry", "2.0.0")

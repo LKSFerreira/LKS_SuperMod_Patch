@@ -1,52 +1,46 @@
 -- ============================================================================
--- 💖 HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado como parte do LKS SuperMod Patch.
--- Agradecemos imensamente a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) por sua fantástica contribuição para a comunidade!
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_ActionsInit.lua
--- Shared actions initialization
--- Loads all TimedActions (run on both client and server)
--- LOCATION: shared/actions/
+-- ARQUIVO: LKS_EletricidadeConstrucao_ActionsInit.lua
+-- OBJETIVO: Inicialização e carregamento das Ações Temporizadas (TimedActions) compartilhadas.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
+-- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_ActionsInit] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_ActionsInit] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
-print("[LKS_EletricidadeConstrucao_ActionsInit] ========================================")
-print("[LKS_EletricidadeConstrucao_ActionsInit] Loading TimedActions...")
-print("[LKS_EletricidadeConstrucao_ActionsInit] ========================================")
+LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_ActionsInit", "2.0.0")
 
--- Register module
-LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_ActionsInit")
+-- ============================================================================
+-- CARREGAMENTO DAS AÇÕES TEMPORIZADAS (TIMED ACTIONS)
+-- ============================================================================
 
--- ============================================================
--- LOAD TIMED ACTIONS
--- ============================================================
-
--- Generator actions
+-- Ações de controle e conexão de geradores
 require "actions/LKS_EletricidadeConstrucao_Actions_ActivateGenerator"
 require "actions/LKS_EletricidadeConstrucao_Actions_ConnectBuilding"
 require "actions/LKS_EletricidadeConstrucao_Actions_DisconnectBuilding"
 require "actions/LKS_EletricidadeConstrucao_Actions_OpenInfoWindow"
 
--- TODO: Barrel actions (Phase 5)
--- require "actions/LKS_EletricidadeConstrucao_Actions_LinkBarrel"
+-- Ações de vinculação de barris auxiliares de combustível
+require "actions/LKS_EletricidadeConstrucao_Actions_LinkBarrel"
 
--- TODO: Light Switch actions (Phase 6)
--- require "actions/LKS_EletricidadeConstrucao_Actions_InstallLightSwitch"
-
--- ============================================================
--- ACTIONS INITIALIZATION COMPLETE
--- ============================================================
-
-print("[LKS_EletricidadeConstrucao_ActionsInit] ========================================")
-print("[LKS_EletricidadeConstrucao_ActionsInit] TimedActions loaded successfully")
-print("[LKS_EletricidadeConstrucao_ActionsInit] Available actions:")
-print("[LKS_EletricidadeConstrucao_ActionsInit]   - ActivateGenerator")
-print("[LKS_EletricidadeConstrucao_ActionsInit]   - ConnectBuilding")
-print("[LKS_EletricidadeConstrucao_ActionsInit]   - DisconnectBuilding")
-print("[LKS_EletricidadeConstrucao_ActionsInit]   - OpenInfoWindow")
-print("[LKS_EletricidadeConstrucao_ActionsInit] ========================================")
+if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.DebugMode then
+    LKS_EletricidadeConstrucao.Print("Ações temporizadas (TimedActions) carregadas com sucesso:")
+    LKS_EletricidadeConstrucao.Print("  - ActivateGenerator")
+    LKS_EletricidadeConstrucao.Print("  - ConnectBuilding")
+    LKS_EletricidadeConstrucao.Print("  - DisconnectBuilding")
+    LKS_EletricidadeConstrucao.Print("  - OpenInfoWindow")
+    LKS_EletricidadeConstrucao.Print("  - LinkBarrel")
+end

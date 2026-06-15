@@ -1,250 +1,254 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mi.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Utils_Validation.lua
--- LKS_EletricidadeConstrucao V2 - Input Validation Utilities
--- Type checking, nil checking, range validation, etc.
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Utils_Validation.lua
+-- OBJETIVO: Funções utilitárias para validação de dados de entrada, verificação de tipos e sanidade.
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Utils_Validation] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Utils_Validation] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
 -- ============================================================================
--- NIL CHECKING
+-- VERIFICAÇÕES DE NIL
 -- ============================================================================
 
---- Check if value is nil
---- @param value any Value to check
---- @return boolean True if nil
-function LKS_EletricidadeConstrucao.Utils.Validation.IsNil(value)
-    return value == nil
+--- Verifica se o valor fornecido é nulo (nil).
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se o valor for nil, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsNil(valor)
+    return valor == nil
 end
 
---- Check if value is not nil
---- @param value any Value to check
---- @return boolean True if not nil
-function LKS_EletricidadeConstrucao.Utils.Validation.IsNotNil(value)
-    return value ~= nil
+--- Verifica se o valor fornecido não é nulo (not nil).
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se o valor não for nil, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsNotNil(valor)
+    return valor ~= nil
 end
 
---- Get value or default if nil
---- @param value any Value to check
---- @param default any Default value if nil
---- @return any Value or default
-function LKS_EletricidadeConstrucao.Utils.Validation.OrDefault(value, default)
-    if value == nil then
-        return default
+--- Retorna o valor original ou um valor padrão caso o original seja nulo (nil).
+--- @param valor any O valor a ser validado.
+--- @param valorPadrao any O valor alternativo retornado caso o primeiro seja nulo.
+--- @return any O valor original ou o valor padrão.
+function LKS_EletricidadeConstrucao.Utils.Validation.OrDefault(valor, valorPadrao)
+    if valor == nil then
+        return valorPadrao
     end
-    return value
+    return valor
 end
 
 -- ============================================================================
--- TYPE CHECKING
+-- VERIFICAÇÕES DE TIPO
 -- ============================================================================
 
---- Check if value is a number
---- @param value any Value to check
---- @return boolean True if number
-function LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(value)
-    return type(value) == "number"
+--- Verifica se o valor fornecido é um número.
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se for um número, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(valor)
+    return type(valor) == "number"
 end
 
---- Check if value is a string
---- @param value any Value to check
---- @return boolean True if string
-function LKS_EletricidadeConstrucao.Utils.Validation.IsString(value)
-    return type(value) == "string"
+--- Verifica se o valor fornecido é uma string (texto).
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se for uma string, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsString(valor)
+    return type(valor) == "string"
 end
 
---- Check if value is a boolean
---- @param value any Value to check
---- @return boolean True if boolean
-function LKS_EletricidadeConstrucao.Utils.Validation.IsBoolean(value)
-    return type(value) == "boolean"
+--- Verifica se o valor fornecido é um booleano (verdadeiro/falso).
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se for um booleano, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsBoolean(valor)
+    return type(valor) == "boolean"
 end
 
---- Check if value is a table
---- @param value any Value to check
---- @return boolean True if table
-function LKS_EletricidadeConstrucao.Utils.Validation.IsTable(value)
-    return type(value) == "table"
+--- Verifica se o valor fornecido é uma tabela.
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se for uma tabela, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsTable(valor)
+    return type(valor) == "table"
 end
 
---- Check if value is a function
---- @param value any Value to check
---- @return boolean True if function
-function LKS_EletricidadeConstrucao.Utils.Validation.IsFunction(value)
-    return type(value) == "function"
+--- Verifica se o valor fornecido é uma função.
+--- @param valor any O valor a ser avaliado.
+--- @return boolean Retorna true se for uma função, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsFunction(valor)
+    return type(valor) == "function"
 end
 
---- Get type name of value
---- @param value any Value to check
---- @return string Type name
-function LKS_EletricidadeConstrucao.Utils.Validation.GetType(value)
-    return type(value)
+--- Retorna o tipo em formato texto do valor avaliado.
+--- @param valor any O valor a ser avaliado.
+--- @return string O nome do tipo retornado pela engine (ex: "table", "string", "number").
+function LKS_EletricidadeConstrucao.Utils.Validation.GetType(valor)
+    return type(valor)
 end
 
 -- ============================================================================
--- RANGE VALIDATION
+-- VALIDAÇÕES DE INTERVALOS E NÚMEROS
 -- ============================================================================
 
---- Validate number is within range
---- @param value number Value to validate
---- @param min number Minimum value
---- @param max number Maximum value
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateRange(value, min, max, varName)
-    varName = varName or "value"
+--- Valida se um número está contido dentro de um intervalo inclusivo.
+--- @param valor number O número a ser validado.
+--- @param limiteMinimo number O valor mínimo aceitável.
+--- @param limiteMaximo number O valor máximo aceitável.
+--- @param nomeVariavel string|nil O nome descritivo da variável para enriquecer a mensagem de erro.
+--- @return boolean, string|nil Retorna true se estiver no intervalo, ou false acompanhado de uma mensagem de erro estruturada.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateRange(valor, limiteMinimo, limiteMaximo, nomeVariavel)
+    nomeVariavel = nomeVariavel or "valor"
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(value) then
-        return false, varName .. " must be a number"
-    end
-    
-    if value < min or value > max then
-        return false, string.format("%s must be between %s and %s (got %s)", 
-            varName, tostring(min), tostring(max), tostring(value))
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(valor) then
+        return false, nomeVariavel .. " deve ser um número"
     end
     
-    return true, nil
-end
-
---- Validate number is positive
---- @param value number Value to validate
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidatePositive(value, varName)
-    varName = varName or "value"
-    
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(value) then
-        return false, varName .. " must be a number"
-    end
-    
-    if value <= 0 then
-        return false, varName .. " must be positive (got " .. tostring(value) .. ")"
+    if valor < limiteMinimo or valor > limiteMaximo then
+        return false, string.format("%s deve estar entre %s e %s (recebido %s)", 
+            nomeVariavel, tostring(limiteMinimo), tostring(limiteMaximo), tostring(valor))
     end
     
     return true, nil
 end
 
---- Validate number is non-negative
---- @param value number Value to validate
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateNonNegative(value, varName)
-    varName = varName or "value"
+--- Valida se um número é estritamente maior que zero (positivo).
+--- @param valor number O número a ser validado.
+--- @param nomeVariavel string|nil O nome descritivo da variável para enriquecer a mensagem de erro.
+--- @return boolean, string|nil Retorna true se for positivo, ou false com a mensagem de erro correspondente.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidatePositive(valor, nomeVariavel)
+    nomeVariavel = nomeVariavel or "valor"
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(value) then
-        return false, varName .. " must be a number"
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(valor) then
+        return false, nomeVariavel .. " deve ser um número"
     end
     
-    if value < 0 then
-        return false, varName .. " must be non-negative (got " .. tostring(value) .. ")"
+    if valor <= 0 then
+        return false, nomeVariavel .. " deve ser positivo (recebido " .. tostring(valor) .. ")"
+    end
+    
+    return true, nil
+end
+
+--- Valida se um número é maior ou igual a zero (não-negativo).
+--- @param valor number O número a ser validado.
+--- @param nomeVariavel string|nil O nome descritivo da variável para enriquecer a mensagem de erro.
+--- @return boolean, string|nil Retorna true se for não-negativo, ou false com a mensagem de erro correspondente.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateNonNegative(valor, nomeVariavel)
+    nomeVariavel = nomeVariavel or "valor"
+    
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(valor) then
+        return false, nomeVariavel .. " deve ser um número"
+    end
+    
+    if valor < 0 then
+        return false, nomeVariavel .. " não deve ser negativo (recebido " .. tostring(valor) .. ")"
     end
     
     return true, nil
 end
 
 -- ============================================================================
--- STRING VALIDATION
+-- VALIDAÇÕES DE TEXTO (STRINGS)
 -- ============================================================================
 
---- Check if string is empty or whitespace
---- @param str string String to check
---- @return boolean True if empty/whitespace
-function LKS_EletricidadeConstrucao.Utils.Validation.IsEmptyString(str)
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsString(str) then
+--- Verifica se uma string está vazia ou consiste apenas de espaços em branco.
+--- @param texto string O texto a ser avaliado.
+--- @return boolean Retorna true se estiver vazio ou com espaços em branco, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsEmptyString(texto)
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsString(texto) then
         return true
     end
-    return str == "" or str:match("^%s*$") ~= nil
+    return texto == "" or texto:match("^%s*$") ~= nil
 end
 
---- Validate string is not empty
---- @param str string String to validate
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateNotEmpty(str, varName)
-    varName = varName or "string"
+--- Valida se uma string é válida e não está vazia.
+--- @param texto string O texto a ser validado.
+--- @param nomeVariavel string|nil O nome descritivo da variável para enriquecer a mensagem de erro.
+--- @return boolean, string|nil Retorna true se for válida e populada, ou false com a mensagem de erro.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateNotEmpty(texto, nomeVariavel)
+    nomeVariavel = nomeVariavel or "texto"
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsString(str) then
-        return false, varName .. " must be a string"
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsString(texto) then
+        return false, nomeVariavel .. " deve ser um texto"
     end
     
-    if LKS_EletricidadeConstrucao.Utils.Validation.IsEmptyString(str) then
-        return false, varName .. " cannot be empty"
+    if LKS_EletricidadeConstrucao.Utils.Validation.IsEmptyString(texto) then
+        return false, nomeVariavel .. " não pode estar vazio"
     end
     
     return true, nil
 end
 
---- Validate string length
---- @param str string String to validate
---- @param minLen number Minimum length
---- @param maxLen number Maximum length
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateLength(str, minLen, maxLen, varName)
-    varName = varName or "string"
+--- Valida se o comprimento de um texto está contido em um intervalo de tamanho específico.
+--- @param texto string O texto a ser avaliado.
+--- @param comprimentoMinimo number O comprimento de caracteres mínimo aceitável.
+--- @param comprimentoMaximo number O comprimento de caracteres máximo aceitável.
+--- @param nomeVariavel string|nil O nome descritivo da variável para enriquecer a mensagem de erro.
+--- @return boolean, string|nil Retorna true se estiver no intervalo de comprimento, ou false com a mensagem de erro.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateLength(texto, comprimentoMinimo, comprimentoMaximo, nomeVariavel)
+    nomeVariavel = nomeVariavel or "texto"
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsString(str) then
-        return false, varName .. " must be a string"
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsString(texto) then
+        return false, nomeVariavel .. " deve ser um texto"
     end
     
-    local len = string.len(str)
+    local comprimento = string.len(texto)
     
-    if len < minLen or len > maxLen then
-        return false, string.format("%s length must be between %d and %d (got %d)",
-            varName, minLen, maxLen, len)
+    if comprimento < comprimentoMinimo or comprimento > comprimentoMaximo then
+        return false, string.format("o comprimento de %s deve estar entre %d e %d (recebido %d)",
+            nomeVariavel, comprimentoMinimo, comprimentoMaximo, comprimento)
     end
     
     return true, nil
 end
 
 -- ============================================================================
--- TABLE VALIDATION
+-- VALIDAÇÕES DE TABELAS
 -- ============================================================================
 
---- Validate table is not empty
---- @param tbl table Table to validate
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateNotEmptyTable(tbl, varName)
-    varName = varName or "table"
+--- Valida se uma tabela existe e não está vazia.
+--- @param tabela table A tabela a ser validada.
+--- @param nomeVariavel string|nil O nome descritivo da variável para enriquecer a mensagem de erro.
+--- @return boolean, string|nil Retorna true se a tabela for populada, ou false com a mensagem de erro correspondente.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateNotEmptyTable(tabela, nomeVariavel)
+    nomeVariavel = nomeVariavel or "tabela"
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsTable(tbl) then
-        return false, varName .. " must be a table"
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsTable(tabela) then
+        return false, nomeVariavel .. " deve ser uma tabela"
     end
     
-    if LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(tbl) then
-        return false, varName .. " cannot be empty"
+    if LKS_EletricidadeConstrucao.Utils.Table.IsEmpty(tabela) then
+        return false, nomeVariavel .. " não pode estar vazia"
     end
     
     return true, nil
 end
 
---- Validate table has required keys
---- @param tbl table Table to validate
---- @param requiredKeys table Array of required key names
---- @param varName string Variable name for error message
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateKeys(tbl, requiredKeys, varName)
-    varName = varName or "table"
+--- Valida se uma tabela contém todas as chaves obrigatórias requeridas.
+--- @param tabela table A tabela a ser validada.
+--- @param chavesObrigatorias table Um vetor contendo os nomes de chaves requeridas na tabela.
+--- @param nomeVariavel string|nil O nome descritivo da tabela para a mensagem de erro.
+--- @return boolean, string|nil Retorna true se todas as chaves estiverem presentes, ou false com a mensagem de erro identificando a chave faltante.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateKeys(tabela, chavesObrigatorias, nomeVariavel)
+    nomeVariavel = nomeVariavel or "tabela"
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsTable(tbl) then
-        return false, varName .. " must be a table"
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsTable(tabela) then
+        return false, nomeVariavel .. " deve ser uma tabela"
     end
     
-    for _, key in ipairs(requiredKeys) do
-        if tbl[key] == nil then
-            return false, varName .. " missing required key: " .. tostring(key)
+    for _, chave in ipairs(chavesObrigatorias) do
+        if tabela[chave] == nil then
+            return false, nomeVariavel .. " está sem a chave obrigatória: " .. tostring(chave)
         end
     end
     
@@ -252,107 +256,115 @@ function LKS_EletricidadeConstrucao.Utils.Validation.ValidateKeys(tbl, requiredK
 end
 
 -- ============================================================================
--- COORDINATE VALIDATION
+-- VALIDAÇÕES DE COORDENADAS DO MAPA
 -- ============================================================================
 
---- Validate coordinates are valid numbers
---- @param x number X coordinate
---- @param y number Y coordinate
---- @param z number Z coordinate (optional)
---- @return boolean, string True if valid, or false with error message
-function LKS_EletricidadeConstrucao.Utils.Validation.ValidateCoordinates(x, y, z)
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(x) then
-        return false, "X coordinate must be a number"
+--- Valida se os valores das coordenadas espaciais informadas são números aceitáveis e válidos.
+--- @param coordenadaX number A coordenada no eixo X.
+--- @param coordenadaY number A coordenada no eixo Y.
+--- @param coordenadaZ number|nil A coordenada no eixo Z (opcional).
+--- @return boolean, string|nil Retorna true se as coordenadas forem numéricas e válidas dentro dos limites do jogo, ou false com a mensagem correspondente.
+function LKS_EletricidadeConstrucao.Utils.Validation.ValidateCoordinates(coordenadaX, coordenadaY, coordenadaZ)
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(coordenadaX) then
+        return false, "A coordenada X deve ser um número"
     end
     
-    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(y) then
-        return false, "Y coordinate must be a number"
+    if not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(coordenadaY) then
+        return false, "A coordenada Y deve ser um número"
     end
     
-    if z ~= nil and not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(z) then
-        return false, "Z coordinate must be a number"
+    if coordenadaZ ~= nil and not LKS_EletricidadeConstrucao.Utils.Validation.IsNumber(coordenadaZ) then
+        return false, "A coordenada Z deve ser um número"
     end
     
-    -- Use geometry utils for range validation
-    if not LKS_EletricidadeConstrucao.Utils.Geometry.IsValidCoordinate(x, y, z) then
-        return false, "Coordinates out of valid range"
+    -- Utiliza utilitários geométricos do mod para validar limites geográficos no PZ
+    if not LKS_EletricidadeConstrucao.Utils.Geometry.IsValidCoordinate(coordenadaX, coordenadaY, coordenadaZ) then
+        return false, "As coordenadas estão fora dos limites físicos do jogo"
     end
     
     return true, nil
 end
 
 -- ============================================================================
--- OBJECT VALIDATION (PZ Objects)
+-- VALIDAÇÕES DE OBJETOS DO PROJECT ZOMBOID (INTEROPERABILIDADE JAVA)
 -- ============================================================================
 
---- Validate object is IsoGenerator
---- @param obj any Object to validate
---- @return boolean True if valid IsoGenerator
-function LKS_EletricidadeConstrucao.Utils.Validation.IsGenerator(obj)
-    if not obj then return false end
-    return instanceof(obj, "IsoGenerator")
+--- Valida se o objeto fornecido é uma instância Java da classe de Gerador do jogo (IsoGenerator).
+--- @param objeto any O objeto Java a ser verificado.
+--- @return boolean Retorna true se for uma instância de IsoGenerator, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsGenerator(objeto)
+    if not objeto then 
+        return false 
+    end
+    return instanceof(objeto, "IsoGenerator")
 end
 
---- Validate object is IsoLightSwitch
---- @param obj any Object to validate
---- @return boolean True if valid IsoLightSwitch
-function LKS_EletricidadeConstrucao.Utils.Validation.IsLightSwitch(obj)
-    if not obj then return false end
-    return instanceof(obj, "IsoLightSwitch")
+--- Valida se o objeto fornecido é uma instância Java da classe de Interruptor de Luz do jogo (IsoLightSwitch).
+--- @param objeto any O objeto Java a ser verificado.
+--- @return boolean Retorna true se for uma instância de IsoLightSwitch, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsLightSwitch(objeto)
+    if not objeto then 
+        return false 
+    end
+    return instanceof(objeto, "IsoLightSwitch")
 end
 
---- Validate object is IsoGridSquare
---- @param obj any Object to validate
---- @return boolean True if valid IsoGridSquare
-function LKS_EletricidadeConstrucao.Utils.Validation.IsGridSquare(obj)
-    if not obj then return false end
-    return instanceof(obj, "IsoGridSquare")
+--- Valida se o objeto fornecido é uma instância Java da classe de Quadrado da Grade (Tile) do jogo (IsoGridSquare).
+--- @param objeto any O objeto Java a ser verificado.
+--- @return boolean Retorna true se for uma instância de IsoGridSquare, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsGridSquare(objeto)
+    if not objeto then 
+        return false 
+    end
+    return instanceof(objeto, "IsoGridSquare")
 end
 
---- Validate object is IsoObject
---- @param obj any Object to validate
---- @return boolean True if valid IsoObject
-function LKS_EletricidadeConstrucao.Utils.Validation.IsIsoObject(obj)
-    if not obj then return false end
-    return instanceof(obj, "IsoObject")
+--- Valida se o objeto fornecido é uma instância Java da classe base de Objeto do Mundo do jogo (IsoObject).
+--- @param objeto any O objeto Java a ser verificado.
+--- @return boolean Retorna true se for uma instância de IsoObject, caso contrário false.
+function LKS_EletricidadeConstrucao.Utils.Validation.IsIsoObject(objeto)
+    if not objeto then 
+        return false 
+    end
+    return instanceof(objeto, "IsoObject")
 end
 
 -- ============================================================================
--- ASSERTION HELPERS
+-- OPERAÇÕES DE ASSERÇÃO (DISPARAM ERROS DE SIMULAÇÃO)
 -- ============================================================================
 
---- Assert value is not nil, error otherwise
---- @param value any Value to check
---- @param message string Error message
-function LKS_EletricidadeConstrucao.Utils.Validation.AssertNotNil(value, message)
-    if value == nil then
-        error(message or "Value cannot be nil")
+--- Garante que um valor não é nulo, disparando um erro caso seja.
+--- @param valor any O valor a ser avaliado.
+--- @param mensagemErro string|nil A mensagem de erro customizada caso a asserção falhe.
+function LKS_EletricidadeConstrucao.Utils.Validation.AssertNotNil(valor, mensagemErro)
+    if valor == nil then
+        error(mensagemErro or "O valor não pode ser nulo (nil)")
     end
 end
 
---- Assert condition is true, error otherwise
---- @param condition boolean Condition to check
---- @param message string Error message
-function LKS_EletricidadeConstrucao.Utils.Validation.Assert(condition, message)
-    if not condition then
-        error(message or "Assertion failed")
+--- Garante que uma condição booleana é verdadeira, disparando um erro caso seja falsa.
+--- @param condicao boolean A condição lógica a ser testada.
+--- @param mensagemErro string|nil A mensagem de erro customizada caso a asserção falhe.
+function LKS_EletricidadeConstrucao.Utils.Validation.Assert(condicao, mensagemErro)
+    if not condicao then
+        error(mensagemErro or "Falha de asserção lógica")
     end
 end
 
---- Assert value is expected type, error otherwise
---- @param value any Value to check
---- @param expectedType string Expected type name
---- @param varName string Variable name for error message
-function LKS_EletricidadeConstrucao.Utils.Validation.AssertType(value, expectedType, varName)
-    local actualType = type(value)
-    if actualType ~= expectedType then
-        error(string.format("%s must be %s (got %s)", 
-            varName or "value", expectedType, actualType))
+--- Garante que um valor pertence ao tipo de dado esperado em Lua, disparando um erro caso contrário.
+--- @param valor any O valor a ser verificado.
+--- @param tipoEsperado string O nome do tipo Lua esperado (ex: "string", "table").
+--- @param nomeVariavel string|nil O nome descritivo da variável analisada.
+function LKS_EletricidadeConstrucao.Utils.Validation.AssertType(valor, tipoEsperado, nomeVariavel)
+    local tipoAtual = type(valor)
+    if tipoAtual ~= tipoEsperado then
+        error(string.format("A variável %s deve ser do tipo %s (recebido %s)", 
+            nomeVariavel or "valor", tipoEsperado, tipoAtual))
     end
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- INICIALIZAÇÃO E REGISTRO DO MÓDULO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Utils.Validation", "2.0.0")

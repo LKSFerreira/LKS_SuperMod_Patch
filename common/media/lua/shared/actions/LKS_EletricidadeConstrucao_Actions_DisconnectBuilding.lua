@@ -1,84 +1,93 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Actions_DisconnectBuilding.lua
--- TimedAction for disconnecting generator from building
--- Removes generator from power pool and clears ModData
--- LOCATION: shared/actions/
+-- ARQUIVO: LKS_EletricidadeConstrucao_Actions_DisconnectBuilding.lua
+-- OBJETIVO: Ação Temporizada (TimedAction) para desconectar um gerador elétrico de uma construção.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
+-- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Actions_DisconnectBuilding] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Actions_DisconnectBuilding] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
     return
 end
 
-print("[LKS_EletricidadeConstrucao_Actions_DisconnectBuilding] Loading Disconnect Building action...")
-
--- Load required modules
+-- Carrega dependência nativa do jogo
 require "TimedActions/ISBaseTimedAction"
 
--- Register module
-LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Actions_DisconnectBuilding")
+LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_Actions_DisconnectBuilding", "2.0.0")
 
--- Create namespace
 LKS_EletricidadeConstrucao.Actions = LKS_EletricidadeConstrucao.Actions or {}
 
--- ============================================================
--- DISCONNECT BUILDING TIMED ACTION
--- ============================================================
+-- ============================================================================
+-- DEFINIÇÃO DA CLASSE DE AÇÃO TEMPORIZADA
+-- ============================================================================
 
 LKS_EletricidadeConstrucao_DisconnectBuilding = ISBaseTimedAction:derive("LKS_EletricidadeConstrucao_DisconnectBuilding")
 
-local function ShouldSayToCharacter(runtime)
-    if not runtime then return true end
-    return not (runtime.IsServer and runtime.IsServer()
-        and runtime.IsMultiplayer and runtime.IsMultiplayer())
+--- Auxiliar interno para determinar se o personagem deve "falar" graficamente na tela.
+--- @param ambienteExecucao table O contexto de execução atual.
+--- @return boolean Retorna true se a mensagem deve ser dita graficamente.
+local function DeveDizerAoPersonagem(ambienteExecucao)
+    if not ambienteExecucao then return true end
+    return not (ambienteExecucao.IsServer and ambienteExecucao.IsServer()
+        and ambienteExecucao.IsMultiplayer and ambienteExecucao.IsMultiplayer())
 end
 
-local function TryFaceGenerator(character, generator)
-    if not character or not generator then return false end
+--- Tenta orientar visualmente o personagem em direção ao gerador antes de operar.
+--- @param personagem any O personagem do jogador (IsoPlayer).
+--- @param gerador any O objeto do gerador (IsoGenerator).
+--- @return boolean Retorna true se a operação de pcall ocorreu sem quebras.
+local function TentarEncararGerador(personagem, gerador)
+    if not personagem or not gerador then return false end
     return pcall(function()
-        character:faceThisObject(generator)
+        personagem:faceThisObject(gerador)
     end)
 end
 
--- ============================================================
--- VALIDATION
--- ============================================================
+-- ============================================================================
+-- VALIDAÇÕES
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:isValid()
-    -- Generator must still exist
+    -- O gerador físico deve continuar existindo no mundo
     if not self.generator then return false end
     
-    -- Generator must be at same location
-    local square = self.generator:getSquare()
-    if not square then return false end
+    -- O gerador deve estar no mesmo quadrado
+    local quadrado = self.generator:getSquare()
+    if not quadrado then return false end
     
-    -- Generator must be connected
-    local md = self.generator:getModData()
-    if not md.Gen_BuildingPoolID then return false end
+    -- O gerador deve estar conectado a uma piscina/malha ativa
+    local dadosMod = self.generator:getModData()
+    if not dadosMod.Gen_BuildingPoolID then return false end
     
     return true
 end
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:waitToStart()
-    if not TryFaceGenerator(self.character, self.generator) then
+    if not TentarEncararGerador(self.character, self.generator) then
         return false
     end
     return self.character:shouldBeTurning()
 end
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:update()
-    TryFaceGenerator(self.character, self.generator)
+    TentarEncararGerador(self.character, self.generator)
     self.character:setMetabolicTarget(Metabolics.HeavyDomestic)
 end
 
--- ============================================================
--- ANIMATION
--- ============================================================
+-- ============================================================================
+-- ANIMAÇÕES
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:start()
     self:setActionAnim("Loot")
@@ -94,42 +103,41 @@ function LKS_EletricidadeConstrucao_DisconnectBuilding:perform()
     ISBaseTimedAction.perform(self)
 end
 
--- ============================================================
--- ACTION EXECUTION
--- ============================================================
+-- ============================================================================
+-- EXECUÇÃO DA AÇÃO
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:complete()
-    local Runtime = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
-    local isMPClient = Runtime and Runtime.IsMultiplayerClient and Runtime.IsMultiplayerClient()
+    local AmbienteExecucao = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
+    local ehClienteMultiplayer = AmbienteExecucao and AmbienteExecucao.IsMultiplayerClient and AmbienteExecucao.IsMultiplayerClient()
 
-    if isMPClient then
-        local sq = self.generator and self.generator:getSquare()
-        if sq and isClient() then
+    if ehClienteMultiplayer then
+        local quadrado = self.generator and self.generator:getSquare()
+        if quadrado and isClient() then
             sendClientCommand(self.character, "LKS_EletricidadeConstrucao", "DisconnectBuilding", {
-                genX = sq:getX(),
-                genY = sq:getY(),
-                genZ = sq:getZ(),
+                genX = quadrado:getX(),
+                genY = quadrado:getY(),
+                genZ = quadrado:getZ(),
             })
         end
         return true
     end
 
-    -- Get generator ModData
-    local md = self.generator:getModData()
-    local buildingPoolID = md.Gen_BuildingPoolID
+    local dadosMod = self.generator:getModData()
+    local identificadorPoolConstrucao = dadosMod.Gen_BuildingPoolID
     
-    if not buildingPoolID then
-        LKS_EletricidadeConstrucao.Warn("[DisconnectBuilding] Generator not connected to building")
+    if not identificadorPoolConstrucao then
+        LKS_EletricidadeConstrucao.Warn("[DisconnectBuilding] O gerador não está acoplado a nenhuma construção")
         return true
     end
     
-    LKS_EletricidadeConstrucao.Print("[DisconnectBuilding] Disconnecting generator from building pool: " .. buildingPoolID)
+    LKS_EletricidadeConstrucao.Print("[DisconnectBuilding] Desconectando gerador elétrico da construção: " .. identificadorPoolConstrucao)
     
-    -- Deactivate generator first if active
+    -- Desliga o gerador preventivamente antes de soltar a fiação elétrica
     if self.generator:isActivated() then
         self.generator:setActivated(false)
         
-        -- Remove power from building
+        -- Atualiza a rede elétrica
         if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
             if LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                 LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
@@ -137,88 +145,84 @@ function LKS_EletricidadeConstrucao_DisconnectBuilding:complete()
         end
     end
 
-local sq = self.generator:getSquare()
+    local quadrado = self.generator:getSquare()
 
-    -- Remove heat sources immediately (don't wait for the 600-tick UpdateAll cycle).
-    -- LKS_EletricidadeConstrucao_HeatingClient is client-only; the guard keeps this a no-op on dedicated server.
-    if LKS_EletricidadeConstrucao_HeatingClient and LKS_EletricidadeConstrucao_HeatingClient.Remove and sq then
-        LKS_EletricidadeConstrucao_HeatingClient.Remove(sq:getX() .. "_" .. sq:getY() .. "_" .. sq:getZ())
+    -- Remove as fontes térmicas vinculadas de imediato
+    if LKS_EletricidadeConstrucao_HeatingClient and LKS_EletricidadeConstrucao_HeatingClient.Remove and quadrado then
+        LKS_EletricidadeConstrucao_HeatingClient.Remove(quadrado:getX() .. "_" .. quadrado:getY() .. "_" .. quadrado:getZ())
     end
-    local genX = sq and sq:getX() or 0
-    local genY = sq and sq:getY() or 0
-    local genZ = sq and sq:getZ() or 0
-    local genKey = string.format("%d_%d_%d", genX, genY, genZ)
+    
+    local xGerador = quadrado and quadrado:getX() or 0
+    local yGerador = quadrado and quadrado:getY() or 0
+    local zGerador = quadrado and quadrado:getZ() or 0
+    local chaveGerador = string.format("%d_%d_%d", xGerador, yGerador, zGerador)
 
-    -- If this generator is the pool owner (holds LKS_EletricidadeConstrucao_PoolData) and other generators
-    -- remain in the pool, transfer ownership to the next available generator before
-    -- wiping our own data.
-    if md.LKS_EletricidadeConstrucao_PoolData then
-        local SM_pre = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-        local bldPre = SM_pre and SM_pre.GetBuilding and SM_pre.GetBuilding(buildingPoolID)
-        if bldPre and bldPre.connectedGenerators then
-            local cell = getCell and getCell()
-            if cell then
-                -- connectedGenerators is Kahlua-deserialized (string numeric keys); use pairs
-                for _, k in pairs(bldPre.connectedGenerators) do
-                    if k ~= genKey then
-                        local nx, ny, nz = string.match(k, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-                        if nx then
-                            local nSq = cell:getGridSquare(tonumber(nx), tonumber(ny), tonumber(nz))
-                            if nSq then
-                                local nObjs = nSq:getObjects()
-                                for ni = 0, nObjs:size()-1 do
-                                    local nObj = nObjs:get(ni)
-                                    if nObj and instanceof(nObj, "IsoGenerator") then
-                                        local nMd = nObj:getModData()
-                                        local nextWorldId = md.LKS_EletricidadeConstrucao_WorldId
-                                        if not nextWorldId or nextWorldId == "unknown" then
-                                            nextWorldId = LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId and
-                                                          LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId() or nil
+    -- Se este gerador for o dono do pool (possuir LKS_EletricidadeConstrucao_PoolData) e houver outros
+    -- geradores na piscina, transfere os metadados elétricos para o próximo gerador ativo
+    if dadosMod.LKS_EletricidadeConstrucao_PoolData then
+        local GerenciadorEstadoPre = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+        local dadosConstrucaoPre = GerenciadorEstadoPre and GerenciadorEstadoPre.GetBuilding and GerenciadorEstadoPre.GetBuilding(identificadorPoolConstrucao)
+        if dadosConstrucaoPre and dadosConstrucaoPre.connectedGenerators then
+            local celula = getCell and getCell()
+            if celula then
+                for _, chave in pairs(dadosConstrucaoPre.connectedGenerators) do
+                    if chave ~= chaveGerador then
+                        local coordenadaX, coordenadaY, coordenadaZ = string.match(chave, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+                        if coordenadaX then
+                            local quadradoVizinho = celula:getGridSquare(tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ))
+                            if quadradoVizinho then
+                                local objetosVizinho = quadradoVizinho:getObjects()
+                                for indiceObjeto = 0, objetosVizinho:size() - 1 do
+                                    local objetoVizinho = objetosVizinho:get(indiceObjeto)
+                                    if objetoVizinho and instanceof(objetoVizinho, "IsoGenerator") then
+                                        local dadosModVizinho = objetoVizinho:getModData()
+                                        local proximoIdentificadorMundo = dadosMod.LKS_EletricidadeConstrucao_WorldId
+                                        if not proximoIdentificadorMundo or proximoIdentificadorMundo == "unknown" then
+                                            proximoIdentificadorMundo = LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId and
+                                                                          LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId() or nil
                                         end
-                                        if nextWorldId == "unknown" then
-                                            nextWorldId = nil
+                                        if proximoIdentificadorMundo == "unknown" then
+                                            proximoIdentificadorMundo = nil
                                         end
-                                        nMd.LKS_EletricidadeConstrucao_PoolData = md.LKS_EletricidadeConstrucao_PoolData  -- transfer ownership
-                                        nMd.LKS_EletricidadeConstrucao_WorldId  = nextWorldId
+                                        dadosModVizinho.LKS_EletricidadeConstrucao_PoolData = dadosMod.LKS_EletricidadeConstrucao_PoolData
+                                        dadosModVizinho.LKS_EletricidadeConstrucao_WorldId  = proximoIdentificadorMundo
                                         if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                            nObj:transmitModData()
+                                            objetoVizinho:transmitModData()
                                         end
                                         LKS_EletricidadeConstrucao.Print(string.format(
-                                            "[DisconnectBuilding] Pool ownership transferred from %s to %s",
-                                            genKey, k))
+                                            "[DisconnectBuilding] Posse da malha elétrica transferida de %s para %s",
+                                            chaveGerador, chave))
                                         break
                                     end
                                 end
                             end
                         end
-                        break  -- transfer to first available other generator only
+                        break -- Transfere ao primeiro gerador substituto
                     end
                 end
             end
         end
     end
 
-    -- 1. Wipe the pool link AND all cached stats from IsoGenerator ModData.
-    --    If left in place, Gen_Stats_* values persist on the IsoObject and
-    --    are read back by the Info Window as if the building was still connected.
-    md.Gen_BuildingPoolID           = nil
-    md.Gen_Stats_Consumers          = nil
-    md.Gen_Stats_ActiveConsumers    = nil
-    md.Gen_Stats_Lights             = nil
-    md.Gen_Stats_ActiveLights       = nil
-    md.Gen_Stats_Lamps              = nil
-    md.Gen_Stats_ActiveLamps        = nil
-    md.Gen_Stats_Appliances         = nil
-    md.Gen_Stats_ActiveAppliances   = nil
-    md.Gen_Stats_PowerDraw          = nil
-    md.Gen_Stats_Strain             = nil
-    md.Gen_Stats_FuelRateLph        = nil
-    md.Gen_Stats_Powered            = nil
-    md.LKS_EletricidadeConstrucao_DisconnectSuppressed      = true
-    md.LKS_EletricidadeConstrucao_WorldId                   = nil
-    md.LKS_EletricidadeConstrucao_PoolData                  = nil
+    -- Limpa todos os metadados elétricos associados à malha do ModData do gerador
+    dadosMod.Gen_BuildingPoolID           = nil
+    dadosMod.Gen_Stats_Consumers          = nil
+    dadosMod.Gen_Stats_ActiveConsumers    = nil
+    dadosMod.Gen_Stats_Lights             = nil
+    dadosMod.Gen_Stats_ActiveLights       = nil
+    dadosMod.Gen_Stats_Lamps              = nil
+    dadosMod.Gen_Stats_ActiveLamps        = nil
+    dadosMod.Gen_Stats_Appliances         = nil
+    dadosMod.Gen_Stats_ActiveAppliances   = nil
+    dadosMod.Gen_Stats_PowerDraw          = nil
+    dadosMod.Gen_Stats_Strain             = nil
+    dadosMod.Gen_Stats_FuelRateLph        = nil
+    dadosMod.Gen_Stats_Powered            = nil
+    dadosMod.LKS_EletricidadeConstrucao_DisconnectSuppressed      = true
+    dadosMod.LKS_EletricidadeConstrucao_WorldId                   = nil
+    dadosMod.LKS_EletricidadeConstrucao_PoolData                  = nil
     
-    -- Sync to clients in MP (no-op in SP)
+    -- Transmite atualização aos clientes em Multiplayer
     if LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
         self.generator:transmitModData()
         if isServer() then
@@ -226,130 +230,122 @@ local sq = self.generator:getSquare()
         end
     end
 
-    -- 2. Get the generator ID for cleanup operations
-    local genId = nil
-    local SM = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if SM then
-        genId = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
+    local identificadorGerador = nil
+    local GerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if GerenciadorEstado then
+        identificadorGerador = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
                 and LKS_EletricidadeConstrucao.Data.Generator.MakeId
-                and LKS_EletricidadeConstrucao.Data.Generator.MakeId(genX, genY, genZ)
+                and LKS_EletricidadeConstrucao.Data.Generator.MakeId(xGerador, yGerador, zGerador)
 
-        -- Clear stale generator back-links before save so periodic recovery
-        -- code cannot reattach an intentionally disconnected pre-reload generator.
-        local genData = genId and SM.GetGenerator(genId)
-        if not genData and LKS_EletricidadeConstrucao.Data
+        -- Desvincula o gerador no gerenciador de estado antes de gravar o banco de dados
+        local dadosGerador = identificadorGerador and GerenciadorEstado.GetGenerator(identificadorGerador)
+        if not dadosGerador and LKS_EletricidadeConstrucao.Data
                 and LKS_EletricidadeConstrucao.Data.Generator
                 and LKS_EletricidadeConstrucao.Data.Generator.New then
-            genData = LKS_EletricidadeConstrucao.Data.Generator.New(self.generator)
+            dadosGerador = LKS_EletricidadeConstrucao.Data.Generator.New(self.generator)
         end
-        if genData then
+        if dadosGerador then
             if LKS_EletricidadeConstrucao.Data
                     and LKS_EletricidadeConstrucao.Data.Generator
                     and LKS_EletricidadeConstrucao.Data.Generator.UpdateFromObject then
-                LKS_EletricidadeConstrucao.Data.Generator.UpdateFromObject(genData, self.generator)
+                LKS_EletricidadeConstrucao.Data.Generator.UpdateFromObject(dadosGerador, self.generator)
             end
             if LKS_EletricidadeConstrucao.Data
                     and LKS_EletricidadeConstrucao.Data.Generator
                     and LKS_EletricidadeConstrucao.Data.Generator.ClearBuildings then
-                LKS_EletricidadeConstrucao.Data.Generator.ClearBuildings(genData)
+                LKS_EletricidadeConstrucao.Data.Generator.ClearBuildings(dadosGerador)
             else
-                genData.connectedBuildings = {}
-                genData.strain = 0
+                dadosGerador.connectedBuildings = {}
+                dadosGerador.strain = 0
             end
-            if SM.AddGenerator then
-                if SM.RemoveGenerator and genData.id then
-                    SM.RemoveGenerator(genData.id)
+            if GerenciadorEstado.AddGenerator then
+                if GerenciadorEstado.RemoveGenerator and dadosGerador.id then
+                    GerenciadorEstado.RemoveGenerator(dadosGerador.id)
                 end
-                SM.AddGenerator(genData)
+                GerenciadorEstado.AddGenerator(dadosGerador)
             end
-            SM.MarkDirty()
+            GerenciadorEstado.MarkDirty()
         end
         
-        -- 3. Strip the generator from buildingData.connectedGenerators and
-        --    turn consumers off BEFORE removing the building from state so the
-        --    distributor can still find it when it tries to power everything down.
-        local bldData = SM.GetBuilding(buildingPoolID)
-        if bldData and bldData.connectedGenerators then
-            -- Remove genKey (Kahlua string-key safe)
-            local _newList = {}
-            for _, v in pairs(bldData.connectedGenerators) do
-                if v ~= genKey then table.insert(_newList, v) end
+        -- Remove a chave do gerador na tabela connectedGenerators da construção
+        local dadosConstrucao = GerenciadorEstado.GetBuilding(identificadorPoolConstrucao)
+        if dadosConstrucao and dadosConstrucao.connectedGenerators then
+            local novaLista = {}
+            for _, valor in pairs(dadosConstrucao.connectedGenerators) do
+                if valor ~= chaveGerador then 
+                    table.insert(novaLista, valor) 
+                end
             end
-            bldData.connectedGenerators = _newList
-            SM.MarkDirty()
+            dadosConstrucao.connectedGenerators = novaLista
+            GerenciadorEstado.MarkDirty()
         end
     end
 
-    -- 4. Force distributor to turn off all consumers WHILE building is still in state
+    -- Atualiza as lógicas de carga no distribuidor elétrico do mod
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor then
         if LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding then
-            LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(buildingPoolID)
+            LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(identificadorPoolConstrucao)
         elseif LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
             LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
         end
     end
 
-    -- 5. Remove from runtime power manager connection table
-    if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and sq then
-        local connId = LKS_EletricidadeConstrucao.Power.Manager.CreateConnectionId(genX, genY, genZ, buildingPoolID)
+    -- Remove a conexão do gerenciador físico de fiações elétricas em tempo de execução
+    if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and quadrado then
+        local identificadorConexao = LKS_EletricidadeConstrucao.Power.Manager.CreateConnectionId(xGerador, yGerador, zGerador, identificadorPoolConstrucao)
         if LKS_EletricidadeConstrucao.Power.Manager.DisconnectGeneratorFromBuilding then
-            LKS_EletricidadeConstrucao.Power.Manager.DisconnectGeneratorFromBuilding(connId)
+            LKS_EletricidadeConstrucao.Power.Manager.DisconnectGeneratorFromBuilding(identificadorConexao)
         elseif LKS_EletricidadeConstrucao.Power.Manager.DisconnectGenerator then
-            LKS_EletricidadeConstrucao.Power.Manager.DisconnectGenerator(connId)
+            LKS_EletricidadeConstrucao.Power.Manager.DisconnectGenerator(identificadorConexao)
         end
     end
 
-    -- 6. NOW remove the building from state if no generators remain
-    local SM2 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if SM2 then
-        local bldData2 = SM2.GetBuilding(buildingPoolID)
-        if bldData2 and bldData2.connectedGenerators and #bldData2.connectedGenerators == 0 then
-            SM2.RemoveBuilding(buildingPoolID)
-            SM2.MarkDirty()
+    -- Apaga a construção do banco de dados caso ela não possua nenhum gerador restante acoplado
+    local GerenciadorEstadoAux = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if GerenciadorEstadoAux then
+        local dadosConstrucaoAux = GerenciadorEstadoAux.GetBuilding(identificadorPoolConstrucao)
+        if dadosConstrucaoAux and dadosConstrucaoAux.connectedGenerators and #dadosConstrucaoAux.connectedGenerators == 0 then
+            GerenciadorEstadoAux.RemoveBuilding(identificadorPoolConstrucao)
+            GerenciadorEstadoAux.MarkDirty()
         end
         
-        -- 7. Keep the generator in StateManager as a disconnected generator.
-        --    Removing it here persists an empty LKS_EletricidadeConstrucao snapshot on the next restart
-        --    if the user disconnects before reconnecting it elsewhere.
-
-        -- 8. Save immediately so the cleared state survives reload
-        SM2.Save(true, true)
+        -- Salva de imediato o novo estado no save
+        GerenciadorEstadoAux.Save(true, true)
     end
     
-    if ShouldSayToCharacter(Runtime) then
-        self.character:Say(getText("IGUI_DisconnectedFromBuilding") or "Disconnected from building")
+    if DeveDizerAoPersonagem(AmbienteExecucao) then
+        self.character:Say(getText("IGUI_DisconnectedFromBuilding") or "Desconectado do edifício")
     end
     
     return true
 end
 
--- ============================================================
--- DURATION & CONSTRUCTOR
--- ============================================================
+-- ============================================================================
+-- DURAÇÃO E CONSTRUTOR
+-- ============================================================================
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:getDuration()
     if self.character:isTimedActionInstant() then
         return 1
     end
-    
-    -- Disconnection takes ~5 seconds (50 ticks)
+    -- Desconectar leva em torno de 5 segundos físicos (50 ticks)
     return 50
 end
 
 function LKS_EletricidadeConstrucao_DisconnectBuilding:new(character, generator)
-    local o = ISBaseTimedAction.new(self, character)
-    o.character = character
-    o.generator = generator
-    o.stopOnWalk = true
-    o.stopOnRun = true
-    o.maxTime = o:getDuration()
-    return o
+    local objetoInstanciado = ISBaseTimedAction.new(self, character)
+    objetoInstanciado.character = character
+    objetoInstanciado.generator = generator
+    objetoInstanciado.stopOnWalk = true
+    objetoInstanciado.stopOnRun = true
+    objetoInstanciado.maxTime = objetoInstanciado:getDuration()
+    return objetoInstanciado
 end
 
--- ============================================================
--- EXPORT TO NAMESPACE
--- ============================================================
+-- ============================================================================
+-- EXPORTAÇÃO PARA O NAMESPACE
+-- ============================================================================
 
 LKS_EletricidadeConstrucao.Actions.DisconnectBuilding = LKS_EletricidadeConstrucao_DisconnectBuilding
 
-print("[LKS_EletricidadeConstrucao_Actions_DisconnectBuilding] Disconnect Building action loaded successfully")
+LKS_EletricidadeConstrucao.Print("Ação DisconnectBuilding carregada no namespace")

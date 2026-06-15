@@ -1,20 +1,24 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Config.lua
--- LKS_EletricidadeConstrucao V2 - Runtime Configuration
--- Loaded from sandbox options and manages runtime settings
--- Settings can be changed by server admin without code modification
--- Version: 2.0.0-alpha
--- Date: February 22, 2026
+-- ARQUIVO: LKS_EletricidadeConstrucao_Config.lua
+-- OBJETIVO: Gerenciamento de preferências dinâmicas, variáveis do sandbox e persistência das opções do mod.
+-- DETALHE TÉCNICO: Lê as variáveis definidas no sandbox do servidor e sincroniza com os clientes conectados via ModData.
+-- Versão: 2.0.0-alpha
+-- Data: 22 de Fevereiro de 2026
 
--- Ensure namespace exists
+-- Garante que o namespace principal existe
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Config] LKS_EletricidadeConstrucao namespace not found - skipping module load")
+    print("[LKS_EletricidadeConstrucao_Config] Namespace LKS_EletricidadeConstrucao não encontrado - abortando carregamento do módulo")
     return
 end
 
@@ -22,110 +26,100 @@ local FuelConstants = LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeC
 local BuildingConstants = LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeConstrucao.Constants.BUILDING or {}
 
 -- ============================================================================
--- DEFAULT CONFIGURATION
+-- PREFERÊNCIAS E CONFIGURAÇÕES PADRÃO
 -- ============================================================================
-
--- These are defaults - will be overridden by sandbox options when available
+-- Estes valores servem como fallback e serão sobrescritos pelas SandboxVars do mundo.
 LKS_EletricidadeConstrucao.Config = {
     -- ========================================================================
-    -- GENERAL SETTINGS
+    -- PARÂMETROS GERAIS
     -- ========================================================================
-    
-    ModEnabled = true,                         -- Master on/off switch
-    DebugMode = false,                         -- Enable verbose logging
-    ShowNotifications = true,                  -- Show player notifications
-    RefrigerationEnabled = true,
-    LaundryEnabled = true,
-    CookingEnabled = true,
+    ModEnabled = true,                         -- Chave mestre de ativação do mod (Eletricidade Realista)
+    DebugMode = false,                         -- Modo depuração (logs verbosos e overlays)
+    ShowNotifications = true,                  -- Exibe alertas rápidos na tela do jogador
+    RefrigerationEnabled = true,               -- Integração nativa do driver de refrigeração LKS
+    LaundryEnabled = true,                     -- Integração nativa do driver de lavanderia LKS
+    CookingEnabled = true,                     -- Integração nativa do driver de culinária LKS
     
     -- ========================================================================
-    -- FUEL CONSUMPTION SETTINGS
+    -- CONSUMO DE COMBUSTÍVEL
     -- ========================================================================
+    FuelConsumptionEnabled = true,             -- Ativa o consumo de combustível customizado
+    FuelConsumptionRate = 1.0,                 -- Multiplicador global de consumo de gasolina
+    RealisticFuelConsumption = true,           -- Ativa a curva física de consumo baseado na sobrecarga (strain)
+    ChunkReloadTracking = true,                -- Rastreia o tempo decorrido enquanto a região (chunk) esteve descarregada
     
-    FuelConsumptionEnabled = true,             -- Enable fuel consumption system
-    FuelConsumptionRate = 1.0,                 -- Multiplier for fuel usage (1.0 = default)
-    RealisticFuelConsumption = true,           -- Enable strain-based consumption
-    ChunkReloadTracking = true,                -- Track fuel during chunk unload
-    
-    -- Strain system
-    StrainSystemEnabled = true,                -- Enable generator strain mechanics
-    StrainModifier = 0.01,                     -- Fuel multiplier per % strain (default from constants)
-    StrainEfficiencyPenalty = true,            -- High strain = worse fuel efficiency
-    OverloadFailureEnabled = false,            -- Generators can fail from extreme overload
+    -- Mecânica de Sobrecarga (Strain)
+    StrainSystemEnabled = true,                -- Ativa danos e penalidades de eficiência por sobrecarga
+    StrainModifier = 0.01,                     -- Fator multiplicador de combustível por ponto de sobrecarga
+    StrainEfficiencyPenalty = true,            -- Penaliza o rendimento em sobrecargas críticas
+    OverloadFailureEnabled = false,            -- Geradores podem explodir/pegar fogo em sobrecarga contínua
     BaseLoadCapacity = FuelConstants.BASE_LOAD_CAPACITY or 120.0,
     
     -- ========================================================================
-    -- BUILDING DETECTION SETTINGS
+    -- VARREDURA DE CONSTRUÇÃO
     -- ========================================================================
+    AutoDetectBuildings = true,                -- Varre automaticamente o mapa buscando cômodos e edifícios
+    MaxScanRadius = 50,                        -- Raio máximo de quadrados para a varredura
+    BorderRadius = 2,                          -- Distância fora das paredes para englobar lâmpadas externas
+    MultiFloorSupport = true,                  -- Rastreia múltiplos andares do mesmo edifício
     
-    AutoDetectBuildings = true,                -- Automatically scan for buildings
-    MaxScanRadius = 50,                        -- Maximum tiles to scan (reduced from constant)
-    BorderRadius = 2,                          -- Tiles around building for outdoor items
-    MultiFloorSupport = true,                  -- Detect multi-story buildings
-    
-    -- Performance
-    ScanThrottling = true,                     -- Limit scan time per frame
-    MaxScansPerFrame = 5,                      -- Max concurrent scans
+    -- Otimização e Desempenho (Performance Budgets)
+    ScanThrottling = true,                     -- Divide a busca em vários frames para evitar travamentos de tela (stuttering)
+    MaxScansPerFrame = 5,                      -- Quantidade máxima de varreduras simultâneas permitidas
     MaxConsumersPerBuilding = BuildingConstants.MAX_CONSUMERS_PER_BUILDING or 500,
     MaxGeneratorsPerBuilding = BuildingConstants.MAX_GENERATORS_PER_BUILDING or 10,
     
     -- ========================================================================
-    -- HEATING SYSTEM SETTINGS
+    -- SISTEMA DE AQUECIMENTO (TERMOCLIMATIZAÇÃO)
     -- ========================================================================
-    
-    HeatingSystemEnabled = false,              -- Heating is currently intended for singleplayer use
-    TargetTemperature = 18.0,                  -- Desired indoor temperature
-    HeatingPowerCost = 1.0,                    -- Multiplier for heating power usage
-    InsulationEnabled = true,                  -- Account for wall/roof insulation
-    
-    -- ========================================================================
-    -- UI SETTINGS
-    -- ========================================================================
-    
-    ShowInfoWindow = true,                     -- Enable generator info window
-    ShowCoverageArea = false,                  -- Render green tiles for coverage (debug)
-    RealtimeLightCount = true,                 -- Update light count in real-time
-    ShowStrainIndicator = true,                -- Show strain gauge in UI
-    
-    UIUpdateRate = 100,                        -- UI refresh rate (milliseconds)
-    ShowFuelPercentage = true,                 -- Show fuel as percentage
-    ShowConsumerCount = true,                  -- Show number of powered items
+    HeatingSystemEnabled = false,              -- O aquecimento realista é recomendado primariamente para partidas solo (SP)
+    TargetTemperature = 18.0,                  -- Temperatura de conforto desejada em ambientes fechados
+    HeatingPowerCost = 1.0,                    -- Multiplicador de consumo de carga do sistema de aquecimento
+    InsulationEnabled = true,                  -- Leva em conta o isolamento térmico das paredes da sala
     
     -- ========================================================================
-    -- NETWORK SETTINGS (Multiplayer)
+    -- INTERFACE (UI)
     -- ========================================================================
+    ShowInfoWindow = true,                     -- Habilita a janela de informações elétricas ao interagir
+    ShowCoverageArea = false,                  -- Desenha indicadores visuais no chão da cobertura do gerador
+    RealtimeLightCount = true,                 -- Atualiza em tempo real o contador de lâmpadas
+    ShowStrainIndicator = true,                -- Exibe a barra de sobrecarga gráfica na janela
     
-    NetworkSyncEnabled = true,                 -- Enable state sync to clients
-    FullSyncInterval = 30,                     -- Full sync every N minutes
-    DeltaSyncInterval = 1,                     -- Delta sync every N minutes
-    BatchNetworkUpdates = true,                -- Group updates for efficiency
-    
-    -- ========================================================================
-    -- COMPATIBILITY SETTINGS
-    -- ========================================================================
-    
-    RVInteriorCompatibility = true,            -- Support RV Interior mod coordinates
-    VanillaGeneratorOverride = false,          -- Replace vanilla generator behavior
-    ModdedGeneratorSupport = true,             -- Detect generators from other mods
+    UIUpdateRate = 100,                        -- Frequência de redesenho da interface (milissegundos)
+    ShowFuelPercentage = true,                 -- Exibe combustível restante em porcentagem simples
+    ShowConsumerCount = true,                  -- Exibe a quantidade de aparelhos ligados na rede
     
     -- ========================================================================
-    -- BARREL SYSTEM SETTINGS
+    -- CONFIGURAÇÕES DE REDE (MULTIPLAYER)
     -- ========================================================================
-    
-    BarrelSystemEnabled = true,                -- Enable barrel linking
-    AutoRefuelFromBarrels = true,              -- Automatically transfer fuel
-    MaxBarrelsPerGenerator = 10,               -- Maximum linked barrels
-    BarrelRefuelRate = 10.0,                   -- Fuel units per game hour
+    NetworkSyncEnabled = true,                 -- Habilita a sincronização do estado com os clientes
+    FullSyncInterval = 30,                     -- Intervalo para sincronização completa de dados (minutos de jogo)
+    DeltaSyncInterval = 1,                     -- Intervalo para envio de alterações rápidas (minutos de jogo)
+    BatchNetworkUpdates = true,                -- Agrupa atualizações para economizar pacotes de rede
     
     -- ========================================================================
-    -- ADVANCED SETTINGS
+    -- COMPATIBILIDADE E MODS PARCEIROS
     -- ========================================================================
+    RVInteriorCompatibility = true,            -- Ativa suporte de coordenadas para o mod RV Interior
+    VanillaGeneratorOverride = false,          -- Sobrescreve as mecânicas internas de geradores da própria engine do PZ
+    ModdedGeneratorSupport = true,             -- Detecta geradores adicionados por outros mods da oficina
     
-    StateVersion = 2.0,                        -- ModData schema version
-    EnableLegacyMigration = true,              -- Support V1 save migration
-    PerformanceMode = false,                   -- Reduce features for performance
+    -- ========================================================================
+    -- BARRIS DE REABASTECIMENTO
+    -- ========================================================================
+    BarrelSystemEnabled = true,                -- Habilita a vinculação de barris ao reservatório
+    AutoRefuelFromBarrels = true,              -- Transfere gasolina dos barris para o gerador de forma autônoma
+    MaxBarrelsPerGenerator = 10,               -- Limite de barris vinculados por gerador
+    BarrelRefuelRate = 10.0,                   -- Unidades de gasolina transferidas por hora de jogo
     
-    -- Debug options
+    -- ========================================================================
+    -- SISTEMAS AVANÇADOS
+    -- ========================================================================
+    StateVersion = 2.0,                        -- Versão da estrutura de dados salva no ModData
+    EnableLegacyMigration = true,              -- Ativa migração de banco de dados da V1 antiga
+    PerformanceMode = false,                   -- Desativa lógicas pesadas visando computadores mais fracos
+    
+    -- Categorias de logs detalhados para desenvolvedores
     DebugCategories = {
         FuelConsumption = false,
         BuildingDetection = false,
@@ -134,6 +128,7 @@ LKS_EletricidadeConstrucao.Config = {
     }
 }
 
+--- Atualiza as constantes base da física de simulação baseando-se nos valores do Sandbox.
 local function ApplySandboxBackedConstants()
     local constants = LKS_EletricidadeConstrucao.Constants
     local config = LKS_EletricidadeConstrucao.Config
@@ -154,16 +149,17 @@ local function ApplySandboxBackedConstants()
 end
 
 -- ============================================================================
--- CONFIGURATION LOADING
+-- SESSÃO DE MÉTODOS DE CONFIGURAÇÃO
 -- ============================================================================
 
---- Load configuration from sandbox options
---- Called during mod initialization
+--- Carrega as configurações de jogo a partir das SandboxVars definidas no mundo/servidor.
+---
+--- Chamado no bootstrap do mod para sobrescrever os valores estáticos locais.
 function LKS_EletricidadeConstrucao.Config.LoadFromSandbox()
     local sandboxOptions = SandboxVars
     
     if not sandboxOptions then
-        LKS_EletricidadeConstrucao.Warn("Sandbox options not available, using defaults")
+        LKS_EletricidadeConstrucao.Warn("Opções do SandboxVars indisponíveis, utilizando configurações padrão do código")
         return
     end
     
@@ -216,22 +212,23 @@ function LKS_EletricidadeConstrucao.Config.LoadFromSandbox()
 
     ApplySandboxBackedConstants()
     
-    LKS_EletricidadeConstrucao.Print("Configuration loaded from sandbox options")
+    LKS_EletricidadeConstrucao.Print("Opções de configuração sincronizadas com o SandboxVars")
 end
 
---- Save configuration to ModData (for persistence)
---- @param key string Optional config key to save (nil = save all)
+--- Salva as configurações locais no ModData global do mundo (Apenas no Servidor/Host).
+---
+--- Sincroniza a tabela de preferências enviando pacotes ModData.transmit() para os clientes.
+---
+--- @param key string Opcional: A chave de configuração individual (salva apenas o valor correspondente).
 function LKS_EletricidadeConstrucao.Config.SaveToModData(key)
     if not LKS_EletricidadeConstrucao.IsServer() then
-        LKS_EletricidadeConstrucao.Warn("Config.SaveToModData called on client - ignoring")
+        LKS_EletricidadeConstrucao.Warn("Config.SaveToModData requisitada em um cliente local - ignorando")
         return
     end
     
     if key then
-        -- Save specific config value
         ModData.add("LKS_EletricidadeConstrucao_Config_" .. key, LKS_EletricidadeConstrucao.Config[key])
     else
-        -- Save entire config
         ModData.add("LKS_EletricidadeConstrucao_ConfigData", LKS_EletricidadeConstrucao.Config)
     end
     
@@ -240,66 +237,64 @@ function LKS_EletricidadeConstrucao.Config.SaveToModData(key)
     end
 end
 
---- Load configuration from ModData (on client sync or save load)
+--- Reconstrói e mescla as preferências locais a partir do ModData compartilhado (Clientes e Saves carregados).
 function LKS_EletricidadeConstrucao.Config.LoadFromModData()
     local savedConfig = ModData.get("LKS_EletricidadeConstrucao_ConfigData")
     
     if savedConfig then
-        -- Merge saved config with defaults (preserve new defaults)
         for key, value in pairs(savedConfig) do
             if LKS_EletricidadeConstrucao.Config[key] ~= nil then
                 LKS_EletricidadeConstrucao.Config[key] = value
             end
         end
-        LKS_EletricidadeConstrucao.Print("Configuration loaded from ModData")
+        LKS_EletricidadeConstrucao.Print("Opções de configuração mescladas a partir do ModData")
     end
 end
 
---- Reset configuration to defaults
+--- Reseta todas as chaves de configuração locais para as definições de código estático (Defaults).
 function LKS_EletricidadeConstrucao.Config.ResetToDefaults()
-    LKS_EletricidadeConstrucao.Warn("Resetting configuration to defaults")
-    -- Reload this file (simple approach - in production, store defaults separately)
+    LKS_EletricidadeConstrucao.Warn("Resetando preferências de configuração para os padrões estáticos")
     require("LKS_EletricidadeConstrucao_Config")
 end
 
---- Validate configuration values (ensure sane ranges)
+--- Executa uma validação preventiva de limites físicos nas chaves numéricas da tabela de preferências.
+--- Clampa valores bizarros ou perigosos configurados fora da faixa suportada para evitar estouros ou crashes.
 function LKS_EletricidadeConstrucao.Config.Validate()
     local config = LKS_EletricidadeConstrucao.Config
     local warnings = 0
     
-    -- Validate numeric ranges
     if config.FuelConsumptionRate < 0.1 or config.FuelConsumptionRate > 10.0 then
-        LKS_EletricidadeConstrucao.Warn("FuelConsumptionRate out of range (0.1-10), clamping")
+        LKS_EletricidadeConstrucao.Warn("FuelConsumptionRate fora dos limites seguros (0.1 a 10.0), clampando")
         config.FuelConsumptionRate = math.max(0.1, math.min(10.0, config.FuelConsumptionRate))
         warnings = warnings + 1
     end
     
     if config.MaxScanRadius < 10 or config.MaxScanRadius > 200 then
-        LKS_EletricidadeConstrucao.Warn("MaxScanRadius out of range (10-200), clamping")
+        LKS_EletricidadeConstrucao.Warn("MaxScanRadius fora dos limites seguros (10 a 200), clampando")
         config.MaxScanRadius = math.max(10, math.min(200, config.MaxScanRadius))
         warnings = warnings + 1
     end
     
     if config.TargetTemperature < -20 or config.TargetTemperature > 40 then
-        LKS_EletricidadeConstrucao.Warn("TargetTemperature out of range (-20-40), clamping")
+        LKS_EletricidadeConstrucao.Warn("TargetTemperature fora dos limites seguros (-20 a 40), clampando")
         config.TargetTemperature = math.max(-20, math.min(40, config.TargetTemperature))
         warnings = warnings + 1
     end
 
     if config.BaseLoadCapacity < 20 or config.BaseLoadCapacity > 500 then
-        LKS_EletricidadeConstrucao.Warn("BaseLoadCapacity out of range (20-500), clamping")
+        LKS_EletricidadeConstrucao.Warn("BaseLoadCapacity fora dos limites seguros (20 a 500), clampando")
         config.BaseLoadCapacity = math.max(20, math.min(500, config.BaseLoadCapacity))
         warnings = warnings + 1
     end
 
     if config.MaxConsumersPerBuilding < 50 or config.MaxConsumersPerBuilding > 5000 then
-        LKS_EletricidadeConstrucao.Warn("MaxConsumersPerBuilding out of range (50-5000), clamping")
+        LKS_EletricidadeConstrucao.Warn("MaxConsumersPerBuilding fora dos limites seguros (50 a 5000), clampando")
         config.MaxConsumersPerBuilding = math.max(50, math.min(5000, config.MaxConsumersPerBuilding))
         warnings = warnings + 1
     end
 
     if config.MaxGeneratorsPerBuilding < 1 or config.MaxGeneratorsPerBuilding > 50 then
-        LKS_EletricidadeConstrucao.Warn("MaxGeneratorsPerBuilding out of range (1-50), clamping")
+        LKS_EletricidadeConstrucao.Warn("MaxGeneratorsPerBuilding fora dos limites seguros (1 a 50), clampando")
         config.MaxGeneratorsPerBuilding = math.max(1, math.min(50, config.MaxGeneratorsPerBuilding))
         warnings = warnings + 1
     end
@@ -307,22 +302,21 @@ function LKS_EletricidadeConstrucao.Config.Validate()
     ApplySandboxBackedConstants()
     
     if warnings > 0 then
-        LKS_EletricidadeConstrucao.Warn(string.format("Configuration validation found %d issue(s)", warnings))
+        LKS_EletricidadeConstrucao.Warn(string.format("Validador de Configuração encontrou %d aviso(s) de ajuste", warnings))
     else
-        LKS_EletricidadeConstrucao.Debug("Configuration validation passed")
+        LKS_EletricidadeConstrucao.Debug("Validador de Configuração executado com sucesso e zero inconformidades")
     end
 end
 
 -- ============================================================================
--- INITIALIZATION
+-- CONCLUSÃO DA INICIALIZAÇÃO
 -- ============================================================================
 
 LKS_EletricidadeConstrucao._InitStatus.ConfigLoaded = true
 LKS_EletricidadeConstrucao.RegisterModule("Config", "2.0.0")
 
--- Validate config on load
 LKS_EletricidadeConstrucao.Config.Validate()
 
-LKS_EletricidadeConstrucao.Print("Configuration initialized with defaults")
+LKS_EletricidadeConstrucao.Print("Módulo de Configuração inicializado")
 
 return LKS_EletricidadeConstrucao.Config

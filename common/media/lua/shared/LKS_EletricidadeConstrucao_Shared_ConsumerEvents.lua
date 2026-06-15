@@ -1,41 +1,51 @@
 -- ============================================================================
--- HOMENAGEM E AGRADECIMENTO AO CRIADOR ORIGINAL
--- Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
--- Agradecemos a Beathoven pelo mod original "Generator Powered Buildings"
--- (ID Workshop: 3597471949) e pela contribuição à comunidade.
+-- 🌟 LKS SUPERMOD PATCH — CRÉDITOS & AGRADECIMENTOS 🌟
+-- ============================================================================
+-- 💖 Este arquivo foi adaptado e integrado nativamente ao LKS SuperMod Patch.
+-- 🛠️ Mod Original: Generator Powered Buildings (ID Workshop: 3597471949)
+-- 👤 Autor Original: Beathoven
+-- 🌐 Link: https://steamcommunity.com/sharedfiles/filedetails/?id=3597471949
+-- 
+-- Este mod só é possível graças a todos os modders que vieram antes de mim.
+-- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
 
--- LKS_EletricidadeConstrucao_Shared_ConsumerEvents.lua
--- LKS_EletricidadeConstrucao V2 - Shared Consumer Event Hooks
--- Placed in shared/ so these events fire in the client Lua context where PZ
--- dispatches them (singleplayer uses a single combined state, but OnObjectAdded
--- is a client-side event).
--- Version: 2.0.0-alpha
+-- ARQUIVO: LKS_EletricidadeConstrucao_Shared_ConsumerEvents.lua
+-- OBJETIVO: Escutas e gatilhos de eventos compartilhados para aparelhos consumidores de energia.
+-- DETALHE TÉCNICO: Posicionado na pasta 'shared/' para rodar tanto no escopo de simulação
+-- do servidor quanto nos eventos gráficos (como OnObjectAdded) que disparam prioritariamente no cliente.
+-- Versão: 2.0.0-alpha
+-- Data: 15 de Junho de 2026
 
 -- ============================================================================
--- HELPERS
+-- AUXILIARES INTERNOS
 -- ============================================================================
 
---- Returns true if obj is a power consumer we track.
-local function IsTrackedConsumer(obj)
-    if not obj then return false end
-    local hasFridge  = obj.getContainerByType and obj:getContainerByType("fridge")  ~= nil
-    local hasFreezer = obj.getContainerByType and obj:getContainerByType("freezer") ~= nil
-    return instanceof(obj, "IsoLightSwitch")
-        or instanceof(obj, "IsoLight")
-        or instanceof(obj, "IsoClothingDryer")
-        or instanceof(obj, "IsoClothingWasher")
-        or instanceof(obj, "IsoCombinationWasherDryer")
-        or instanceof(obj, "IsoStackedWasherDryer")
-        or instanceof(obj, "IsoStove")
-        or instanceof(obj, "IsoTelevision")
-        or instanceof(obj, "IsoRadio")
-        or hasFridge
-        or hasFreezer
+--- Verifica se um objeto nativo é um consumidor de energia que o mod deve rastrear.
+--- @param objeto any O objeto de mapa nativo (IsoObject).
+--- @return boolean Retorna true se for um aparelho rastreado.
+local function EhConsumidorRastreado(objeto)
+    if not objeto then return false end
+    
+    local possuiGeladeira  = objeto.getContainerByType and objeto:getContainerByType("fridge")  ~= nil
+    local possuiCongelador = objeto.getContainerByType and objeto:getContainerByType("freezer") ~= nil
+    
+    return instanceof(objeto, "IsoLightSwitch")
+        or instanceof(objeto, "IsoLight")
+        or instanceof(objeto, "IsoClothingDryer")
+        or instanceof(objeto, "IsoClothingWasher")
+        or instanceof(objeto, "IsoCombinationWasherDryer")
+        or instanceof(objeto, "IsoStackedWasherDryer")
+        or instanceof(objeto, "IsoStove")
+        or instanceof(objeto, "IsoTelevision")
+        or instanceof(objeto, "IsoRadio")
+        or possuiGeladeira
+        or possuiCongelador
 end
 
---- Returns true if the required V2 server modules are available.
-local function HasServerModules()
+--- Verifica se todos os módulos necessários de servidor estão carregados.
+--- @return boolean Retorna true se os submódulos de scanner e estado do core estiverem prontos.
+local function PossuiModulosServidor()
     return LKS_EletricidadeConstrucao
         and LKS_EletricidadeConstrucao.Building
         and LKS_EletricidadeConstrucao.Building.ConsumerScanner
@@ -45,269 +55,282 @@ local function HasServerModules()
         and LKS_EletricidadeConstrucao.Core.StateManager.GetAllBuildings ~= nil
 end
 
---- Rescan every known building and push updated stats to generator ModData.
---- Iterates all buildings (typically 1-2) - no tile-to-building lookup needed.
-local function RescanAllBuildings()
-    if not HasServerModules() then return end
+--- Varre e atualiza novamente todos os aparelhos de todas as construções cadastradas.
+---
+--- Recalcula o consumo elétrico e força o distribuidor a recalcular a carga da rede de cada prédio.
+local function EscanearTodasConstrucoes()
+    if not PossuiModulosServidor() then return end
 
-    local buildings = LKS_EletricidadeConstrucao.Core.StateManager.GetAllBuildings()
-    if not buildings then return end
+    local construcoes = LKS_EletricidadeConstrucao.Core.StateManager.GetAllBuildings()
+    if not construcoes then return end
 
-    local count = 0
-    for _, bd in pairs(buildings) do
-        LKS_EletricidadeConstrucao.Building.ConsumerScanner.RescanConsumers(bd)
+    local contagemConstrucoes = 0
+    for _, dadosConstrucao in pairs(construcoes) do
+        LKS_EletricidadeConstrucao.Building.ConsumerScanner.RescanConsumers(dadosConstrucao)
         if LKS_EletricidadeConstrucao.Power
-        and LKS_EletricidadeConstrucao.Power.Distributor
-        and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding then
-            LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(bd.id)
+                and LKS_EletricidadeConstrucao.Power.Distributor
+                and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding then
+            LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(dadosConstrucao.id)
         end
-        count = count + 1
+        contagemConstrucoes = contagemConstrucoes + 1
     end
 
-    if count > 0 and LKS_EletricidadeConstrucao.Core.Logger then
+    if contagemConstrucoes > 0 and LKS_EletricidadeConstrucao.Core.Logger then
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("ConsumerEvents: rescanned %d building(s)", count),
+            string.format("ConsumerEvents: Re-escaneadas %d construção(ões)", contagemConstrucoes),
             "Building")
     end
 end
 
-local function IsAuthoritativeRuntime()
-    local Runtime = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
-    if not Runtime then return false end
-    if Runtime.IsMultiplayerClient and Runtime.IsMultiplayerClient() then
+--- Verifica se o ambiente de execução atual é o host autoritativo (Servidor ou SP).
+--- @return boolean Retorna true se for servidor dedicado ou singleplayer local.
+local function EhAmbienteAutoritativo()
+    local AmbienteExecucao = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Runtime
+    if not AmbienteExecucao then return false end
+    
+    if AmbienteExecucao.IsMultiplayerClient and AmbienteExecucao.IsMultiplayerClient() then
         return false
     end
-    return (Runtime.IsServer and Runtime.IsServer())
-        or (Runtime.IsSingleplayer and Runtime.IsSingleplayer())
+    
+    return (AmbienteExecucao.IsServer and AmbienteExecucao.IsServer())
+        or (AmbienteExecucao.IsSingleplayer and AmbienteExecucao.IsSingleplayer())
 end
 
-local function TableIsEmpty(t)
-    if not t then return true end
-    for _ in pairs(t) do return false end
+--- Verifica se uma tabela informada está vazia ou nula.
+--- @param tabela table|nil A tabela a testar.
+--- @return boolean Retorna true se estiver vazia ou for nil.
+local function TabelaEstaVazia(tabela)
+    if not tabela then return true end
+    for _ in pairs(tabela) do return false end
     return true
 end
 
-local function CleanupRemovedGeneratorState(gen)
-    if not gen or not instanceof(gen, "IsoGenerator") then return end
-    if not IsAuthoritativeRuntime() or not HasServerModules() then return end
+--- Remove os links de salvamento e referências de estado de um gerador removido física ou logicamente.
+--- @param gerador any O objeto de gerador removido (IsoGenerator).
+local function LimparEstadoGeradorRemovido(gerador)
+    if not gerador or not instanceof(gerador, "IsoGenerator") then return end
+    if not EhAmbienteAutoritativo() or not PossuiModulosServidor() then return end
 
-    local SM = LKS_EletricidadeConstrucao.Core.StateManager
-    local GenData = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
-    if not SM or not GenData or not GenData.MakeId then return end
+    local GerenciadorEstado = LKS_EletricidadeConstrucao.Core.StateManager
+    local DadosGerador = LKS_EletricidadeConstrucao.Data and LKS_EletricidadeConstrucao.Data.Generator
+    if not GerenciadorEstado or not DadosGerador or not DadosGerador.MakeId then return end
 
-    local sq = gen:getSquare()
-    if not sq then return end
+    local quadrado = gerador:getSquare()
+    if not quadrado then return end
 
-    local genId = GenData.MakeId(sq:getX(), sq:getY(), sq:getZ())
-    local genKey = string.format("%d_%d_%d", sq:getX(), sq:getY(), sq:getZ())
-    local genData = SM.GetGenerator and SM.GetGenerator(genId)
-    local md = gen:getModData()
-    local affectedBuildings = {}
-    local changed = false
+    local identificadorGerador = DadosGerador.MakeId(quadrado:getX(), quadrado:getY(), quadrado:getZ())
+    local chaveGerador = string.format("%d_%d_%d", quadrado:getX(), quadrado:getY(), quadrado:getZ())
+    local dadosGerador = GerenciadorEstado.GetGenerator and GerenciadorEstado.GetGenerator(identificadorGerador)
+    local dadosMod = gerador:getModData()
+    local construcoesAfetadas = {}
+    local houveAlteracao = false
 
-    if md and md.Gen_BuildingPoolID then
-        affectedBuildings[md.Gen_BuildingPoolID] = true
+    if dadosMod and dadosMod.Gen_BuildingPoolID then
+        construcoesAfetadas[dadosMod.Gen_BuildingPoolID] = true
     end
-    if genData and genData.connectedBuildings then
-        for _, bid in pairs(genData.connectedBuildings) do
-            affectedBuildings[bid] = true
+    if dadosGerador and dadosGerador.connectedBuildings then
+        for _, identificadorConstrucao in pairs(dadosGerador.connectedBuildings) do
+            construcoesAfetadas[identificadorConstrucao] = true
         end
     end
 
-    for buildingId in pairs(affectedBuildings) do
-        local bldData = SM.GetBuilding and SM.GetBuilding(buildingId)
-        ---@cast bldData any
-        if bldData and bldData.connectedGenerators then
-            local newList = {}
-            local removed = false
-            for _, k in pairs(bldData.connectedGenerators) do
-                if k ~= genKey then
-                    table.insert(newList, k)
+    for identificadorConstrucao in pairs(construcoesAfetadas) do
+        local dadosConstrucao = GerenciadorEstado.GetBuilding and GerenciadorEstado.GetBuilding(identificadorConstrucao)
+        if dadosConstrucao and dadosConstrucao.connectedGenerators then
+            local novaLista = {}
+            local removido = false
+            for _, chave in pairs(dadosConstrucao.connectedGenerators) do
+                if chave ~= chaveGerador then
+                    table.insert(novaLista, chave)
                 else
-                    removed = true
+                    removido = true
                 end
             end
-            if removed then
-                bldData.connectedGenerators = newList
-                changed = true
-                if TableIsEmpty(newList) then
-                    SM.RemoveBuilding(buildingId)
+            if removido then
+                dadosConstrucao.connectedGenerators = novaLista
+                houveAlteracao = true
+                if TabelaEstaVazia(novaLista) then
+                    GerenciadorEstado.RemoveBuilding(identificadorConstrucao)
                 else
-                    SM.MarkDirty()
+                    GerenciadorEstado.MarkDirty()
                 end
                 if LKS_EletricidadeConstrucao.Core.Logger then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                        "[ConsumerEvents] Removed stale generator link %s from building %s",
-                        genKey, buildingId), "Building")
+                        "[ConsumerEvents] Removido link órfão do gerador %s na construção %s",
+                        chaveGerador, identificadorConstrucao), "Building")
                 end
             end
         end
     end
 
-    if genData and SM.RemoveGenerator then
-        SM.RemoveGenerator(genId)
-        changed = true
+    if dadosGerador and GerenciadorEstado.RemoveGenerator then
+        GerenciadorEstado.RemoveGenerator(identificadorGerador)
+        houveAlteracao = true
         if LKS_EletricidadeConstrucao.Core.Logger then
             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                "[ConsumerEvents] Removed generator state for world-removed generator %s",
-                genId), "Building")
+                "[ConsumerEvents] Removidos dados do gerador desinstalado no mundo %s",
+                identificadorGerador), "Building")
         end
     end
 
-    if changed
+    if houveAlteracao
             and LKS_EletricidadeConstrucao.Power
             and LKS_EletricidadeConstrucao.Power.Distributor
             and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding then
-        for buildingId in pairs(affectedBuildings) do
-            if SM.GetBuilding and SM.GetBuilding(buildingId) then
-                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(buildingId)
+        for identificadorConstrucao in pairs(construcoesAfetadas) do
+            if GerenciadorEstado.GetBuilding and GerenciadorEstado.GetBuilding(identificadorConstrucao) then
+                LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(identificadorConstrucao)
             end
         end
     end
 
-    if changed and SM.IsStateLoaded and SM.IsStateLoaded() and SM.Save then
-        SM.Save(true, false)
+    if houveAlteracao and GerenciadorEstado.IsStateLoaded and GerenciadorEstado.IsStateLoaded() and GerenciadorEstado.Save then
+        GerenciadorEstado.Save(true, false)
     end
 end
 
 -- ============================================================================
--- EVENT HANDLERS
+-- MANIPULADORES DOS EVENTOS DA ENGINE
 -- ============================================================================
 
---- Fired when any ISO object is placed in the world.
-local function OnObjectAdded(obj)
-    if not IsTrackedConsumer(obj) then return end
-    RescanAllBuildings()
+--- Dispara quando qualquer objeto físico é adicionado ou construído no mapa.
+--- @param objeto any O objeto adicionado.
+local function AoAdicionarObjeto(objeto)
+    if not EhConsumidorRastreado(objeto) then return end
+    EscanearTodasConstrucoes()
 end
 
---- Handle pool ownership transfer when the pool-owner generator is picked up or
---- destroyed.  Fires while the IsoObject is still in the world so ModData is
---- readable.  The first remaining generator in connectedGenerators inherits
---- LKS_EletricidadeConstrucao_PoolData so the building survives without a full rescan.
-local function HandleGeneratorAboutToBeRemoved(gen)
-    if not gen or not instanceof(gen, "IsoGenerator") then return end
-    local md = gen:getModData()
-    -- Only act on connected generators that are the pool owner (have LKS_EletricidadeConstrucao_PoolData)
-    if not (md and md.Gen_BuildingPoolID and md.LKS_EletricidadeConstrucao_PoolData) then return end
+--- Gerencia a transferência de propriedade da piscina elétrica quando o gerador líder
+--- é recolhido pelo jogador ou destruído.
+---
+--- Garante que a malha elétrica da construção permaneça operando se houver geradores secundários.
+--- @param gerador any O gerador prestes a ser removido (IsoGenerator).
+local function TratarGeradorPrestesASerRemovido(gerador)
+    if not gerador or not instanceof(gerador, "IsoGenerator") then return end
+    local dadosMod = gerador:getModData()
+    
+    -- Apenas geradores que representavam a propriedade do pool transferem seus dados
+    if not (dadosMod and dadosMod.Gen_BuildingPoolID and dadosMod.LKS_EletricidadeConstrucao_PoolData) then return end
 
-    local SM = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
-    if not SM then return end
+    local GerenciadorEstado = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
+    if not GerenciadorEstado then return end
 
-    local buildingPoolID = md.Gen_BuildingPoolID
-    local sq = gen:getSquare()
-    if not sq then return end
-    local ownKey = string.format("%d_%d_%d", sq:getX(), sq:getY(), sq:getZ())
+    local identificadorPoolConstrucao = dadosMod.Gen_BuildingPoolID
+    local quadrado = gerador:getSquare()
+    if not quadrado then return end
+    
+    local chavePropria = string.format("%d_%d_%d", quadrado:getX(), quadrado:getY(), quadrado:getZ())
+    local dadosConstrucao = GerenciadorEstado.GetBuilding and GerenciadorEstado.GetBuilding(identificadorPoolConstrucao)
+    if not dadosConstrucao then return end
 
-    local bldData = SM.GetBuilding and SM.GetBuilding(buildingPoolID)
-    ---@cast bldData any
-    if not bldData then return end
+    local celula = getCell and getCell()
+    if not celula then return end
 
-    -- Find a successor generator (any other generator still linked to this building)
-    local cell = getCell and getCell()
-    if not cell then return end
-
-    -- connectedGenerators is Kahlua-deserialized (string numeric keys); use pairs
-    for _, k in pairs(bldData.connectedGenerators or {}) do
-        if k ~= ownKey then
-            local nx, ny, nz = string.match(k, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
-            if nx then
-                local nSq = cell:getGridSquare(tonumber(nx), tonumber(ny), tonumber(nz))
-                if nSq then
-                    local nObjs = nSq:getObjects()
-                    for ni = 0, nObjs:size() - 1 do
-                        local nObj = nObjs:get(ni)
-                        if nObj and instanceof(nObj, "IsoGenerator") then
-                            local nMd = nObj:getModData()
-                            local nextWorldId = md.LKS_EletricidadeConstrucao_WorldId
-                            if not nextWorldId or nextWorldId == "unknown" then
-                                nextWorldId = LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId and
-                                              LKS_EletricidadeConstrucao.Core.StateManager.GetCurrentWorldId() or nil
+    -- Percorre outros geradores conectados a esta construção para eleger um sucessor
+    for _, chave in pairs(dadosConstrucao.connectedGenerators or {}) do
+        if chave ~= chavePropria then
+            local coordenadaX, coordenadaY, coordenadaZ = string.match(chave, "^(%-?%d+)_(%-?%d+)_(%-?%d+)$")
+            if coordenadaX then
+                local quadradoVizinho = celula:getGridSquare(tonumber(coordenadaX), tonumber(coordenadaY), tonumber(coordenadaZ))
+                if quadradoVizinho then
+                    local objetosVizinhos = quadradoVizinho:getObjects()
+                    for indiceObjeto = 0, objetosVizinhos:size() - 1 do
+                        local objetoVizinho = objetosVizinhos:get(indiceObjeto)
+                        if objetoVizinho and instanceof(objetoVizinho, "IsoGenerator") then
+                            local dadosModVizinho = objetoVizinho:getModData()
+                            local proximoIdentificadorMundo = dadosMod.LKS_EletricidadeConstrucao_WorldId
+                            if not proximoIdentificadorMundo or proximoIdentificadorMundo == "unknown" then
+                                proximoIdentificadorMundo = GerenciadorEstado.GetCurrentWorldId and GerenciadorEstado.GetCurrentWorldId() or nil
                             end
-                            if nextWorldId == "unknown" then
-                                nextWorldId = nil
+                            if proximoIdentificadorMundo == "unknown" then
+                                proximoIdentificadorMundo = nil
                             end
-                            nMd.LKS_EletricidadeConstrucao_PoolData = md.LKS_EletricidadeConstrucao_PoolData  -- transfer pool ownership
-                            nMd.LKS_EletricidadeConstrucao_WorldId  = nextWorldId
+                            
+                            -- Transfere a propriedade do pool e seu ID do mundo
+                            dadosModVizinho.LKS_EletricidadeConstrucao_PoolData = dadosMod.LKS_EletricidadeConstrucao_PoolData
+                            dadosModVizinho.LKS_EletricidadeConstrucao_WorldId  = proximoIdentificadorMundo
+                            
                             if LKS_EletricidadeConstrucao.Core.Runtime
-                            and LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync
-                            and LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
-                                nObj:transmitModData()
+                                    and LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync
+                                    and LKS_EletricidadeConstrucao.Core.Runtime.RequiresNetworkSync() then
+                                objetoVizinho:transmitModData()
                             end
+                            
                             if LKS_EletricidadeConstrucao.Core.Logger then
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ConsumerEvents] Pool ownership transferred %s → %s for building %s",
-                                    ownKey, k, buildingPoolID), "Building")
+                                    "[ConsumerEvents] Posse da malha elétrica transferida: %s -> %s para a construção %s",
+                                    chavePropria, chave, identificadorPoolConstrucao), "Building")
                             end
                             break
                         end
                     end
                 end
             end
-            break  -- transfer to first available successor only
+            break -- Transfere ao primeiro sucessor válido disponível
         end
     end
 end
 
---- Fired just BEFORE an ISO object is removed.
---- Delays one tick so the object is fully gone before the rescan counts consumers.
-local function OnObjectAboutToBeRemoved(obj)
-    -- Handle generator pool ownership transfer while the object is still present
-    if instanceof(obj, "IsoGenerator") then
-        HandleGeneratorAboutToBeRemoved(obj)
-        CleanupRemovedGeneratorState(obj)
+--- Disparado imediatamente ANTES de um objeto nativo ser excluído ou recolhido.
+--- @param objeto any O objeto a ser removido.
+local function AoRemoverObjeto(objeto)
+    if instanceof(objeto, "IsoGenerator") then
+        TratarGeradorPrestesASerRemovido(objeto)
+        LimparEstadoGeradorRemovido(objeto)
     end
 
-    if not IsTrackedConsumer(obj) then return end
-    local function delayedRescan()
-        Events.OnTick.Remove(delayedRescan)
-        RescanAllBuildings()
+    if not EhConsumidorRastreado(objeto) then return end
+    
+    -- Agenda a varredura para o próximo tick, garantindo que o objeto físico já tenha sumido do grid do PZ
+    local function varreduraAtrasada()
+        Events.OnTick.Remove(varreduraAtrasada)
+        EscanearTodasConstrucoes()
     end
-    Events.OnTick.Add(delayedRescan)
+    Events.OnTick.Add(varreduraAtrasada)
 end
 
 -- ============================================================================
--- LIGHT SWITCH ACTIVE-STATE POLL (every ~1 seconds)
+-- MONITORAMENTO CONTÍNUO DE INTERRUPTORES E ESTADOS ATIVOS
 -- ============================================================================
--- Toggling a vanilla light switch fires no mod event.  Poll on OnTick at a
--- throttled rate so the InfoWindow reflects switch changes within ~1 seconds.
+-- Interruptores de iluminação nativos do PZ não disparam eventos de mod ao serem ativados.
+-- Monitoramos periodicamente no OnTick para atualizar o InfoWindow dinamicamente.
 
-local _lastActiveStateCheck = 0
-local ACTIVE_POLL_INTERVAL  = 1    -- seconds
+local _ultimoHorarioVerificacaoEstadoAtivo = 0
+local INTERVALO_VERIFICACAO_ESTADO_ATIVO  = 1    -- Em segundos físicos
 
---- Re-evaluate every consumer's isActive state and sync to generator ModData.
---- Does NOT rescan building geometry; only refreshes the active flag on known
---- consumers and pushes updated stats.  Very cheap per building.
-local function RefreshActiveStates()
-    if not HasServerModules() then return end
-    local Dist = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
-    local refreshFn = Dist and (Dist.RefreshBuildingStats or Dist.ForceUpdateBuilding)
-    if not refreshFn then return end
+--- Atualiza as flags de atividade (isActive) de todos os aparelhos sem refazer o scanner de paredes.
+local function AtualizarEstadosAtivos()
+    if not PossuiModulosServidor() then return end
+    
+    local DistribuidorEnergia = LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor
+    local funcaoAtualizacao = DistribuidorEnergia and (DistribuidorEnergia.RefreshBuildingStats or DistribuidorEnergia.ForceUpdateBuilding)
+    if not funcaoAtualizacao then return end
 
-    local buildings = LKS_EletricidadeConstrucao.Core.StateManager.GetAllBuildings()
-    if not buildings then return end
+    local construcoes = LKS_EletricidadeConstrucao.Core.StateManager.GetAllBuildings()
+    if not construcoes then return end
 
-    for _, bd in pairs(buildings) do
-        -- Refresh active states without forcing tile power to be re-applied.
-        refreshFn(bd.id)
+    for _, dadosConstrucao in pairs(construcoes) do
+        funcaoAtualizacao(dadosConstrucao.id)
     end
 end
 
-local function OnTick()
-    local now = os.time()
-    if now - _lastActiveStateCheck >= ACTIVE_POLL_INTERVAL then
-        _lastActiveStateCheck = now
-        RefreshActiveStates()
+--- Escuta de ticks gerais do PZ para rodar a atualização cronometrada de aparelhos.
+local function AoProcessarTick()
+    local agora = os.time()
+    if agora - _ultimoHorarioVerificacaoEstadoAtivo >= INTERVALO_VERIFICACAO_ESTADO_ATIVO then
+        _ultimoHorarioVerificacaoEstadoAtivo = agora
+        AtualizarEstadosAtivos()
     end
 end
 
 -- ============================================================================
--- REGISTER
+-- VÍNCULOS COM A ENGINE DO JOGO (EVENTS)
 -- ============================================================================
 
 if Events.OnObjectAdded then
-    Events.OnObjectAdded.Add(OnObjectAdded)
+    Events.OnObjectAdded.Add(AoAdicionarObjeto)
 end
 if Events.OnObjectAboutToBeRemoved then
-    Events.OnObjectAboutToBeRemoved.Add(OnObjectAboutToBeRemoved)
+    Events.OnObjectAboutToBeRemoved.Add(AoRemoverObjeto)
 end
-Events.OnTick.Add(OnTick)
+Events.OnTick.Add(AoProcessarTick)
