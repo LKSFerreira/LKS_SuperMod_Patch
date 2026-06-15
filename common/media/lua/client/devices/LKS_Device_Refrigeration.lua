@@ -19,6 +19,11 @@ LKS_ApplianceManager.devices = LKS_ApplianceManager.devices or {}
 LKS_ApplianceManager.containerTypeMap = LKS_ApplianceManager.containerTypeMap or {}
 LKS_ApplianceManager.javaClassMap = LKS_ApplianceManager.javaClassMap or {}
 
+if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("RefrigerationEnabled", true) then
+    print("[LKS PATCH - LKS_Device_Refrigeration.lua] Refrigeração desativada no sandbox.")
+    return
+end
+
 local LKS_Device_Refrigeration = {
     recipientesAceitos = {"fridge", "freezer", "geladeira_desligada", "congelador_desligado", "fridge_off", "freezer_off"},
     classesJava = {} -- Roteamento dinâmico feito via tipo de recipiente no Appliance Manager
@@ -135,7 +140,7 @@ local function onServerCommand(module, command, args)
     if module == "fridges-off" and command == "sync" then
         local gridSquare = getWorld():getCell():getGridSquare(args.x, args.y, args.z)
         if gridSquare == nil then
-            customPrint(getText("IGUI_PB_Debug_DesyncSquare") or "Não foi possível encontrar este quadrado, provável dessincronização")
+            customPrint(getText("IGUI_LKS_EletricidadeConstrucao_Debug_DesyncSquare") or "Não foi possível encontrar este quadrado, provável dessincronização")
             return
         end
 
@@ -191,7 +196,7 @@ local function onServerCommand(module, command, args)
                 end
             end
         else
-            customPrint(getText("IGUI_PB_Debug_DesyncObject") or "Não foi possível encontrar nenhum objeto neste quadrado, provável dessincronização")
+            customPrint(getText("IGUI_LKS_EletricidadeConstrucao_Debug_DesyncObject") or "Não foi possível encontrar nenhum objeto neste quadrado, provável dessincronização")
         end
     end
 end

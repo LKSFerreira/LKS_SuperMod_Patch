@@ -14,6 +14,11 @@ LKS_ApplianceManager.devices = LKS_ApplianceManager.devices or {}
 LKS_ApplianceManager.containerTypeMap = LKS_ApplianceManager.containerTypeMap or {}
 LKS_ApplianceManager.javaClassMap = LKS_ApplianceManager.javaClassMap or {}
 
+if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("LaundryEnabled", true) then
+    print("[LKS PATCH - LKS_Device_Laundry.lua] Lavanderia desativada no sandbox.")
+    return
+end
+
 local LKS_Device_Laundry = {
     recipientesAceitos = {"clothingdryer", "clothingwasher"},
     classesJava = {"IsoClothingDryer", "IsoCombinationWasherDryer", "IsoClothingWasher"}

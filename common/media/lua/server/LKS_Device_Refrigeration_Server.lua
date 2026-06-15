@@ -14,6 +14,12 @@
 -- ============================================================================
 -- ARQUIVO: LKS_Device_Refrigeration_Server.lua
 print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Carregando Lógica Servidor do Fridges Off!...")
+
+local opcoesSandboxRefrigeracao = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao or nil
+if opcoesSandboxRefrigeracao and opcoesSandboxRefrigeracao.RefrigerationEnabled == false then
+    print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Refrigeração desativada no sandbox.")
+    return
+end
 -- EXTENSÃO: LKS SuperMod Patch (Fagocitado nativamente)
 -- CRÉDITOS DO MOD ORIGINAL: Fridges Off! (ID Workshop: 2853974107) por 4422 (Erick)
 -- OBJETIVO: Gerenciamento no lado do servidor para ligar/desligar geladeiras.
@@ -88,7 +94,7 @@ local function onClientCommand(module,command,player,args)
         local gridSquare = getWorld():getCell():getGridSquare(args.x,args.y,args.z)
 
         if gridSquare == nil then
-            customPrint(getText("IGUI_PB_Debug_DesyncSquare") or "Não foi possível encontrar este quadrado, provável dessincronização")
+            customPrint(getText("IGUI_LKS_EletricidadeConstrucao_Debug_DesyncSquare") or "Não foi possível encontrar este quadrado, provável dessincronização")
             return
         end
 
@@ -179,7 +185,7 @@ local function onClientCommand(module,command,player,args)
 
             end
         else
-            customPrint(getText("IGUI_PB_Debug_DesyncObject") or "Não foi possível encontrar nenhum objeto neste quadrado, provável dessincronização")
+            customPrint(getText("IGUI_LKS_EletricidadeConstrucao_Debug_DesyncObject") or "Não foi possível encontrar nenhum objeto neste quadrado, provável dessincronização")
         end
     end
 end

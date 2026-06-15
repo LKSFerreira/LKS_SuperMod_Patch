@@ -14,6 +14,11 @@ LKS_ApplianceManager.devices = LKS_ApplianceManager.devices or {}
 LKS_ApplianceManager.containerTypeMap = LKS_ApplianceManager.containerTypeMap or {}
 LKS_ApplianceManager.javaClassMap = LKS_ApplianceManager.javaClassMap or {}
 
+if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("CookingEnabled", true) then
+    print("[LKS PATCH - LKS_Device_Cooking.lua] Culinária desativada no sandbox.")
+    return
+end
+
 local LKS_Device_Cooking = {
     recipientesAceitos = {"stove", "microwave"},
     classesJava = {"IsoStove", "IsoMicrowave"}
@@ -133,12 +138,18 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     end
 
     local texturaIconeMenu = obterTexturaEstado(chaveConfiguracao, temEnergia)
-    local estaAtivo = objetoEletrico:Activated()
+    local estaAtivo = false
+    if objetoEletrico.isActivated then
+        estaAtivo = objetoEletrico:isActivated()
+    elseif objetoEletrico.Activated then
+        estaAtivo = objetoEletrico:Activated()
+    end
 
     -- Remove as opções nativas obsoletas para fogão ou micro-ondas
     for indice = #menuContexto.options, 1, -1 do
         local opcao = menuContexto.options[indice]
-        if opcao and opcao.name and string.find(string.lower(opcao.name), "fogão") or string.find(string.lower(opcao.name), "micro") or string.find(string.lower(opcao.name), "oven") or string.find(string.lower(opcao.name), "stove") or string.find(string.lower(opcao.name), "microwave") then
+        local nomeOpcao = opcao and opcao.name and string.lower(opcao.name) or nil
+        if nomeOpcao and (string.find(nomeOpcao, "fogão") or string.find(nomeOpcao, "fogao") or string.find(nomeOpcao, "micro") or string.find(nomeOpcao, "oven") or string.find(nomeOpcao, "stove") or string.find(nomeOpcao, "microwave")) then
             table.insert(menuContexto.optionPool, opcao)
             for j = indice + 1, #menuContexto.options do
                 menuContexto.options[j-1] = menuContexto.options[j]

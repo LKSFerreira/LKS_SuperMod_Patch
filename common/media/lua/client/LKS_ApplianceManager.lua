@@ -16,6 +16,20 @@ LKS_ApplianceManager.devices = LKS_ApplianceManager.devices or {}
 LKS_ApplianceManager.containerTypeMap = LKS_ApplianceManager.containerTypeMap or {}
 LKS_ApplianceManager.javaClassMap = LKS_ApplianceManager.javaClassMap or {}
 
+function LKS_ApplianceManager.recursoAtivo(nomeRecurso, valorPadrao)
+    local opcoesSandbox = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao or nil
+    if opcoesSandbox and opcoesSandbox[nomeRecurso] ~= nil then
+        return opcoesSandbox[nomeRecurso] == true
+    end
+
+    local configuracaoEletricidade = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Config or nil
+    if configuracaoEletricidade and configuracaoEletricidade[nomeRecurso] ~= nil then
+        return configuracaoEletricidade[nomeRecurso] == true
+    end
+
+    return valorPadrao ~= false
+end
+
 --- Constrói dinamicamente os submenus baseando-se no roteamento para o driver correspondente.
 ---
 --- @param jogadorNumero number O índice do jogador local (0 a 3).
@@ -63,7 +77,13 @@ function LKS_ApplianceManager.onFillWorldObjectContextMenu(jogadorNumero, menuCo
     end
 end
 
-Events.OnFillWorldObjectContextMenu.Add(LKS_ApplianceManager.onFillWorldObjectContextMenu)
+local algumDriverAtivo = LKS_ApplianceManager.recursoAtivo("RefrigerationEnabled", true)
+        or LKS_ApplianceManager.recursoAtivo("LaundryEnabled", true)
+        or LKS_ApplianceManager.recursoAtivo("CookingEnabled", true)
+
+if algumDriverAtivo then
+    Events.OnFillWorldObjectContextMenu.Add(LKS_ApplianceManager.onFillWorldObjectContextMenu)
+end
 
 -- ============================================================================
 -- 🎒 EXTENSÃO VISUAL DA LOOT WINDOW (MONKEY PATCH DE INVENTÁRIO UNIFICADO)
@@ -71,6 +91,7 @@ Events.OnFillWorldObjectContextMenu.Add(LKS_ApplianceManager.onFillWorldObjectCo
 -- para substituir dinamicamente o ícone do container baseado no estado e direção.
 -- ============================================================================
 
+if algumDriverAtivo then
 local funcaoOriginalAdicionarBotaoContainer = ISInventoryPage.addContainerButton
 
 --- Adiciona e customiza o botão de aba lateral para contêineres na Loot Window.
@@ -102,6 +123,7 @@ function ISInventoryPage:addContainerButton(recipiente, textura, nome, dicaConte
     end
 
     return botao
+end
 end
 
 print("[LKS PATCH - LKS_ApplianceManager.lua] Carregado com sucesso!")
