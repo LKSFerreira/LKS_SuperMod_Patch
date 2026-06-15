@@ -4,13 +4,13 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 ## Estado atual
 
-- [ ] Definir objetivo principal.
-- [ ] Identificar stack e comandos de validação.
-- [ ] Registrar primeira entrega planejada.
+- [x] Definir objetivo principal: patch QoL e expansão de mecânicas para Project Zomboid Build 42, com foco em Generator Powered Buildings e integrações LKS.
+- [x] Identificar stack e comandos de validação: Lua para scripts do mod, JSON para traduções/sandbox e Python para ferramentas de auditoria.
+- [x] Registrar primeira entrega planejada.
+- [x] Implementar modularização por Sandbox Options para ativação isolada de mecânicas.
 
 ## Próximos passos
 
-- **Modularização de Funcionalidades via Sandbox Options**: Implementar um sistema de controle de módulos independentes onde o jogador possa ativar/desativar cada mecânica (Eletricidade Realista, Refrigeração, Lavanderia) de forma isolada na configuração da partida. A inicialização de hooks de eventos e monkey patches deve respeitar essas flags, garantindo que não haja dependências obrigatórias entre os blocos lógicos.
 - **Suíte de Desenvolvimento e Testes (Retrabalho do Mod de Cheats)**: Redesenhar o módulo de cheats para atuar como uma suíte de auxílio ao desenvolvimento de mods (*developer tools*), permitindo spawnar, forçar estados elétricos/hidráulicos e validar mecânicas locais de forma rápida, isolada e opcional.
 
 ## Dívidas Técnicas
@@ -31,6 +31,6 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Desacoplamento e Generalização de Abas Elétricas (13/06/2026)**: Refatoração do monkey patch da Loot Window usando tabela de configurações centralizada em Lua e validação física de propriedades de sprite para resguardar contêineres a combustão (forno a lenha, lareiras).
 - [x] **Arquitetura Micro-Kernel e Sistema de Culinária (14/06/2026)**: Refatoração completa para centralização de patches em `LKS_ApplianceManager.lua`, criação de driver de lavanderia `LKS_Device_Laundry.lua` e novo driver de culinária `LKS_Device_Cooking.lua` com detecção de metais no micro-ondas, temperatura em graus Celsius no fogão e texturas desenergizadas.
 - [x] **Consolidação das Ferramentas de Auditoria (14/06/2026)**: Migração e unificação de testes em `auditoria_mod.py` como a nova auditoria de assets, com delegação de chamadas a partir de `LKS_Tools.py`, alinhamento dinâmico de tabelas e logs coloridos ANSI em todos os programas Python.
-
-
-
+- [x] **Correção de Auditoria e Ajustes do Banner (14/06/2026)**: Resolução de falsos positivos na auditoria, correção e substituição automática de links locais e alinhamento visual simétrico do menu interativo.
+- [x] **Padronização do Driver de Refrigeração (14/06/2026)**: Refatoração do Fridges Off para driver `LKS_Device_Refrigeration`, expansão do kernel `LKS_ApplianceManager` e suporte a saves legados.
+- [x] **Desacoplamento Nativo do Generator Powered Buildings (14/06/2026)**: Incorporação dos módulos do GeneratorPlus2 como `LKS_EletricidadeConstrucao`, remoção de `require=buildinggenpowerv2`, incompatibilidade explícita com IDs originais, traduções PTBR/EN e flags de sandbox para controle modular.

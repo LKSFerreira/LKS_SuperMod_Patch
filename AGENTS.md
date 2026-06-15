@@ -30,13 +30,14 @@ Este projeto usa `.agents/` como fonte oficial de regras, skills, workflows e te
 
 ## Linguagem do projeto
 
-> LINGUAGEM_PROJETO: <linguagem>
+> LINGUAGEM_PROJETO: Lua + Python
 
 Mapeamento:
 
 - Python -> `/.agents/rules/python.md`
 - Java -> `/.agents/rules/java.md`
 - JavaScript/TypeScript -> `/.agents/rules/javascript.md`
+- Lua -> `/.agents/rules/lua.md`
 
 ## Versionamento
 

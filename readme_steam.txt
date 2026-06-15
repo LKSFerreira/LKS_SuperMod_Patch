@@ -1,33 +1,30 @@
-[h1][b]🛠️ LKS SuperMod Patch[/b][/h1]
+[h1][b]LKS SuperMod Patch[/b][/h1]
 
-Faz diversas correções, melhorias de UX/UI, bugs de scripts e traduções PT-BR para a coleção de mods Build 42. [b]TODOS OS CRÉDITOS AOS CRIADORES ORIGINAIS.[/b]
+Correções, melhorias de UX/UI, traduções PT-BR e mecânicas incorporadas nativamente para Project Zomboid Build 42. Todos os créditos aos criadores originais referenciados.
 
-[h1]⚠️ REQUISITO OBRIGATÓRIO[/h1]
-[b]Este mod não é independente.[/b] Você precisa ter o mod original instalado para que este patch funcione.
+[h1]IMPORTANTE[/h1]
+[b]Não carregue o Generator Powered Buildings / GeneratorPlus2 junto com este mod.[/b]
+A funcionalidade foi incorporada nativamente ao módulo LKS_EletricidadeConstrucao e o carregamento conjunto pode gerar conflito.
 
-[h1]📝 Sobre o Patch[/h1]
-Este é um mod de melhoria voltado para a qualidade de vida (QoL) e correção estética de diversos mods. O foco aqui é polimento visual, alinhamento de interfaces e otimização de traduções.
-
-[h1]🚀 O que foi melhorado?[/h1]
+[h1]Funcionalidades Principais[/h1]
 [list]
-[*] [b]Interface (UI):[/b] Ajuste fino de alinhamento.
-[*] [b]Tradução:[/b] Melhoria dos textos em PT-BR.
-[*] [b]Estrutura:[/b] Otimização da árvore de arquivos para melhor compatibilidade.
+[*] [b]Eletricidade de Construção LKS:[/b] geradores conectados a construções, rede compartilhada, strain, UI de energia, barris e aquecimento.
+[*] [b]Refrigeração LKS:[/b] ligar/desligar geladeiras e freezers com estados próprios.
+[*] [b]Lavanderia LKS:[/b] menus e ícones dinâmicos para lavadoras, secadoras e combos.
+[*] [b]Culinária LKS:[/b] controle elétrico e alertas para fogões e micro-ondas.
+[*] [b]Tradução PT-BR:[/b] textos organizados em arquivos de tradução.
 [/list]
 
-[h1]⚖️ Créditos e Compatibilidade[/h1]
-Este projeto é um [b]Patch/Add-on[/b] e não existiria sem o trabalho fantástico dos autores originais. Abaixo, os mods cobertos pelo patch:
-
+[h1]Créditos[/h1]
 [table]
-[tr][th]Mod Original[/th][th]ID Workshop[/th][/tr]
-[tr][td]Generator Powered Buildings[/td][td]3597471949[/td][/tr]
+[tr][th]Referência Original[/th][th]Autor[/th][th]ID Workshop[/th][th]Status[/th][/tr]
+[tr][td]Generator Powered Buildings[/td][td]Beathoven[/td][td]3597471949[/td][td]Incorporado nativamente; não carregar junto[/td][/tr]
+[tr][td]Fridges Off![/td][td]4422 / Erick[/td][td]2853974107[/td][td]Incorporado nativamente[/td][/tr]
 [/table]
 
-Agradeço imenso a todos os modders, pois sem eles nada disso existiria. É graças a esses desenvolvedores que a continuidade e melhoria dos mods é possível através desta comunidade.
-
-[h1]📦 Instalação[/h1]
+[h1]Instalação[/h1]
 [list]
-[*] Inscreva-se no mod original.
 [*] Inscreva-se neste patch.
-[*] Certifique-se de que este patch seja o [b]ÚLTIMO A SER CARREGADO[/b] na sua ordem de carregamento (load order).
+[*] Não ative Generator Powered Buildings / GeneratorPlus2 junto com ele.
+[*] Coloque o LKS SuperMod Patch no final da ordem de carregamento quando usar outros mods compatíveis.
 [/list]
