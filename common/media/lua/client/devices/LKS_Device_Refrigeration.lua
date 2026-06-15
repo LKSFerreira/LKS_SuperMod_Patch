@@ -26,7 +26,8 @@ end
 
 local LKS_Device_Refrigeration = {
     recipientesAceitos = {"fridge", "freezer", "geladeira_desligada", "congelador_desligado", "fridge_off", "freezer_off"},
-    classesJava = {} -- Roteamento dinâmico feito via tipo de recipiente no Appliance Manager
+    classesJava = {}, -- Roteamento dinâmico feito via tipo de recipiente no Appliance Manager
+    brilhoInativo = "escurece35"
 }
 
 ---@param text String
@@ -82,21 +83,7 @@ end
 -- 🎒 EXTENSÃO DE INTERFACE DO DRIVER (INVENTÁRIO)
 -- ============================================================================
 
---- Retorna a textura para a Loot Window baseada no estado do recipiente.
----
---- @param recipiente ItemContainer O contêiner sendo desenhado.
---- @param recipienteTipo string O tipo do contêiner.
---- @param objetoPai IsoObject O objeto pai no mundo.
---- @param temEnergia boolean Se o contêiner possui energia elétrica ativa.
---- @return Texture A textura resolvida para o inventário.
-function LKS_Device_Refrigeration.obterTexturaInventario(recipiente, recipienteTipo, objetoPai, temEnergia)
-    if recipienteTipo == "geladeira_desligada" or recipienteTipo == "fridge_off" then
-        return getTexture("media/ui/LKS_Container_Fridge_Electricity_Off.png")
-    elseif recipienteTipo == "congelador_desligado" or recipienteTipo == "freezer_off" then
-        return getTexture("media/ui/LKS_Container_Freezer_Electricity_Off.png")
-    end
-    return nil
-end
+
 
 -- ============================================================================
 -- 🖱️ EXTENSÃO DE INTERFACE DO DRIVER (MENU DE CONTEXTO)
@@ -213,10 +200,12 @@ end
 
 -- Garante suporte e retrocompatibilidade de texturas na tabela global
 local function registrarTexturasGlobais()
-    ContainerButtonIcons.geladeira_desligada = getTexture("media/ui/LKS_Container_Fridge_Electricity_Off.png")
-    ContainerButtonIcons.congelador_desligado = getTexture("media/ui/LKS_Container_Freezer_Electricity_Off.png")
-    ContainerButtonIcons.fridge_off = getTexture("media/ui/LKS_Container_Fridge_Electricity_Off.png")
-    ContainerButtonIcons.freezer_off = getTexture("media/ui/LKS_Container_Freezer_Electricity_Off.png")
+    local texFridge = ContainerButtonIcons.fridge or getTexture("media/ui/Container_Fridge.png")
+    local texFreezer = ContainerButtonIcons.freezer or getTexture("media/ui/Container_Freezer.png")
+    ContainerButtonIcons.geladeira_desligada = texFridge
+    ContainerButtonIcons.congelador_desligado = texFreezer
+    ContainerButtonIcons.fridge_off = texFridge
+    ContainerButtonIcons.freezer_off = texFreezer
 end
 
 Events.OnGameBoot.Add(registrarTexturasGlobais)

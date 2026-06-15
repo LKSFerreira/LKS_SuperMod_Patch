@@ -21,58 +21,37 @@ end
 
 local LKS_Device_Laundry = {
     recipientesAceitos = {"clothingdryer", "clothingwasher"},
-    classesJava = {"IsoClothingDryer", "IsoCombinationWasherDryer", "IsoClothingWasher"}
+    classesJava = {"IsoClothingDryer", "IsoCombinationWasherDryer", "IsoClothingWasher"},
+    brilhoInativo = "escurece35"
 }
 
 local LKS_ConfiguracaoIconesLavanderia = {
     clothingdryer = {
-        energizado    = nil,
-        desenergizado = "media/ui/LKS_Container_ClothingDryer_Electricity_Off.png",
+        energizado = nil,
     },
     clothingwasher = {
-        energizado    = nil,
-        desenergizado = "media/ui/LKS_Container_ClothingWasher_Electricity_Off.png",
-        sem_agua      = "media/ui/LKS_Container_ClothingWasher_Water_Off.png",
+        energizado = "media/ui/Washing_Machine_White.png"
     },
     combo_washer_dryer = {
-        energizado    = {
-            S = "media/ui/Combo_Washer_Dryer_Gray_S.png",
-            E = "media/ui/Combo_Washer_Dryer_Gray_E.png",
-            N = "media/ui/Combo_Washer_Dryer_Gray_N.png",
-            W = "media/ui/Combo_Washer_Dryer_Gray_W.png",
-            padrao = "media/ui/Combo_Washer_Dryer_Gray.png"
-        },
-        desenergizado = "media/ui/Combo_Washer_Dryer_Gray_Electricity_Off.png",
-        sem_agua      = "media/ui/Combo_Washer_Dryer_Gray_Water_Off.png",
+        energizado = "media/ui/Container_ClothingWasher.png", -- Usa o ícone padrão do jogo base (azul)
     },
 }
 
 --- Retorna a textura correspondente baseada nos estados de energia, água e direção.
 ---
 --- @param chaveConfiguracao string O tipo de aparelho ("clothingdryer", "clothingwasher", "combo_washer_dryer").
---- @param temEnergia boolean Se o aparelho possui fornecimento elétrico ativo.
---- @param temAgua boolean Se o aparelho possui água disponível.
---- @param direcao string | nil A direção/facing do móvel ("N", "S", "E", "W").
+--- @param temEnergia boolean Se o aparelho possui fornecimento elétrico ativo (ignorado no desenho base).
+--- @param temAgua boolean Se o aparelho possui água disponível (ignorado no desenho base).
+--- @param direcao string | nil A direção/facing do móvel (ignorado após simplificação).
 --- @return Texture O objeto de textura carregado do jogo.
 local function obterTexturaEstado(chaveConfiguracao, temEnergia, temAgua, direcao)
     local configuracaoIcone = LKS_ConfiguracaoIconesLavanderia[chaveConfiguracao]
     if not configuracaoIcone then return nil end
 
-    if not temEnergia then
-        return getTexture(configuracaoIcone.desenergizado)
-    elseif not temAgua and configuracaoIcone.sem_agua then
-        return getTexture(configuracaoIcone.sem_agua)
+    if configuracaoIcone.energizado then
+        return getTexture(configuracaoIcone.energizado)
     else
-        if configuracaoIcone.energizado then
-            if type(configuracaoIcone.energizado) == "table" then
-                local caminhoTextura = configuracaoIcone.energizado[direcao] or configuracaoIcone.energizado.padrao
-                return getTexture(caminhoTextura)
-            else
-                return getTexture(configuracaoIcone.energizado)
-            end
-        else
-            return ContainerButtonIcons[chaveConfiguracao]
-        end
+        return ContainerButtonIcons[chaveConfiguracao]
     end
 end
 
@@ -240,11 +219,10 @@ function LKS_Device_Laundry.construirMenuContexto(jogadorNumero, menuContexto, o
             local opcaoLigarSemRequisitos = submenu:addOption(chaveTextoLigar, objetosMundo, nil)
             opcaoLigarSemRequisitos.notAvailable = true
 
-            local configuracaoIcone = LKS_ConfiguracaoIconesLavanderia[chaveConfiguracao]
             if not temEnergia then
-                opcaoLigarSemRequisitos.iconTexture = getTexture(configuracaoIcone.desenergizado)
-            elseif not temAgua and configuracaoIcone.sem_agua then
-                opcaoLigarSemRequisitos.iconTexture = getTexture(configuracaoIcone.sem_agua)
+                opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Menu_Electricity_Off.png")
+            elseif not temAgua then
+                opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Menu_Water_Off.png")
             else
                 opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
             end

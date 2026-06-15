@@ -21,17 +21,16 @@ end
 
 local LKS_Device_Cooking = {
     recipientesAceitos = {"stove", "microwave"},
-    classesJava = {"IsoStove", "IsoMicrowave"}
+    classesJava = {"IsoStove", "IsoMicrowave"},
+    brilhoInativo = "escurece25"
 }
 
 local LKS_ConfiguracaoIconesCulinaria = {
     stove = {
         energizado    = nil,
-        desenergizado = "media/ui/Container_Stove_Electricity_Off.png",
     },
     microwave = {
         energizado    = nil,
-        desenergizado = "media/ui/Container_Microwave_Electricity_Off.png",
     },
 }
 
@@ -44,8 +43,8 @@ local function obterTexturaEstado(chaveConfiguracao, temEnergia)
     local configuracaoIcone = LKS_ConfiguracaoIconesCulinaria[chaveConfiguracao]
     if not configuracaoIcone then return nil end
 
-    if not temEnergia then
-        return getTexture(configuracaoIcone.desenergizado)
+    if configuracaoIcone.energizado then
+        return getTexture(configuracaoIcone.energizado)
     else
         return ContainerButtonIcons[chaveConfiguracao]
     end
@@ -212,8 +211,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
             local opcaoLigarSemRequisitos = submenu:addOption(chaveTextoLigar, objetosMundo, nil)
             opcaoLigarSemRequisitos.notAvailable = true
 
-            local configuracaoIcone = LKS_ConfiguracaoIconesCulinaria[chaveConfiguracao]
-            opcaoLigarSemRequisitos.iconTexture = getTexture(configuracaoIcone.desenergizado)
+            opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Menu_Electricity_Off.png")
 
             local tooltipErro = ISWorldObjectContextMenu.addToolTip()
             tooltipErro:setName(nomeObjetoTraduzido)
