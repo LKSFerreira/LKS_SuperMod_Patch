@@ -11,7 +11,8 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 ## Próximos passos
 
-- **Suíte de Desenvolvimento e Testes (Retrabalho do Mod de Cheats)**: Redesenhar o módulo de cheats para atuar como uma suíte de auxílio ao desenvolvimento de mods (*developer tools*), permitindo spawnar, forçar estados elétricos/hidráulicos e validar mecânicas locais de forma rápida, isolada e opcional.
+- **Implementação Nativa do Mod de Cheats**: Absorver nativamente o mod de cheats independente (spawner de itens, forçar estados elétricos/hidráulicos, validar mecânicas). Mod ainda não incorporado ao LKS SuperMod Patch.
+- **Botão de Ajuda (?) na Interface de Energia**: Ver dívida técnica abaixo.
 
 ## Dívidas Técnicas
 
@@ -35,4 +36,8 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Padronização do Driver de Refrigeração (14/06/2026)**: Refatoração do Fridges Off para driver `LKS_Device_Refrigeration`, expansão do kernel `LKS_ApplianceManager` e suporte a saves legados.
 - [x] **Desacoplamento Nativo do Generator Powered Buildings (14/06/2026)**: Incorporação dos módulos do GeneratorPlus2 como `LKS_EletricidadeConstrucao`, remoção de `require=buildinggenpowerv2`, incompatibilidade explícita com IDs originais, traduções PTBR/EN e flags de sandbox para controle modular.
 - [x] **Readequação de Badges e Ajuste de Auditoria (15/06/2026)**: Refinamento do sistema de Badges dinâmicos nos aparelhos e modificação do filtro de integridade em `auditoria_mod.py` para ignorar assets vanilla da Build 42.
+- [x] **Ferramentas Python e Documentação (15/06/2026)**: Melhorias em `LKS_Tools.py`, criação de `.github/copilot-instructions.md` e `configurar_terminal.py` para corrigir Shift+Enter no Antigravity IDE e MinTTY.
+- [x] **Refactor Cirúrgico do Driver de Culinária (16/06/2026)**: Sequestro do submenu vanilla e filtragem cirúrgica de itens em `LKS_Device_Cooking.lua`.
+- [x] **Suíte de Desenvolvimento Unificada — LKS_Debug_Tool (16–17/06/2026)**: Ferramenta de depuração própria (F12) com sistema de abas escalável: Lua Reloader (recarga cirúrgica de scripts), Inspetor de Menu de Contexto e Inspetor de Objetos com tooltips dinâmicos via `LKS_Debug_TooltipData.lua` (303 propriedades de sprite mapeadas). Traduções PT-BR/EN e correções de layout. Não relacionada ao mod de cheats externo.
+- [x] **Consolidação de Documentação (17/06/2026)**: Migração de `mecanicas/` para `documents/`, documentação de 303 propriedades de sprite e mapeamento de ferramentas/materiais.
 
