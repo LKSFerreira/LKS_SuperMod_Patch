@@ -28,6 +28,7 @@ PRÉ-REQUISITO:
 ================================================================================
 """
 
+import argparse
 import json
 import os
 import re
@@ -87,7 +88,7 @@ PADROES_ENGINE = [
     re.compile(r"^Container_"),     # Container_Fridge, Container_Freezer, etc.
 ]
 
-# Globals do engine PZ que não seguem os padrões acima
+# Globals do engine PZ que não seguem os padrões acima e devem ser pré-resolvidos
 GLOBALS_ENGINE_CONHECIDOS = frozenset({
     "instanceof", "ZombRand", "Events", "Keyboard", "Mouse",
     "UIFont", "SandboxVars", "Translator", "HUD", "Mod",
@@ -116,12 +117,15 @@ DIRETORIOS_IGNORADOS = [
 ]
 
 # Regex compilados
+PADRAO_DECLARACAO_CLASS = re.compile(r"---?\s*@class\s+([A-Za-z_]\w*)", re.MULTILINE)
 PADRAO_FUNCAO_GLOBAL = re.compile(r"^function\s+([A-Za-z_]\w+)\s*[.(:]", re.MULTILINE)
 PADRAO_ATRIBUICAO_GLOBAL = re.compile(r"^([A-Z][A-Za-z_]\w*)\s*=\s*", re.MULTILINE)
 PADRAO_CHAMADA_FUNCAO = re.compile(r"(?<![.:\"'\w])([a-zA-Z_]\w*)\s*\(")
 PADRAO_TABELA_GLOBAL = re.compile(r"(?<![.:\"'\w{,])([A-Z][A-Za-z_]\w*)\s*\.")
 PADRAO_LOCAL = re.compile(r"\blocal\s+(?:function\s+)?(\w+)")
-PADRAO_ANNOTATION_TIPO = re.compile(r"---@(?:param|type|return|field)\s+(?:\w+\s+)?([A-Z][A-Za-z_]\w*)")
+PADRAO_PCALL_ARG = re.compile(r"\b(?:pcall|xpcall)\s*\(\s*([a-zA-Z_]\w*)")
+PADRAO_ANNOTATION_TIPO = re.compile(r"---?\s*@(?:param|type|return|field)\s+(?:\w+\s+)?([A-Z][A-Za-z_]\w*)")
+PADRAO_ANNOTATION_CLASSE_BASE = re.compile(r"---?\s*@class\s+\w+\s*:\s*([A-Z][A-Za-z_]\w*)")
 
 # Tipos primitivos/builtins do Lua e EmmyLua que não precisam de stub
 TIPOS_BUILTINS = frozenset({
@@ -133,6 +137,17 @@ TIPOS_BUILTINS = frozenset({
 ALIASES_PRIMITIVOS_JAVA = frozenset({
     "Integer", "String", "Float", "Double", "Boolean", "Watts",
 })
+
+# Padrões que identificam tipos Java/PZ legítimos em annotations
+PADROES_TIPO_ENGINE = [
+    re.compile(r"^Iso[A-Z]"),        # IsoObject, IsoPlayer, IsoGenerator, etc.
+    re.compile(r"^IS[A-Z]"),         # ISBaseTimedAction, ISContextMenu, etc.
+    re.compile(r"^Item[A-Z]"),       # ItemContainer
+    re.compile(r"^Kahlua[A-Z]"),     # KahluaTable
+    re.compile(r"^Texture$"),        # Texture
+    re.compile(r"^ArrayList$"),      # ArrayList
+    re.compile(r"^Container_"),      # Container_Fridge, etc.
+]
 
 
 def ler_diretorio_jogo() -> Path:
@@ -165,7 +180,7 @@ def ler_arquivo_lua(caminho_arquivo: Path) -> str:
     """
     Lê o conteúdo de um arquivo Lua com tratamento de encoding.
 
-    :param caminho_arquivo: Caminho do arquivo ``.lua``.
+    :param caminho_arquivo: Caminho del arquivo ``.lua``.
     :returns: Conteúdo do arquivo como string, ou string vazia em caso de erro.
     """
     try:
@@ -232,47 +247,62 @@ def coletar_definicoes_lua(diretorio_lua: Path) -> set[str]:
     return definicoes
 
 
-def coletar_globals_usados_no_mod() -> set[str]:
+def coletar_classes_declaradas(diretorio_lua: Path) -> set[str]:
     """
-    Escaneia os Lua do mod para coletar referências a globals.
+    Escaneia arquivos Lua para coletar classes EmmyLua declaradas explicitamente.
+    Procura por padrões como ``---@class NomeClasse`` ou ``--- @class NomeClasse``.
+    
+    :param diretorio_lua: Caminho para o diretório contendo arquivos ``.lua``.
+    :returns: Conjunto de classes declaradas.
+    """
+    classes = set()
+    for arquivo in diretorio_lua.rglob("*.lua"):
+        conteudo = ler_arquivo_lua(arquivo)
+        if not conteudo:
+            continue
+        for correspondencia in PADRAO_DECLARACAO_CLASS.finditer(conteudo):
+            classes.add(correspondencia.group(1))
+    return classes
 
-    Foca em chamadas de função (``getPlayer()``, ``instanceof()``) que são
-    o padrão dominante dos globals do engine Java. Também subtrai definições
-    locais (``local function ...``, ``local nome = ...``) para eliminar
-    falsos positivos.
 
-    :returns: Conjunto de nomes de globals referenciados no mod.
+def coletar_globals_usados(diretorio_lua: Path) -> set[str]:
+    """
+    Escaneia arquivos Lua em um diretório para coletar referências a globals.
+    Foca em chamadas de função standalone e tabelas globais acessadas.
+    
+    :param diretorio_lua: Diretório contendo os arquivos ``.lua``.
+    :returns: Conjunto de nomes de globals referenciados.
     """
     chamadas_funcao = set()
     definicoes_locais = set()
 
-    for arquivo in CAMINHO_LUA_MOD.rglob("*.lua"):
+    for arquivo in diretorio_lua.rglob("*.lua"):
         conteudo = ler_arquivo_lua(arquivo)
         if not conteudo:
             continue
 
-        # Coleta definições locais (ignorando comentários)
         for linha in conteudo.splitlines():
             linha_limpa = remover_comentarios(linha)
             if not linha_limpa:
                 continue
+
+            # Coleta definições locais (variáveis e funções)
             for correspondencia in PADRAO_LOCAL.finditer(linha_limpa):
                 definicoes_locais.add(correspondencia.group(1))
 
-        for linha in conteudo.splitlines():
-            linha_limpa = remover_comentarios(linha)
-            if not linha_limpa:
-                continue
-
             # Captura chamadas de função standalone (não métodos)
             for correspondencia in PADRAO_CHAMADA_FUNCAO.finditer(linha_limpa):
+                chamadas_funcao.add(correspondencia.group(1))
+
+            # Captura globals passados como argumento a pcall/xpcall
+            for correspondencia in PADRAO_PCALL_ARG.finditer(linha_limpa):
                 chamadas_funcao.add(correspondencia.group(1))
 
             # Captura tabelas globais acessadas com ponto (SandboxVars.X, Events.Y)
             for correspondencia in PADRAO_TABELA_GLOBAL.finditer(linha_limpa):
                 chamadas_funcao.add(correspondencia.group(1))
 
-    # Remove definições locais do mod (não são globals)
+    # Remove definições locais
     return chamadas_funcao - definicoes_locais
 
 
@@ -298,33 +328,40 @@ def eh_global_engine(nome: str) -> bool:
 
 def calcular_globals_engine(
     globals_usados_mod: set[str],
+    globals_usados_jogo: set[str],
     definicoes_jogo: set[str],
     definicoes_mod: set[str],
 ) -> list[str]:
     """
     Calcula globals que são expostos pelo engine Java e precisam de declaração.
 
-    Aplica duas camadas de filtragem:
-
-    1. Remove tudo que já tem definição em Lua (jogo, mod, stdlib, keywords).
-    2. Dos restantes, aceita apenas os que correspondem a padrões conhecidos
-       do engine Java do PZ (``get*``, ``is*``, ``send*``, ``Iso*``, etc.).
+    Utiliza uma lógica dinâmica que cruza os globais referenciados no mod
+    com os globais usados no jogo base que também não possuem definição de código em Lua.
 
     :param globals_usados_mod: Globals referenciados no mod.
+    :param globals_usados_jogo: Globals referenciados nos arquivos do jogo base.
     :param definicoes_jogo: Globals definidos nos Lua do jogo.
     :param definicoes_mod: Globals definidos no próprio mod.
     :returns: Lista ordenada de globals do engine Java para ``diagnostics.globals``.
     """
     resolvidos = definicoes_jogo | definicoes_mod | GLOBALS_LUA_PADRAO | PALAVRAS_CHAVE_LUA
-
     candidatos = globals_usados_mod - resolvidos
 
-    globals_engine = {
-        nome for nome in candidatos
-        if nome.isascii()
-        and len(nome) >= 3
-        and eh_global_engine(nome)
-    }
+    globals_usados_jogo_nao_resolvidos = globals_usados_jogo - resolvidos
+
+    globals_engine = set()
+    for nome in candidatos:
+        if not nome.isascii() or len(nome) < 3:
+            continue
+
+        # Aceita se:
+        # 1. Bater nos padrões conhecidos de nomenclatura do engine Java (eh_global_engine)
+        # 2. OU for um global também usado no jogo base sem definição pura em Lua (sinalizador de API nativa exposta)
+        if (
+            eh_global_engine(nome)
+            or nome in globals_usados_jogo_nao_resolvidos
+        ):
+            globals_engine.add(nome)
 
     return sorted(globals_engine)
 
@@ -332,10 +369,7 @@ def calcular_globals_engine(
 def coletar_tipos_java_annotations() -> set[str]:
     """
     Escaneia annotations EmmyLua nos Lua do mod para extrair tipos Java.
-
-    Busca padrões ``@param nome Tipo``, ``@type Tipo``, ``@return Tipo``
-    e ``@field nome fun(...): Tipo`` para identificar classes Java do PZ
-    que não possuem definição em Lua.
+    Suporta espaços e comentários EmmyLua formatados de forma flexível.
 
     :returns: Conjunto de nomes de tipos Java referenciados nas annotations.
     """
@@ -348,10 +382,18 @@ def coletar_tipos_java_annotations() -> set[str]:
 
         for linha in conteudo.splitlines():
             linha_processada = linha.strip()
-            if not linha_processada.startswith("---@"):
+            # Aceita '---@' ou '--- @'
+            if not re.match(r"^---\s*@", linha_processada):
                 continue
 
+            # Captura tipos em anotações de parâmetros, campos, retornos e tipos
             for correspondencia in PADRAO_ANNOTATION_TIPO.finditer(linha_processada):
+                tipo = correspondencia.group(1)
+                if tipo not in TIPOS_BUILTINS:
+                    tipos_encontrados.add(tipo)
+
+            # Captura herança de classes bases nas anotações @class
+            for correspondencia in PADRAO_ANNOTATION_CLASSE_BASE.finditer(linha_processada):
                 tipo = correspondencia.group(1)
                 if tipo not in TIPOS_BUILTINS:
                     tipos_encontrados.add(tipo)
@@ -361,25 +403,26 @@ def coletar_tipos_java_annotations() -> set[str]:
 
 def gerar_stubs_tipos(
     tipos_java: set[str],
-    definicoes_jogo: set[str],
-    definicoes_mod: set[str],
+    classes_declaradas_jogo: set[str],
+    classes_declaradas_mod: set[str],
 ) -> list[str]:
     """
-    Filtra tipos Java que realmente precisam de stub (não resolvidos por library).
+    Filtra tipos Java que precisam de stub (não declarados explicitamente em lugar nenhum).
 
     :param tipos_java: Tipos encontrados nas annotations do mod.
-    :param definicoes_jogo: Definições globais do jogo (resolvidas via library).
-    :param definicoes_mod: Definições globais do mod.
+    :param classes_declaradas_jogo: Classes EmmyLua explicitamente anotadas no jogo.
+    :param classes_declaradas_mod: Classes EmmyLua explicitamente anotadas no mod.
     :returns: Lista ordenada de tipos que precisam de declaração ``---@class``.
     """
-    resolvidos = definicoes_jogo | definicoes_mod
+    classes_existentes = classes_declaradas_jogo | classes_declaradas_mod
 
     tipos_pendentes = {
         tipo for tipo in tipos_java
-        if tipo not in resolvidos
+        if tipo not in classes_existentes
         and tipo not in ALIASES_PRIMITIVOS_JAVA
         and tipo.isascii()
         and len(tipo) >= 3
+        and any(padrao.match(tipo) for padrao in PADROES_TIPO_ENGINE)
     }
 
     return sorted(tipos_pendentes)
@@ -472,6 +515,10 @@ def montar_configuracao_luarc(diretorio_jogo: Path, globals_engine: list[str]) -
             "globals": globals_engine,
             "disable": [
                 "lowercase-global",
+                "missing-parameter",
+                "redundant-parameter",
+                "need-check-nil",
+                "undefined-field",
             ],
         },
         "hint": {
@@ -507,36 +554,55 @@ def main() -> None:
         print(f"  {RED}✗ Pasta media/lua/ não encontrada em {diretorio_jogo}{RESET}")
         sys.exit(1)
 
-    # 2. Escanear definições do jogo
-    print(f"  {YELLOW}⟳{RESET} Escaneando definições Lua do jogo...")
+    # 2. Escanear classes declaradas EmmyLua no jogo e no mod
+    print(f"  {YELLOW}⟳{RESET} Escaneando classes EmmyLua declaradas no jogo...")
+    classes_declaradas_jogo = coletar_classes_declaradas(diretorio_lua_jogo)
+    print(f"    {GREEN}✓{RESET} {len(classes_declaradas_jogo)} classes declaradas no jogo")
+
+    print(f"  {YELLOW}⟳{RESET} Escaneando classes EmmyLua declaradas no mod...")
+    classes_declaradas_mod = coletar_classes_declaradas(CAMINHO_LUA_MOD)
+    print(f"    {GREEN}✓{RESET} {len(classes_declaradas_mod)} classes declaradas no mod")
+
+    # 3. Escanear definições de runtime (variáveis/funções globais) do jogo
+    print(f"  {YELLOW}⟳{RESET} Escaneando definições de variáveis/funções no jogo...")
     definicoes_jogo = coletar_definicoes_lua(diretorio_lua_jogo)
-    print(f"    {GREEN}✓{RESET} {len(definicoes_jogo)} definições encontradas no jogo")
+    print(f"    {GREEN}✓{RESET} {len(definicoes_jogo)} definições de variáveis/funções no jogo")
 
-    # 3. Escanear definições do mod
-    print(f"  {YELLOW}⟳{RESET} Escaneando definições Lua do mod...")
+    # 4. Escanear definições de runtime (variáveis/funções globais) do mod
+    print(f"  {YELLOW}⟳{RESET} Escaneando definições de variáveis/funções no mod...")
     definicoes_mod = coletar_definicoes_lua(CAMINHO_LUA_MOD)
-    print(f"    {GREEN}✓{RESET} {len(definicoes_mod)} definições encontradas no mod")
+    print(f"    {GREEN}✓{RESET} {len(definicoes_mod)} definições de variáveis/funções no mod")
 
-    # 4. Escanear globals usados pelo mod
+    # 5. Escanear globals referenciados pelo mod
     print(f"  {YELLOW}⟳{RESET} Escaneando globals referenciados pelo mod...")
-    globals_usados = coletar_globals_usados_no_mod()
-    print(f"    {GREEN}✓{RESET} {len(globals_usados)} referências únicas encontradas")
+    globals_usados_mod = coletar_globals_usados(CAMINHO_LUA_MOD)
+    print(f"    {GREEN}✓{RESET} {len(globals_usados_mod)} referências únicas no mod")
 
-    # 5. Calcular globals do engine Java
-    globals_engine = calcular_globals_engine(globals_usados, definicoes_jogo, definicoes_mod)
+    # 6. Escanear globals referenciados pelo jogo base (para inferência dinâmica)
+    print(f"  {YELLOW}⟳{RESET} Escaneando globals referenciados pelo jogo base (isso pode levar de 1 a 2 segundos)...")
+    globals_usados_jogo = coletar_globals_usados(diretorio_lua_jogo)
+    print(f"    {GREEN}✓{RESET} {len(globals_usados_jogo)} referências únicas no jogo")
+
+    # 7. Calcular globals do engine Java
+    globals_engine = calcular_globals_engine(
+        globals_usados_mod,
+        globals_usados_jogo,
+        definicoes_jogo,
+        definicoes_mod
+    )
     print(f"    {GREEN}✓{RESET} {len(globals_engine)} globals do engine Java identificados")
 
-    # 6. Extrair tipos Java das annotations EmmyLua
-    print(f"  {YELLOW}⟳{RESET} Escaneando tipos Java nas annotations EmmyLua...")
+    # 8. Extrair tipos Java das annotations EmmyLua do mod
+    print(f"  {YELLOW}⟳{RESET} Escaneando tipos Java nas annotations EmmyLua do mod...")
     tipos_java = coletar_tipos_java_annotations()
-    tipos_pendentes = gerar_stubs_tipos(tipos_java, definicoes_jogo, definicoes_mod)
+    tipos_pendentes = gerar_stubs_tipos(tipos_java, classes_declaradas_jogo, classes_declaradas_mod)
     print(f"    {GREEN}✓{RESET} {len(tipos_pendentes)} tipos Java necessitam de stubs")
 
-    # 7. Gerar .types/LKS_PZ_Types.lua
+    # 9. Gerar .types/LKS_PZ_Types.lua
     escrever_arquivo_stubs(tipos_pendentes)
     print(f"    {GREEN}✓{RESET} .types/LKS_PZ_Types.lua gerado ({len(tipos_pendentes)} classes)")
 
-    # 8. Gerar .luarc.json
+    # 10. Gerar .luarc.json
     configuracao = montar_configuracao_luarc(diretorio_jogo, globals_engine)
     conteudo_json = json.dumps(configuracao, indent=2, ensure_ascii=False) + "\n"
     CAMINHO_LUARC.write_text(conteudo_json, encoding="utf-8")
@@ -550,5 +616,38 @@ def main() -> None:
     print(f"\n  {YELLOW}⚡ Recarregue o VS Code (Ctrl+Shift+P → Reload Window) para aplicar.{RESET}\n")
 
 
+def criar_parser() -> argparse.ArgumentParser:
+    """
+    Cria o parser de argumentos CLI com descrição e exemplos de uso.
+
+    :returns: Instância do ArgumentParser configurada.
+    """
+    parser = argparse.ArgumentParser(
+        prog="gerar_luarc.py",
+        description=(
+            "Gera automaticamente o .luarc.json e os stubs de tipos Java (.types/) "
+            "para o lua-language-server (LuaLS), eliminando warnings falso-positivos "
+            "no VS Code ao desenvolver mods para Project Zomboid Build 42."
+        ),
+        epilog=(
+            "MOTIVAÇÃO:\n"
+            "  O Project Zomboid expõe centenas de funções e classes Java para Lua\n"
+            "  (getPlayer, IsoObject, instanceof, etc.) que o LuaLS não conhece.\n"
+            "  Este script escaneia os arquivos reais do jogo instalado e do mod\n"
+            "  para calcular exatamente quais globals e tipos precisam ser declarados,\n"
+            "  gerando a configuração de forma determinística e reprodutível.\n\n"
+            "PRÉ-REQUISITO:\n"
+            "  Arquivo .env na raiz do projeto com:\n"
+            "    PZ_GAME_DIR=C:\\caminho\\para\\ProjectZomboid\n\n"
+            "EXEMPLOS:\n"
+            "  python tools/gerar_luarc.py          Gera .luarc.json e .types/\n"
+            "  python tools/gerar_luarc.py --help    Exibe esta ajuda\n"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    return parser
+
+
 if __name__ == "__main__":
+    criar_parser().parse_args()
     main()

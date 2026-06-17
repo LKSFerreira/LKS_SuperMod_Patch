@@ -13,7 +13,22 @@
 -- CLASSES DO ENGINE JAVA (Project Zomboid Build 42)
 -- ============================================================================
 
+---@class ISBaseTimedAction
+---@field [any] any
+
+---@class ISContextMenu
+---@field [any] any
+
+---@class ISUIElement
+---@field [any] any
+
 ---@class IsoGenerator
+---@field [any] any
+
+---@class IsoGridSquare
+---@field [any] any
+
+---@class IsoLightSwitch
 ---@field [any] any
 
 ---@class IsoObject
@@ -22,7 +37,13 @@
 ---@class IsoPlayer
 ---@field [any] any
 
+---@class ItemContainer
+---@field [any] any
+
 ---@class KahluaTable
+---@field [any] any
+
+---@class Texture
 ---@field [any] any
 
 -- ============================================================================

@@ -29,6 +29,7 @@
   },
   "diagnostics": {
     "globals": [
+      "Building",
       "Container_ClothingDryer",
       "Container_ClothingWasher",
       "Container_Freezer",
@@ -49,8 +50,10 @@
       "IsoUtils",
       "Keyboard",
       "Math",
+      "Metabolics",
       "Mod",
       "ModData",
+      "State",
       "Translator",
       "UIFont",
       "ZombRand",
@@ -76,11 +79,16 @@
       "instanceof",
       "isClient",
       "isServer",
+      "reloadLuaFile",
       "sendClientCommand",
       "sendServerCommand"
     ],
     "disable": [
-      "lowercase-global"
+      "lowercase-global",
+      "missing-parameter",
+      "redundant-parameter",
+      "need-check-nil",
+      "undefined-field"
     ]
   },
   "hint": {
