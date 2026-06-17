@@ -89,12 +89,13 @@ LKS_DebugTool.tema = {
 -- DIMENSÕES DA JANELA
 -- ============================================================================
 
-local JANELA_LARGURA = 680
-local JANELA_ALTURA = 520
+local JANELA_LARGURA = 720
+local JANELA_ALTURA = 560
 local BARRA_ABAS_ALTURA = 32
 local ABA_LARGURA_MIN = 120
 local ABA_PADDING = 8
 local MARGEM = 12
+local ESPACO_VERTICAL = 8
 local CONTEUDO_INICIO_Y = 58
 
 -- ============================================================================
@@ -339,64 +340,96 @@ local abaRecarregar = {
     modsDisponiveis = nil,
     modsAtivos = nil,
     painelModsVisivel = false,
+    todosArquivosAtivo = false,
 }
 
 function abaRecarregar.criar(self, painel, posicaoY)
     local tema = LKS_DebugTool.tema
-    local larguraUtil = painel.width - MARGEM * 4
-    local statusAltura = 24
+    local margemEsquerda = MARGEM * 2
+    local larguraUtil = painel.width - margemEsquerda - MARGEM * 2
+    local alturaRedimensionamento = painel:resizeWidgetHeight()
+    local alturaLinha = 26
+    local alturaBotao = 28
+    local statusAltura = 22
 
-    -- Título da seção
-    local rotuloTitulo = ISLabel:new(MARGEM * 2, posicaoY, 22, "Recarregamento de Arquivos Lua",
-        tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
-        UIFont.Medium, true)
-    painel:adicionarWidgetAba(rotuloTitulo)
-    posicaoY = posicaoY + 28
+    -- Linha 1: Botão [Mods Habilitados] + Título
+    local larguraBotaoMods = 140
 
-    -- Descrição
-    local rotuloDescricao = ISLabel:new(MARGEM * 2, posicaoY, 18,
-        "Filtre por nome ou selecione mods para recarregar arquivos Lua em tempo real.",
-        tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
-        UIFont.Small, true)
-    painel:adicionarWidgetAba(rotuloDescricao)
-    posicaoY = posicaoY + 26
-
-    -- Linha 1: Filtro + Mods Habilitados (mesma altura, alinhados)
-    local alturaLinha = 24
-    local larguraBotaoMods = 130
-    local inicioInput = MARGEM * 2 + 50
-    local fimBotaoMods = MARGEM * 2 + larguraUtil
-    local inicioBotaoMods = fimBotaoMods - larguraBotaoMods
-    local larguraInput = inicioBotaoMods - inicioInput - 6
-
-    local rotuloFiltro = ISLabel:new(MARGEM * 2, posicaoY + 4, alturaLinha, "Filtro:",
-        tema.textoNormal.r, tema.textoNormal.g, tema.textoNormal.b, tema.textoNormal.a,
-        UIFont.Small, true)
-    painel:adicionarWidgetAba(rotuloFiltro)
-
-    local entradaFiltro = ISTextEntryBox:new(self.filtroTexto, inicioInput, posicaoY, larguraInput, alturaLinha)
-    entradaFiltro:initialise()
-    entradaFiltro.backgroundColor = tema.fundoInput
-    entradaFiltro.borderColor = tema.bordaInput
-    painel:adicionarWidgetAba(entradaFiltro)
-    self.entradaFiltro = entradaFiltro
-
-    local botaoModsHabilitados = ISButton:new(inicioBotaoMods, posicaoY, larguraBotaoMods, alturaLinha,
+    local botaoModsHabilitados = ISButton:new(
+        margemEsquerda, posicaoY, larguraBotaoMods, alturaLinha,
         "Mods Habilitados", painel, function()
             abaRecarregar.alternarPainelMods(self, painel)
         end)
     botaoModsHabilitados:initialise()
-    botaoModsHabilitados.backgroundColor = tema.abaAtiva
-    botaoModsHabilitados.borderColor = tema.bordaSecao
+    botaoModsHabilitados.backgroundColor = { r = 0.60, g = 0.40, b = 0.10, a = 0.95 }
+    botaoModsHabilitados.borderColor = { r = 0.80, g = 0.55, b = 0.15, a = 1.0 }
     painel:adicionarWidgetAba(botaoModsHabilitados)
 
-    posicaoY = posicaoY + 30
+    local rotuloTitulo = ISLabel:new(
+        margemEsquerda + larguraBotaoMods + ESPACO_VERTICAL * 2,
+        posicaoY + 3, alturaLinha,
+        "Recarregamento de Arquivos dos Mods",
+        tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
+        UIFont.Medium, true)
+    painel:adicionarWidgetAba(rotuloTitulo)
 
-    -- Linha 2: Botões de ação (3 colunas de largura igual)
-    local espacamentoBotao = 6
+    posicaoY = posicaoY + alturaLinha + ESPACO_VERTICAL
+
+    -- Linha 2: Descrição
+    local rotuloDescricao = ISLabel:new(margemEsquerda, posicaoY, 18,
+        "Filtre por nome ou selecione mods para recarregar arquivos Lua em tempo real.",
+        tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
+        UIFont.Small, true)
+    painel:adicionarWidgetAba(rotuloDescricao)
+
+    posicaoY = posicaoY + 20 + ESPACO_VERTICAL
+
+    -- Linha 3: Campo de filtro (estica com a janela)
+    local rotuloFiltro = ISLabel:new(
+        margemEsquerda, posicaoY + 5, alturaLinha, "Filtro:",
+        tema.textoNormal.r, tema.textoNormal.g, tema.textoNormal.b, tema.textoNormal.a,
+        UIFont.Small, true)
+    painel:adicionarWidgetAba(rotuloFiltro)
+
+    local deslocamentoFiltro = 50
+    local entradaFiltro = ISTextEntryBox:new(
+        "",
+        margemEsquerda + deslocamentoFiltro,
+        posicaoY,
+        larguraUtil - deslocamentoFiltro,
+        alturaLinha)
+    entradaFiltro.anchorRight = true
+    entradaFiltro:initialise()
+    entradaFiltro:instantiate()
+    entradaFiltro:setClearButton(true)
+    entradaFiltro:setText("")
+    entradaFiltro:setPlaceholderText("filtrar por nome de arquivo...")
+    entradaFiltro.backgroundColor = tema.fundoInput
+    entradaFiltro.borderColor = tema.bordaInput
+
+    -- Callback event-driven: filtra a lista a cada tecla digitada
+    local referenciaAba = self
+    local referenciaPainel = painel
+    entradaFiltro.onTextChangeFunction = function(alvo, entradaTexto)
+        local textoNovo = entradaTexto:getInternalText()
+        if textoNovo == nil then textoNovo = "" end
+        referenciaAba.filtroTexto = textoNovo
+        abaRecarregar.atualizarLista(referenciaAba, referenciaPainel)
+    end
+    entradaFiltro.target = painel
+
+    painel:adicionarWidgetAba(entradaFiltro)
+    self.entradaFiltro = entradaFiltro
+    self.filtroTexto = ""
+
+    posicaoY = posicaoY + alturaLinha + ESPACO_VERTICAL
+
+    -- Linha 4: Botões de ação
+    local espacamentoBotao = 8
     local larguraBotao = math.floor((larguraUtil - espacamentoBotao * 2) / 3)
 
-    local botaoRecarregarTodos = ISButton:new(MARGEM * 2, posicaoY, larguraBotao, 26,
+    local botaoRecarregarTodos = ISButton:new(
+        margemEsquerda, posicaoY, larguraBotao, alturaBotao,
         "Recarregar Todos", painel, function()
             abaRecarregar.recarregarTodos(self, painel)
         end)
@@ -405,16 +438,20 @@ function abaRecarregar.criar(self, painel, posicaoY)
     botaoRecarregarTodos.borderColor = tema.bordaSecao
     painel:adicionarWidgetAba(botaoRecarregarTodos)
 
-    local botaoRecarregarSelecionado = ISButton:new(MARGEM * 2 + larguraBotao + espacamentoBotao, posicaoY, larguraBotao, 26,
+    local botaoRecarregarMarcados = ISButton:new(
+        margemEsquerda + larguraBotao + espacamentoBotao,
+        posicaoY, larguraBotao, alturaBotao,
         "Recarregar Marcados", painel, function()
             abaRecarregar.recarregarMarcados(self, painel)
         end)
-    botaoRecarregarSelecionado:initialise()
-    botaoRecarregarSelecionado.backgroundColor = tema.botaoSucesso
-    botaoRecarregarSelecionado.borderColor = tema.bordaSecao
-    painel:adicionarWidgetAba(botaoRecarregarSelecionado)
+    botaoRecarregarMarcados:initialise()
+    botaoRecarregarMarcados.backgroundColor = tema.botaoSucesso
+    botaoRecarregarMarcados.borderColor = tema.bordaSecao
+    painel:adicionarWidgetAba(botaoRecarregarMarcados)
 
-    local botaoLimparFiltro = ISButton:new(MARGEM * 2 + (larguraBotao + espacamentoBotao) * 2, posicaoY, larguraBotao, 26,
+    local botaoLimparFiltro = ISButton:new(
+        margemEsquerda + (larguraBotao + espacamentoBotao) * 2,
+        posicaoY, larguraBotao, alturaBotao,
         "Limpar Filtro", painel, function()
             self.entradaFiltro:setText("")
             self.filtroTexto = ""
@@ -425,19 +462,19 @@ function abaRecarregar.criar(self, painel, posicaoY)
     botaoLimparFiltro.borderColor = tema.bordaSecao
     painel:adicionarWidgetAba(botaoLimparFiltro)
 
-    posicaoY = posicaoY + 32
+    posicaoY = posicaoY + alturaBotao + ESPACO_VERTICAL
 
-    -- Lista de arquivos com checkbox (ocupa o espaço restante menos a barra de status)
-    local alturaLista = painel.height - posicaoY - statusAltura - MARGEM * 4
-    local listaArquivos = ISScrollingListBox:new(MARGEM * 2, posicaoY, larguraUtil, alturaLista)
+    -- Lista de arquivos com checkbox (preenche o espaço restante, redimensiona com a janela)
+    local alturaLista = painel.height - posicaoY - statusAltura - alturaRedimensionamento - ESPACO_VERTICAL * 2
+    local listaArquivos = ISScrollingListBox:new(margemEsquerda, posicaoY, larguraUtil, alturaLista)
+    listaArquivos.anchorRight = true
+    listaArquivos.anchorBottom = true
     listaArquivos:initialise()
     listaArquivos:instantiate()
     listaArquivos.itemheight = 24
     listaArquivos.backgroundColor = tema.fundoInput
     listaArquivos.borderColor = tema.bordaInput
     listaArquivos.drawBorder = true
-    listaArquivos.anchorRight = true
-    listaArquivos.anchorBottom = true
     listaArquivos.doDrawItem = abaRecarregar.desenharItemLista
 
     -- Intercepta clique para toggle de checkbox
@@ -453,9 +490,9 @@ function abaRecarregar.criar(self, painel, posicaoY)
     painel:adicionarWidgetAba(listaArquivos)
     self.listaArquivos = listaArquivos
 
-    -- Barra de status no rodapé
-    local statusPosicaoY = posicaoY + alturaLista + MARGEM
-    local rotuloStatus = ISLabel:new(MARGEM * 2, statusPosicaoY, statusAltura, "",
+    -- Barra de status (ancorada no rodapé, acompanha redimensionamento)
+    local statusPosicaoY = posicaoY + alturaLista + ESPACO_VERTICAL
+    local rotuloStatus = ISLabel:new(margemEsquerda, statusPosicaoY, statusAltura, "",
         tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
         UIFont.Small, true)
     rotuloStatus.anchorBottom = true
@@ -501,18 +538,24 @@ function abaRecarregar.alternarPainelMods(self, painel)
 
     -- Cria a lista visual de mods (substitui a lista de arquivos temporariamente)
     local tema = LKS_DebugTool.tema
-    local larguraUtil = painel.width - MARGEM * 4
+    local margemEsquerda = MARGEM * 2
+    local larguraUtil = painel.width - margemEsquerda - MARGEM * 2
     local posY = self.listaArquivos:getY()
     local alturaLista = self.listaArquivos:getHeight()
 
-    local listaMods = ISScrollingListBox:new(MARGEM * 2, posY, larguraUtil, alturaLista)
+    local listaMods = ISScrollingListBox:new(margemEsquerda, posY, larguraUtil, alturaLista)
+    listaMods.anchorRight = true
+    listaMods.anchorBottom = true
     listaMods:initialise()
     listaMods:instantiate()
-    listaMods.itemheight = 26
+    listaMods.itemheight = 28
     listaMods.backgroundColor = { r = 0.06, g = 0.06, b = 0.10, a = 1.0 }
     listaMods.borderColor = tema.acento
     listaMods.drawBorder = true
     listaMods.doDrawItem = abaRecarregar.desenharItemMod
+
+    -- Primeira opção especial: "Todos os arquivos .lua"
+    listaMods:addItem("Todos os arquivos .lua", { modId = "__TODOS__", ativo = self.todosArquivosAtivo, especial = true })
 
     -- Popula com mods disponíveis
     for _, modId in ipairs(self.modsDisponiveis) do
@@ -526,14 +569,36 @@ function abaRecarregar.alternarPainelMods(self, painel)
         local indice = listaSelf:rowAt(x, y)
         if indice and indice > 0 and indice <= #listaSelf.items then
             local item = listaSelf.items[indice]
-            item.item.ativo = not item.item.ativo
-            self.modsAtivos[item.item.modId] = item.item.ativo
+            local dados = item.item
+
+            if dados.modId == "__TODOS__" then
+                -- Toggle "Todos os arquivos .lua"
+                local novoEstado = not dados.ativo
+                dados.ativo = novoEstado
+                self.todosArquivosAtivo = novoEstado
+
+                -- Ao ativar "Todos", marca todos os mods individuais
+                if novoEstado then
+                    for _, itemMod in ipairs(listaSelf.items) do
+                        if itemMod.item.modId ~= "__TODOS__" then
+                            itemMod.item.ativo = true
+                            self.modsAtivos[itemMod.item.modId] = true
+                        end
+                    end
+                end
+            else
+                -- Toggle individual: não afeta o estado de "Todos"
+                dados.ativo = not dados.ativo
+                self.modsAtivos[dados.modId] = dados.ativo
+            end
         end
     end
 
     painel:addChild(listaMods)
     self.listaModsWidget = listaMods
 end
+
+
 
 --- Renderizador para itens da lista de mods (checkbox visual).
 function abaRecarregar.desenharItemMod(self, y, item, alt)
@@ -546,14 +611,18 @@ function abaRecarregar.desenharItemMod(self, y, item, alt)
         self:drawRect(0, y, self:getWidth(), alturaItem, 0.08, 0.3, 0.5, 0.8)
     end
 
+    -- Fundo especial para "Todos os arquivos .lua"
+    if dados.especial then
+        self:drawRect(0, y, self:getWidth(), alturaItem, 0.06, tema.acento.r, tema.acento.g, tema.acento.b)
+    end
+
     -- Checkbox visual — centralizada verticalmente na linha
     local checkSize = 14
-    local checkX = 10
+    local checkX = 12
     local checkY = y + math.floor((alturaItem - checkSize) / 2)
 
     if dados.ativo then
         self:drawRect(checkX, checkY, checkSize, checkSize, 0.9, tema.acento.r, tema.acento.g, tema.acento.b)
-        -- "X" centralizado na checkbox
         local textoX = "X"
         local larguraTexto = getTextManager():MeasureStringX(UIFont.Small, textoX)
         local alturaTexto = getTextManager():MeasureStringY(UIFont.Small, textoX)
@@ -564,14 +633,21 @@ function abaRecarregar.desenharItemMod(self, y, item, alt)
         self:drawRectBorder(checkX, checkY, checkSize, checkSize, 0.7, 0.5, 0.5, 0.6)
     end
 
-    -- Nome do mod — alinhado verticalmente ao centro da linha (mesma baseline da checkbox)
+    -- Nome do mod — alinhado verticalmente ao centro da linha
     local textoNome = item.text or ""
     local alturaTextoNome = getTextManager():MeasureStringY(UIFont.Small, textoNome)
     local textoY = y + math.floor((alturaItem - alturaTextoNome) / 2)
-    local textoX = checkX + checkSize + 10
+    local textoXPos = checkX + checkSize + 12
 
-    local corTexto = dados.ativo and tema.textoAbaAtiva or tema.textoDetalhe
-    self:drawText(textoNome, textoX, textoY, corTexto.r, corTexto.g, corTexto.b, corTexto.a, UIFont.Small)
+    local corTexto = dados.especial and tema.textoAbaAtiva or (dados.ativo and tema.textoAbaAtiva or tema.textoDetalhe)
+    local fonte = dados.especial and UIFont.Medium or UIFont.Small
+    self:drawText(textoNome, textoXPos, textoY, corTexto.r, corTexto.g, corTexto.b, corTexto.a, fonte)
+
+    -- Separador após "Todos"
+    if dados.especial then
+        self:drawRect(0, y + alturaItem - 1, self:getWidth(), 1,
+            0.4, tema.bordaSecao.r, tema.bordaSecao.g, tema.bordaSecao.b)
+    end
 
     return y + alturaItem
 end
@@ -660,22 +736,76 @@ function abaRecarregar.inicializarMods(self)
     end
 end
 
---- Retorna a lista combinada de arquivos de todos os mods selecionados.
+--- Retorna a lista de arquivos de acordo com o modo ativo.
+---
+--- Modo "Todos os arquivos .lua": retorna TODOS os arquivos Lua carregados pelo
+--- engine, excluindo apenas arquivos de mods que foram explicitamente desmarcados.
+---
+--- Modo normal: retorna apenas arquivos dos mods individualmente marcados.
 ---
 --- @return table arquivos Lista unificada de caminhos ordenada alfabeticamente.
 function abaRecarregar.obterArquivosAtivos(self)
-    local arquivos = {}
+    if self.todosArquivosAtivo then
+        return abaRecarregar.obterTodosArquivosComExclusao(self)
+    end
 
+    -- Modo normal: apenas mods marcados
+    local arquivos = {}
     for modId, ativo in pairs(self.modsAtivos) do
         if ativo then
-            -- Coleta sob demanda se ainda não tiver os arquivos deste mod
             if not self.arquivosPorMod[modId] then
                 self.arquivosPorMod[modId] = abaRecarregar.coletarArquivosDeMod(self, modId)
-                print("[LKS Debug Tool] Mod '" .. modId .. "': " .. tostring(#self.arquivosPorMod[modId]) .. " arquivos descobertos.")
             end
-
             for _, arquivo in ipairs(self.arquivosPorMod[modId]) do
                 table.insert(arquivos, arquivo)
+            end
+        end
+    end
+
+    table.sort(arquivos)
+    return arquivos
+end
+
+--- Retorna todos os arquivos Lua carregados pelo engine, excluindo
+--- aqueles que pertencem a mods explicitamente desmarcados.
+---
+--- @return table arquivos Lista de todos os caminhos Lua, filtrada por exclusões.
+function abaRecarregar.obterTodosArquivosComExclusao(self)
+    local arquivos = {}
+
+    -- Coleta diretórios dos mods desmarcados para exclusão
+    local diretoriosExcluidos = {}
+    for modId, ativo in pairs(self.modsAtivos) do
+        if not ativo then
+            local modInfo = getModInfoByID and getModInfoByID(modId)
+            if modInfo then
+                local modDir = modInfo:getDir()
+                if modDir then
+                    local dirNormalizado = string.gsub(string.lower(tostring(modDir)), "\\", "/")
+                    table.insert(diretoriosExcluidos, dirNormalizado)
+                end
+            end
+        end
+    end
+
+    -- Percorre TODOS os arquivos Lua carregados
+    local totalArquivos = getLoadedLuaCount()
+    for indice = 0, totalArquivos - 1 do
+        local caminhoCompleto = getLoadedLua(indice)
+        if caminhoCompleto then
+            local caminhoNormalizado = string.gsub(string.lower(tostring(caminhoCompleto)), "\\", "/")
+
+            -- Verifica se o arquivo pertence a algum mod excluído
+            local excluido = false
+            for _, dirExcluido in ipairs(diretoriosExcluidos) do
+                if string.find(caminhoNormalizado, dirExcluido, 1, true) then
+                    excluido = true
+                    break
+                end
+            end
+
+            if not excluido then
+                table.insert(arquivos, tostring(caminhoCompleto))
             end
         end
     end
@@ -692,7 +822,9 @@ function abaRecarregar.atualizarLista(self, painel)
     if not self.listaArquivos then return end
 
     self.listaArquivos:clear()
-    local filtro = string.lower(self.entradaFiltro and self.entradaFiltro:getText() or "")
+
+    local filtro = string.lower(tostring(self.filtroTexto or ""))
+
     local contador = 0
     local arquivosAtivos = abaRecarregar.obterArquivosAtivos(self)
 
@@ -760,20 +892,34 @@ function abaRecarregar.desenharItemLista(self, y, item, alt)
     return y + alturaItem
 end
 
+local LIMITE_RELOAD_SEGURO = 50
+
 --- Recarrega TODOS os arquivos visíveis na lista (respeitando filtro e mods ativos).
+--- Exibe aviso de segurança quando a quantidade excede o limite seguro.
 function abaRecarregar.recarregarTodos(self, painel)
     if not self.listaArquivos then return end
 
-    local contador = 0
     local total = #self.listaArquivos.items
+
+    if total > LIMITE_RELOAD_SEGURO then
+        abaRecarregar.definirStatus(self,
+            "AVISO: " .. tostring(total) .. " arquivos! Recarregamento em massa pode causar crash. Filtre ou marque arquivos especificos.",
+            "aviso")
+        print("[LKS Debug Tool] Reload em massa bloqueado: " .. tostring(total) .. " arquivos excede o limite seguro de " .. tostring(LIMITE_RELOAD_SEGURO) .. ".")
+        return
+    end
+
+    local contador = 0
     local erros = {}
 
     for _, item in ipairs(self.listaArquivos.items) do
-        local sucesso, mensagemErro = pcall(function() reloadLuaFile(item.item.caminho) end)
+        local caminhoReload = item.item.caminho
+        local sucesso, mensagemErro = pcall(reloadLuaFile, caminhoReload)
         if sucesso then
             contador = contador + 1
         else
             table.insert(erros, (item.text or "?") .. ": " .. tostring(mensagemErro))
+            print("[LKS Debug Tool] ERRO reload: " .. tostring(caminhoReload) .. " -> " .. tostring(mensagemErro))
         end
     end
 
@@ -785,28 +931,48 @@ function abaRecarregar.recarregarTodos(self, painel)
 end
 
 --- Recarrega os arquivos marcados com checkbox na lista.
+--- Exibe aviso de segurança quando a quantidade excede o limite seguro.
 function abaRecarregar.recarregarMarcados(self, painel)
     if not self.listaArquivos then return end
 
-    local contador = 0
+    -- Conta marcados antes de recarregar
     local total = 0
-    local erros = {}
-
     for _, item in ipairs(self.listaArquivos.items) do
         if item.item.marcado then
             total = total + 1
-            local sucesso, mensagemErro = pcall(function() reloadLuaFile(item.item.caminho) end)
-            if sucesso then
-                contador = contador + 1
-            else
-                table.insert(erros, (item.text or "?") .. ": " .. tostring(mensagemErro))
-            end
         end
     end
 
     if total == 0 then
         abaRecarregar.definirStatus(self, "Nenhum arquivo marcado. Clique nos arquivos para selecionar.", "aviso")
-    elseif #erros > 0 then
+        return
+    end
+
+    if total > LIMITE_RELOAD_SEGURO then
+        abaRecarregar.definirStatus(self,
+            "AVISO: " .. tostring(total) .. " arquivos marcados! Recarregamento em massa pode causar crash. Reduza a selecao.",
+            "aviso")
+        print("[LKS Debug Tool] Reload em massa bloqueado: " .. tostring(total) .. " arquivos excede o limite seguro de " .. tostring(LIMITE_RELOAD_SEGURO) .. ".")
+        return
+    end
+
+    local contador = 0
+    local erros = {}
+
+    for _, item in ipairs(self.listaArquivos.items) do
+        if item.item.marcado then
+            local caminhoReload = item.item.caminho
+            local sucesso, mensagemErro = pcall(reloadLuaFile, caminhoReload)
+            if sucesso then
+                contador = contador + 1
+            else
+                table.insert(erros, (item.text or "?") .. ": " .. tostring(mensagemErro))
+                print("[LKS Debug Tool] ERRO reload: " .. tostring(caminhoReload) .. " -> " .. tostring(mensagemErro))
+            end
+        end
+    end
+
+    if #erros > 0 then
         abaRecarregar.definirStatus(self, "Erro ao recarregar: " .. erros[1], "erro")
     else
         abaRecarregar.definirStatus(self, "Recarregados " .. tostring(contador) .. " de " .. tostring(total) .. " arquivos marcados.", "sucesso")
@@ -837,13 +1003,16 @@ function abaRecarregar.definirStatus(self, mensagem, tipoMensagem)
 end
 
 function abaRecarregar.atualizar(self, painel)
-    -- Atualiza a lista quando o texto do filtro muda
-    if self.entradaFiltro then
-        local textoAtual = self.entradaFiltro:getText() or ""
-        if textoAtual ~= self.filtroTexto then
-            self.filtroTexto = textoAtual
-            abaRecarregar.atualizarLista(self, painel)
-        end
+    -- O filtro principal é tratado via callback onTextChange (event-driven).
+    -- Este fallback cobre o caso do clear button (X) que limpa sem disparar onTextChange.
+    if not self.entradaFiltro then return end
+
+    local textoAtual = self.entradaFiltro:getText()
+    if textoAtual == nil then textoAtual = "" end
+
+    if textoAtual ~= self.filtroTexto then
+        self.filtroTexto = textoAtual
+        abaRecarregar.atualizarLista(self, painel)
     end
 end
 
@@ -865,26 +1034,30 @@ local abaMenuContexto = {
 
 function abaMenuContexto.criar(self, painel, posicaoY)
     local tema = LKS_DebugTool.tema
-    local larguraUtil = painel.width - MARGEM * 4
+    local margemEsquerda = MARGEM * 2
+    local larguraUtil = painel.width - margemEsquerda - MARGEM * 2
+    local alturaRedimensionamento = painel:resizeWidgetHeight()
 
     -- Título
-    local rotuloTitulo = ISLabel:new(MARGEM * 2, posicaoY, 22, "Inspetor de Menu de Contexto",
+    local rotuloTitulo = ISLabel:new(margemEsquerda, posicaoY, 22, "Inspetor de Menu de Contexto",
         tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
         UIFont.Medium, true)
     painel:adicionarWidgetAba(rotuloTitulo)
-    posicaoY = posicaoY + 28
+    posicaoY = posicaoY + 26 + ESPACO_VERTICAL
 
     -- Instrução
-    local rotuloInstrucao = ISLabel:new(MARGEM * 2, posicaoY, 18,
+    local rotuloInstrucao = ISLabel:new(margemEsquerda, posicaoY, 18,
         "Clique com botão direito em objetos do mundo. A captura aparecerá aqui.",
         tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
         UIFont.Small, true)
     painel:adicionarWidgetAba(rotuloInstrucao)
-    posicaoY = posicaoY + 26
+    posicaoY = posicaoY + 22 + ESPACO_VERTICAL
 
     -- Lista de captura (scrolling list)
-    local alturaLista = painel.height - posicaoY - MARGEM * 3
-    local listaCaptura = ISScrollingListBox:new(MARGEM * 2, posicaoY, larguraUtil, alturaLista)
+    local alturaLista = painel.height - posicaoY - alturaRedimensionamento - MARGEM
+    local listaCaptura = ISScrollingListBox:new(margemEsquerda, posicaoY, larguraUtil, alturaLista)
+    listaCaptura.anchorRight = true
+    listaCaptura.anchorBottom = true
     listaCaptura:initialise()
     listaCaptura:instantiate()
     listaCaptura.itemheight = 20
@@ -1033,26 +1206,30 @@ local abaInspetorObjeto = {
 
 function abaInspetorObjeto.criar(self, painel, posicaoY)
     local tema = LKS_DebugTool.tema
-    local larguraUtil = painel.width - MARGEM * 4
+    local margemEsquerda = MARGEM * 2
+    local larguraUtil = painel.width - margemEsquerda - MARGEM * 2
+    local alturaRedimensionamento = painel:resizeWidgetHeight()
 
     -- Título
-    local rotuloTitulo = ISLabel:new(MARGEM * 2, posicaoY, 22, "Inspetor de Propriedades do Objeto",
+    local rotuloTitulo = ISLabel:new(margemEsquerda, posicaoY, 22, "Inspetor de Propriedades do Objeto",
         tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
         UIFont.Medium, true)
     painel:adicionarWidgetAba(rotuloTitulo)
-    posicaoY = posicaoY + 28
+    posicaoY = posicaoY + 26 + ESPACO_VERTICAL
 
     -- Instrução
-    local rotuloInstrucao = ISLabel:new(MARGEM * 2, posicaoY, 18,
+    local rotuloInstrucao = ISLabel:new(margemEsquerda, posicaoY, 18,
         "Clique com botão direito em um objeto. Propriedades organizadas por categoria.",
         tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
         UIFont.Small, true)
     painel:adicionarWidgetAba(rotuloInstrucao)
-    posicaoY = posicaoY + 26
+    posicaoY = posicaoY + 22 + ESPACO_VERTICAL
 
     -- Lista de propriedades
-    local alturaLista = painel.height - posicaoY - MARGEM * 3
-    local listaPropriedades = ISScrollingListBox:new(MARGEM * 2, posicaoY, larguraUtil, alturaLista)
+    local alturaLista = painel.height - posicaoY - alturaRedimensionamento - MARGEM
+    local listaPropriedades = ISScrollingListBox:new(margemEsquerda, posicaoY, larguraUtil, alturaLista)
+    listaPropriedades.anchorRight = true
+    listaPropriedades.anchorBottom = true
     listaPropriedades:initialise()
     listaPropriedades:instantiate()
     listaPropriedades.itemheight = 20
