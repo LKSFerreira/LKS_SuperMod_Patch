@@ -267,8 +267,8 @@ local function ConstrucaoPossuiConsumidorNoQuadrado(dadosConstrucao, quadrado)
     local quadradoX, quadradoY, quadradoZ = quadrado:getX(), quadrado:getY(), quadrado:getZ()
     for _, consumidor in pairs(dadosConstrucao.powerConsumers) do
         local consumidorX = tonumber(consumidor and (consumidor.squareX or consumidor.x))
-        local consumidorY = tonumber(consumidor and (consumidor.squareY or consumer.y))
-        local consumidorZ = tonumber(consumidor and (consumidor.squareZ or consumer.z))
+        local consumidorY = tonumber(consumidor and (consumidor.squareY or consumidor.y))
+        local consumidorZ = tonumber(consumidor and (consumidor.squareZ or consumidor.z))
         if consumidorX == quadradoX and consumidorY == quadradoY and (consumidorZ == nil or consumidorZ == quadradoZ) then
             return true
         end

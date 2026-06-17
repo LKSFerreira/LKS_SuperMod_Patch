@@ -335,7 +335,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.Update()
                         for _, chaveG in pairs(predio.connectedGenerators) do
                             if chaveG == chaveGerador then existe = true; break end
                         end
-                        if not exists then
+                        if not existe then
                             table.insert(predio.connectedGenerators, chaveGerador)
                             LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Vinculado gerador %s de volta ao prédio %s", chaveGerador, idPool), "Fuel")

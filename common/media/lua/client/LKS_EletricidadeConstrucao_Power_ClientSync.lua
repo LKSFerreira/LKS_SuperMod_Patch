@@ -246,7 +246,7 @@ if Events.OnInitGlobalModData then
 end
 
 if Events.OnReceiveGlobalModData then
-    Events.OnReceiveGlobalModData.Add(OnReceiveGlobalModData)
+    Events.OnReceiveGlobalModData.Add(AoReceberModDataGlobal)
 end
 
 if Events.LoadGridsquare then
