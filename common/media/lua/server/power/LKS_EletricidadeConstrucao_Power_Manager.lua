@@ -511,7 +511,7 @@ function Gerenciador.ValidateConnection(dadosConexao)
     
     -- Updates distance if changed
     if math.abs(distancia - dadosConexao.distance) > 0.1 then
-        dadosConexao.distance = distance
+        dadosConexao.distance = distancia
     end
     
     -- Updates last validated timestamp

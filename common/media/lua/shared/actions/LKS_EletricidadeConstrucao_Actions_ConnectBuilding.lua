@@ -144,7 +144,7 @@ local function LocalizarInterruptorLuzConstrucao(construcao, andarZ)
 
     for indiceSala = 0, salas:size() - 1 do
         local sala = salas:get(indiceSala)
-        if room then
+        if sala then
             for salaX = sala:getX(), sala:getX2() do
                 for salaY = sala:getY(), sala:getY2() do
                     local quadrado = getCell():getGridSquare(salaX, salaY, andarZ)
@@ -166,7 +166,7 @@ local function LocalizarInterruptorLuzConstrucao(construcao, andarZ)
 end
 
 --- Conta a quantidade de elementos presentes em uma tabela genérica.
---- @param tabela table A tabela a avaliar.
+--- @param tabela table|nil A tabela a avaliar.
 --- @return integer A quantidade de itens na tabela.
 local function ContarElementos(tabela)
     local contagem = 0

@@ -1353,7 +1353,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.ConsumeFuel(generatorData, amou
                 LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(idPredio)
                 totalAtualizados = totalAtualizados + 1
             end
-            Logger.Debug(string.format("Atualizados %d prédio(s) após remoção de combustível do gerador %s",
+            LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("Atualizados %d prédio(s) após remoção de combustível do gerador %s",
                 totalAtualizados, generatorData.id), "Fuel")
         end
     end
