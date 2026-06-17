@@ -36,6 +36,7 @@ require "ISUI/ISLabel"
 require "ISUI/ISTextEntryBox"
 require "ISUI/ISScrollingListBox"
 require "ISUI/ISTickBox"
+require "LKS_Debug_TooltipData"
 
 -- ============================================================================
 -- NAMESPACE E CONFIGURAÇÃO GLOBAL
@@ -1430,14 +1431,19 @@ function abaInspetorObjeto.popularLista(self)
     if not self.listaPropriedades then return end
     self.listaPropriedades:clear()
 
+    local secaoAtual = nil
+
     for _, secao in ipairs(self.propriedadesCapturadas) do
-        -- Cabeçalho de seção
+        secaoAtual = secao.secao
+
+        -- Cabeçalho de seção (sem tooltip)
         self.listaPropriedades:addItem(secao.secao, { tipo = "secao" })
 
-        -- Itens da seção
+        -- Itens da seção com tooltip via terceiro argumento nativo
         for _, item in ipairs(secao.itens) do
             local texto = "  " .. item.chave .. " = " .. item.valor
-            self.listaPropriedades:addItem(texto, { tipo = "propriedade", chave = item.chave, valor = item.valor })
+            local tooltipTexto = LKS_DebugTooltipData.buscarTooltip(item.chave, secaoAtual)
+            self.listaPropriedades:addItem(texto, { tipo = "propriedade", chave = item.chave, valor = item.valor }, tooltipTexto)
         end
     end
 
