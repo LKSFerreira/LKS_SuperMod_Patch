@@ -1,0 +1,234 @@
+# =============================================================================
+# REFERÊNCIA: Definições de Ferramentas e Materiais — Sistema Moveables (PZ B42)
+# =============================================================================
+#
+# Extraído de: ISMoveableDefinitions.lua (media/lua/shared/Moveables/)
+# Data: 2026-06-17
+#
+# Este arquivo documenta os mapeamentos internos entre propriedades de sprites
+# e os sistemas de ferramentas/materiais/desmonte do jogo.
+# =============================================================================
+
+# =============================================================================
+# FERRAMENTAS DE COLETA/COLOCAÇÃO (PickUpTool / PlaceTool)
+# =============================================================================
+# Cada ferramenta define:
+#   - name: Nome da ferramenta (usado em PickUpTool/PlaceTool)
+#   - items: Itens que satisfazem o requisito
+#   - perk: Habilidade associada (para PickUpLevel)
+#   - baseActionTime: Tempo base em ticks da ação
+#   - sound: Som reproduzido durante a ação
+# =============================================================================
+
+ferramentas:
+  Hammer:
+    itens_aceitos: ["Base.Hammer"]
+    habilidade: "Carpintaria (Perks.Woodwork)"
+    tempo_base: 75
+    som: "Hammering"
+    descricao: "Martelo — usado para pregar/desmontar objetos de madeira"
+
+  Crowbar:
+    itens_aceitos: ["Tag.Crowbar", "Crowbar"]
+    habilidade: "Carpintaria (Perks.Woodwork)"
+    tempo_base: 150
+    som: "Hammering"
+    descricao: "Pé de cabra — arranca objetos fixados"
+
+  Electrician:
+    itens_aceitos: ["Base.Screwdriver"]
+    habilidade: "Eletricidade (Perks.Electricity)"
+    tempo_base: 100
+    som: "Dismantle"
+    descricao: "Trabalho elétrico — desmontar aparelhos, interruptores"
+
+  Cutter:
+    itens_aceitos: ["Tag.SharpKnife", "Tag.Scissors", "KitchenKnife", "Scissors", "HuntingKnife", "SharpedStone"]
+    habilidade: "Carpintaria (Perks.Woodwork)"
+    tempo_base: 50
+    som: "Hammering"
+    descricao: "Corte — usado para desmontar tecidos, couros, materiais macios"
+
+  Shovel:
+    itens_aceitos: ["Base.Shovel"]
+    habilidade: "Agricultura (Perks.Farming)"
+    tempo_base: 100
+    som: "bushes"
+    descricao: "Pá — desenterrar, remover vegetação plantada"
+
+  Wrench:
+    itens_aceitos: ["Base.Wrench", "Base.PipeWrench"]
+    habilidade: "Nenhuma"
+    tempo_base: 100
+    som: "RepairWithWrench"
+    descricao: "Chave inglesa — desmontar encanamento, conexões"
+
+  Metal:
+    itens_aceitos: ["Base.Screwdriver"]
+    habilidade: "Metalurgia (Perks.MetalWelding)"
+    tempo_base: 100
+    som: "Hammering"
+    descricao: "Trabalho em metal — desmontar estruturas metálicas"
+
+  Screwdriver:
+    itens_aceitos: ["Base.Screwdriver"]
+    habilidade: "Carpintaria (Perks.Woodwork)"
+    tempo_base: 100
+    som: "Dismantle"
+    descricao: "Chave de fenda genérica — desparafusar componentes"
+
+# =============================================================================
+# MATERIAIS DE DESMONTE (Material, Material2, Material3)
+# =============================================================================
+# Cada material define quais itens são retornados ao desmontar um objeto
+# feito daquele material. O sistema usa chance por tentativa.
+#
+# Formato: material → lista de { item, quantidade_max, chance_base }
+# =============================================================================
+
+materiais:
+  Wood:
+    descricao: "Madeira — material mais comum em móveis e construções"
+    retornos:
+      - item: "Base.Plank"
+        nome_ptbr: "Tábua"
+        quantidade_max: 3
+        chance_base: 20
+      - item: "Base.Nails"
+        nome_ptbr: "Pregos"
+        quantidade_max: 1
+        chance_base: 10
+
+  Log:
+    descricao: "Tora — objetos feitos de troncos inteiros"
+    retornos:
+      - item: "Base.Log"
+        nome_ptbr: "Tora"
+        quantidade_max: 3
+        chance_base: 15
+
+  Steel:
+    descricao: "Aço — estruturas metálicas, máquinas"
+    retornos:
+      - item: "Base.Screws"
+        nome_ptbr: "Parafusos"
+        quantidade_max: 3
+        chance_base: 10
+
+  Plumbing:
+    descricao: "Encanamento — pias, vasos sanitários, canos"
+    retornos:
+      - item: "Base.Screws"
+        nome_ptbr: "Parafusos"
+        quantidade_max: 3
+        chance_base: 10
+
+  Electric:
+    descricao: "Elétrico — aparelhos eletrônicos, fiação"
+    retornos:
+      - item: "Base.Screws"
+        nome_ptbr: "Parafusos"
+        quantidade_max: 3
+        chance_base: 10
+
+  Fabric:
+    descricao: "Tecido — sofás, camas, cortinas"
+    retornos:
+      - item: "Base.Thread"
+        nome_ptbr: "Linha"
+        quantidade_max: 1
+        chance_base: 20
+      - item: "Base.RippedSheets"
+        nome_ptbr: "Trapos"
+        quantidade_max: 3
+        chance_base: 10
+      - item: "Base.Sheet"
+        nome_ptbr: "Lençol"
+        quantidade_max: 1
+        chance_base: 1
+
+  Leather:
+    descricao: "Couro — cadeiras de escritório, sofás de couro"
+    retornos:
+      - item: "Base.Thread"
+        nome_ptbr: "Linha"
+        quantidade_max: 1
+        chance_base: 20
+      - item: "Base.LeatherStrips"
+        nome_ptbr: "Tiras de Couro"
+        quantidade_max: 3
+        chance_base: 10
+
+  Natural:
+    descricao: "Natural — objetos rústicos, cestos, cercas de galho"
+    retornos:
+      - item: "Base.Twigs"
+        nome_ptbr: "Galhos"
+        quantidade_max: 3
+        chance_base: 10
+
+  Brick:
+    descricao: "Tijolo — paredes, fornos, lareiras"
+    retornos:
+      - item: "Base.ClayBrick"
+        nome_ptbr: "Tijolo"
+        quantidade_max: 3
+        chance_base: 20
+
+  Plastic:
+    descricao: "Plástico — (NOTA: ainda não implementado no jogo)"
+    retornos: []
+    observacao: "Comentado no código-fonte como 'currently missing materials to be added later'"
+
+# =============================================================================
+# FÓRMULAS IMPORTANTES
+# =============================================================================
+
+formulas:
+  peso_inventario:
+    formula: "PickUpWeight / 10"
+    exemplo: "PickUpWeight=200 → peso no inventário = 20.0"
+
+  saude_objeto:
+    formula: "PickUpWeight(raw) × materialHealth"
+    contexto: "materialHealth vem do material primário (Wood, Steel, etc)"
+
+  tempo_acao:
+    formula: "baseActionTime + (PickUpWeight(raw) × 2)"
+    contexto: "Tempo total para pegar = tempo da ferramenta + peso × 2"
+
+  chance_quebra:
+    formula: "Diminui com nível na habilidade da PickUpTool"
+    contexto: "Só se aplica quando CanBreak=true E PickUpTool está definido"
+
+  usos_desmonte:
+    formula: >
+      Se ScrapToolUseOverride definido e > 0: usa esse valor.
+      Senão baseado em ScrapSize: Small=3, Medium=5, Large=10.
+
+# =============================================================================
+# FONTES E REFERÊNCIAS
+# =============================================================================
+
+fontes:
+  - arquivo: "media/lua/shared/Moveables/ISMoveableDefinitions.lua"
+    linhas: "311-341"
+    conteudo: "Definições de ferramentas e materiais"
+
+  - arquivo: "media/lua/shared/Moveables/ISMoveableSpriteProps.lua"
+    linhas: "80-184"
+    conteudo: "Leitura de propriedades do PropertyContainer"
+
+  - arquivo: "media/lua/shared/Moveables/ISMoveableSpriteProps.lua"
+    linhas: "259-293"
+    conteudo: "Sistema de rotação (Facing + offsets)"
+
+  - arquivo: "media/lua/shared/Moveables/ISMoveableSpriteProps.lua"
+    linhas: "296-384"
+    conteudo: "Cálculos de saúde, tempo e verificação de habilidade"
+
+  - url: "https://pz-wiki-modding.github.io/PZ-API-Docs/mapping/tile_properties.html"
+    conteudo: "Documentação oficial da comunidade sobre tile properties"
+
+  - url: "https://github.com/PZ-Wiki-Modding/PZ-API-Docs"
+    conteudo: "Repositório fonte da documentação (RST)"

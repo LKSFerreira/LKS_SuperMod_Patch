@@ -1,0 +1,1939 @@
+# =============================================================================
+# DOCUMENTAÇÃO COMPLETA: Propriedades de Sprite/Tile — Project Zomboid Build 42
+# =============================================================================
+#
+# OBJETIVO:
+#   Mapeamento detalhado de TODAS as propriedades que aparecem no PropertyContainer
+#   dos sprites/tiles do jogo. Cada propriedade é documentada com:
+#   - Descrição funcional em pt-BR
+#   - Tipo de dado (boolean, integer, string, enum)
+#   - Valores permitidos (quando aplicável)
+#   - Campo Java correspondente (TilePropertyKey)
+#   - Contexto de uso (onde e como o jogo utiliza)
+#   - Exemplo prático
+#
+# FONTES:
+#   - PZ-API-Docs (GitHub: PZ-Wiki-Modding/PZ-API-Docs)
+#   - Código-fonte Lua do jogo (ISMoveableSpriteProps.lua, ISMoveableDefinitions.lua)
+#   - Arquivo binário newtiledefinitions.tiles (análise parcial)
+#   - PZwiki Tile Properties
+#   - Engenharia reversa do sistema de Moveables
+#
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-17
+# AUTOR: LKS FERREIRA
+# =============================================================================
+
+# =============================================================================
+# CATEGORIAS DE PROPRIEDADES:
+#
+#   1. IDENTIDADE E NOMEAÇÃO — Nome, grupo, tipo do objeto
+#   2. POSICIONAMENTO E ORIENTAÇÃO — Facing, offsets, grid
+#   3. SUPERFÍCIE E ALTURA — Surface, ItemHeight, pisos
+#   4. MOVIMENTAÇÃO E COLETA — IsMoveAble, ferramentas, peso
+#   5. MATERIAIS E DESMONTE — Material, scrap, repair
+#   6. COLISÃO E FÍSICA — Solid, bloqueios, pathfinding
+#   7. PAREDES E ESTRUTURAS — WallN, portas, janelas
+#   8. CONTAINERS E ARMAZENAMENTO — Container, capacidade, sons
+#   9. ILUMINAÇÃO E VISUAL — Luz, transparência, renderização
+#  10. INTERAÇÃO E GAMEPLAY — Cama, cadeira, fogão, geladeira
+#  11. CLIMA E AMBIENTE — Chuva, vento, neve
+#  12. FLAGS (IsoFlagType) — Flags booleanas do sistema de colisão
+# =============================================================================
+
+# =============================================================================
+# 1. IDENTIDADE E NOMEAÇÃO
+# =============================================================================
+
+propriedades:
+
+  # ---------------------------------------------------------------------------
+  # IDENTIDADE E NOMEAÇÃO
+  # ---------------------------------------------------------------------------
+
+  CustomName:
+    campo_java: "TilePropertyKey.CUSTOM_NAME"
+    tipo: string
+    descricao: >
+      Nome personalizado do objeto exibido no jogo. Compõe o nome final junto
+      com GroupName no formato "GroupName + CustomName". Exemplo: GroupName="Fancy"
+      e CustomName="Bed" resulta em "Fancy Bed" no inventário/tooltip.
+    contexto: >
+      Usado pelo sistema de Moveables para exibir o nome do objeto quando o
+      jogador interage (pegar, colocar, inspecionar). Deve ser idêntico em
+      todos os tiles de objetos multi-tile.
+    exemplo: "Bed"
+    observacao: "Se ausente, o objeto aparece como 'Moveable object'"
+
+  GroupName:
+    campo_java: "TilePropertyKey.GROUP_NAME"
+    tipo: string
+    descricao: >
+      Prefixo descritivo do objeto — geralmente indica cor, estilo ou qualidade.
+      Exibido antes do CustomName formando o nome completo do objeto.
+    contexto: >
+      Subcategoria visual. Valores comuns: "Red", "Blue", "White", "Fancy",
+      "Modern", "Old". Usado para diferenciar variações visuais do mesmo objeto.
+    exemplo: "Red"
+    observacao: >
+      Responde à pergunta "por que GroupName = Red?" — é a variante de cor/estilo
+      desse sprite específico dentro da mesma família de objetos.
+
+  CustomItem:
+    campo_java: "TilePropertyKey.CUSTOM_ITEM"
+    tipo: string
+    descricao: >
+      ID completo do item que este tile representa quando coletado. Sobrescreve
+      o item genérico de moveable com um item específico definido em scripts.
+    contexto: >
+      Quando presente, o sistema de moveables usa este item em vez do genérico.
+      Nome, peso e propriedades vêm do item definido em scripts/items.txt.
+      Exemplos: rádios, TVs e jukeboxes que retornam itens específicos.
+    exemplo: "Radio.HamRadio"
+    valores_comuns:
+      - "Radio.HamRadio"
+      - "Radio.CDplayer"
+
+  IsoType:
+    campo_java: "TilePropertyKey.ISO_TYPE"
+    tipo: enum
+    descricao: >
+      Classe Java que o tile instancia no mundo. Define comportamentos e
+      interações específicos do objeto. IsoObject é o padrão genérico.
+    contexto: >
+      Determina qual classe Java gerencia o objeto — cada tipo tem lógica
+      própria (temperatura, energia, lavagem, música, etc).
+    padrao: "IsoObject"
+    valores_permitidos:
+      - valor: "IsoObject"
+        significado: "Objeto genérico sem comportamento especial"
+      - valor: "IsoBarbecue"
+        significado: "Churrasqueira — pode ser acesa e cozinhar"
+      - valor: "IsoBrokenGlass"
+        significado: "Vidro quebrado no chão — causa dano ao pisar"
+      - valor: "IsoClothingDryer"
+        significado: "Secadora de roupas — seca roupas molhadas"
+      - valor: "IsoClothingWasher"
+        significado: "Lavadora de roupas — lava roupas sujas"
+      - valor: "IsoCombinationWasherDryer"
+        significado: "Lava-e-seca combinado — lava e seca em um aparelho"
+      - valor: "IsoFireplace"
+        significado: "Lareira — aquece o ambiente, pode ser acesa"
+      - valor: "IsoMannequin"
+        significado: "Manequim — pode vestir roupas para exibição"
+      - valor: "IsoRadio"
+        significado: "Rádio — reproduz transmissões e música"
+      - valor: "IsoJukebox"
+        significado: "Jukebox — reproduz música ambiente"
+      - valor: "IsoStove"
+        significado: "Fogão/Forno — cozinha alimentos, requer energia"
+      - valor: "IsoTelevision"
+        significado: "Televisão — exibe programas, entretenimento"
+      - valor: "IsoMultiMedia"
+        significado: "Multimídia — reproduz mídias diversas"
+
+  name:
+    campo_java: "TilePropertyKey.NAME"
+    tipo: string
+    descricao: "Nome interno do sprite/tile no sistema."
+    contexto: "Identificador interno, raramente visível ao jogador."
+
+  # ---------------------------------------------------------------------------
+  # 2. POSICIONAMENTO E ORIENTAÇÃO
+  # ---------------------------------------------------------------------------
+
+  Facing:
+    campo_java: "TilePropertyKey.FACING"
+    tipo: enum
+    descricao: >
+      Direção para a qual a FRENTE do objeto aponta. Atenção: NÃO é a orientação
+      do sprite, mas sim para onde o lado frontal está "olhando". Se Facing="S",
+      significa que o tile tem orientação Norte e sua frente olha para o Sul.
+    contexto: >
+      Base para o sistema de rotação de moveables. Junto com os offsets (Noffset,
+      Woffset, etc), permite que o jogo encontre os sprites de todas as rotações.
+      Referencial isométrico: Norte = canto superior direito, Oeste = canto superior esquerdo.
+    valores_permitidos:
+      - valor: "N"
+        significado: "Frente apontando para Norte (canto superior direito)"
+      - valor: "S"
+        significado: "Frente apontando para Sul (canto inferior esquerdo)"
+      - valor: "E"
+        significado: "Frente apontando para Leste (canto inferior direito)"
+      - valor: "W"
+        significado: "Frente apontando para Oeste (canto superior esquerdo)"
+    exemplo: "S"
+
+  Noffset:
+    campo_java: "TilePropertyKey.N_OFFSET"
+    tipo: integer
+    descricao: >
+      Delta de índice no spritesheet para obter a versão virada para Norte.
+      O valor é somado ao spriteID base para encontrar o sprite rotacionado.
+    contexto: >
+      NÃO é um offset em pixels! É o deslocamento numérico dentro do atlas
+      de sprites. Exemplo: se o sprite base é "furniture_01_5" (ID 5) e
+      Noffset=2, o sprite Norte será "furniture_01_7" (ID 5+2=7).
+    padrao: 0
+    exemplo: 2
+    observacao: "Valor 0 significa que não existe sprite para essa direção"
+
+  Soffset:
+    campo_java: "TilePropertyKey.S_OFFSET"
+    tipo: integer
+    descricao: >
+      Delta de índice no spritesheet para obter a versão virada para Sul.
+      Funciona identicamente ao Noffset mas para a direção Sul.
+    padrao: 0
+    exemplo: -2
+
+  Woffset:
+    campo_java: "TilePropertyKey.W_OFFSET"
+    tipo: integer
+    descricao: >
+      Delta de índice no spritesheet para obter a versão virada para Oeste.
+      Funciona identicamente ao Noffset mas para a direção Oeste.
+    contexto: >
+      Responde à pergunta "Woffset = 2, que porra é isso?" — significa que para
+      ver este objeto virado para Oeste, soma-se 2 ao ID base do sprite.
+    padrao: 0
+    exemplo: 2
+
+  Eoffset:
+    campo_java: "TilePropertyKey.E_OFFSET"
+    tipo: integer
+    descricao: >
+      Delta de índice no spritesheet para obter a versão virada para Leste.
+      Funciona identicamente ao Noffset mas para a direção Leste.
+    padrao: 0
+    exemplo: -2
+
+  LinkedOffset:
+    campo_java: "TilePropertyKey.LINKED_OFFSET"
+    tipo: integer
+    descricao: >
+      Offset para sprite vinculado (parte de objeto multi-tile). Indica a
+      distância em índice de sprite até o tile parceiro na mesma grade.
+    padrao: 0
+    contexto: "Usado para objetos compostos de múltiplos tiles (sofás, mesas grandes)."
+
+  LinkedLocIs:
+    campo_java: "TilePropertyKey.LINKED_LOC_IS"
+    tipo: string
+    descricao: >
+      Direção onde está o tile parceiro vinculado. Indica a posição relativa
+      do outro tile que forma parte do mesmo objeto multi-tile.
+    contexto: "Para um sofá de 2 tiles, um deles terá LinkedLocIs='E' indicando que o parceiro está a Leste."
+    valores_comuns:
+      - "N"
+      - "S"
+      - "E"
+      - "W"
+
+  SpriteGridPos:
+    campo_java: "TilePropertyKey.SPRITE_GRID_POS"
+    tipo: string
+    descricao: >
+      Posição que este tile ocupa dentro de objetos multi-tile. Formato "X,Y"
+      onde X cresce para sudeste e Y cresce para sudoeste (visão isométrica).
+    contexto: "Para mesas 2x2, os tiles teriam posições: 0,0 / 1,0 / 0,1 / 1,1"
+    exemplo: "0,1"
+
+  SpriteGridLevel:
+    campo_java: "TilePropertyKey.SPRITE_GRID_LEVEL"
+    tipo: integer
+    descricao: "Nível vertical no grid de sprites (para objetos com múltiplos andares)."
+
+  # ---------------------------------------------------------------------------
+  # 3. SUPERFÍCIE E ALTURA
+  # ---------------------------------------------------------------------------
+
+  Surface:
+    campo_java: "TilePropertyKey.SURFACE"
+    tipo: integer
+    descricao: >
+      Altura em pixels da superfície plana do objeto. Define onde itens serão
+      colocados "em cima" do objeto (mesas, bancadas, prateleiras).
+    contexto: >
+      Quando o jogador coloca um item sobre uma mesa, o jogo usa este valor
+      para posicionar o item visualmente na altura correta. Valor 0 = nível
+      do chão. Valores maiores = mais alto. Uma mesa típica tem Surface=32.
+    padrao: 0
+    exemplo: 32
+    observacao: >
+      Quando IsSurfaceOffset=true, Surface passa a indicar a altura da BASE
+      do objeto (útil para objetos colocados sobre outros, como vasos de flores).
+
+  IsSurfaceOffset:
+    campo_java: "TilePropertyKey.IS_SURFACE_OFFSET"
+    tipo: boolean
+    descricao: >
+      Quando true, inverte o significado de Surface: em vez de indicar a altura
+      da superfície, passa a indicar a altura da BASE (fundo) do tile.
+    contexto: >
+      Usado para objetos que ficam sobre outros (abajur sobre mesa, vaso sobre
+      balcão). O ItemHeight passa a indicar a superfície e Surface indica o offset base.
+    padrao: false
+
+  ItemHeight:
+    campo_java: "TilePropertyKey.ITEM_HEIGHT"
+    tipo: integer
+    descricao: >
+      Altura da superfície própria de um tile que usa IsSurfaceOffset. Quando
+      um objeto tem IsSurfaceOffset=true, ItemHeight define onde itens podem
+      ser colocados em cima DESTE objeto.
+    contexto: >
+      Complementa Surface+IsSurfaceOffset. Exemplo: um abajur sobre uma mesa —
+      Surface indica onde o abajur "encaixa" na mesa, ItemHeight indica se algo
+      pode ser colocado em cima do abajur.
+    padrao: 0
+
+  IsTable:
+    campo_java: "TilePropertyKey.IS_TABLE"
+    tipo: boolean
+    descricao: "Trata este tile como superfície de mesa. Permite colocar itens sobre ele."
+    contexto: "Ativa lógica de posicionamento de itens na superfície."
+
+  IsTableTop:
+    campo_java: "TilePropertyKey.IS_TABLE_TOP"
+    tipo: boolean
+    descricao: "Permite que outros tiles/objetos sejam empilhados sobre este."
+    contexto: "Similar a IsTable mas para empilhamento de objetos móveis."
+
+  halfheight:
+    campo_java: "TilePropertyKey.HALF_HEIGHT"
+    tipo: boolean
+    descricao: "Indica que o tile ocupa apenas metade da altura padrão."
+
+  IsHigh:
+    campo_java: "TilePropertyKey.IS_HIGH"
+    tipo: boolean
+    descricao: >
+      Tile ocupa apenas a METADE SUPERIOR do espaço vertical. Exemplos típicos:
+      quadros na parede, prateleiras suspensas, relógios de parede.
+    contexto: >
+      Responde à pergunta "IsHigh?" — um quadro na parede é IsHigh porque
+      ocupa a parte de cima do tile, permitindo objetos baixos no mesmo espaço.
+
+  IsLow:
+    campo_java: "TilePropertyKey.IS_LOW"
+    tipo: boolean
+    descricao: >
+      Tile ocupa apenas a METADE INFERIOR do espaço vertical. Exemplos típicos:
+      camas, bancadas baixas, mesas de centro.
+    contexto: >
+      Responde à pergunta "IsLow?" — uma cama é IsLow porque ocupa apenas
+      a parte baixa do tile, permitindo prateleiras altas no mesmo quadrado.
+      Objetos IsLow podem coexistir com objetos IsHigh no mesmo tile.
+
+  IsStackable:
+    campo_java: "TilePropertyKey.IS_STACKABLE"
+    tipo: boolean
+    descricao: "Permite empilhar múltiplas instâncias deste objeto verticalmente."
+
+  FloorHeight:
+    campo_java: "TilePropertyKey.FLOOR_HEIGHT"
+    tipo: integer
+    descricao: "Altura do piso definida por este tile (para pisos elevados)."
+
+  FloorHeightOneThird:
+    campo_java: "TilePropertyKey.FLOOR_HEIGHT_ONE_THIRD"
+    tipo: boolean
+    descricao: "Piso com altura de 1/3 da altura padrão."
+
+  FloorHeightTwoThirds:
+    campo_java: "TilePropertyKey.FLOOR_HEIGHT_TWO_THIRDS"
+    tipo: boolean
+    descricao: "Piso com altura de 2/3 da altura padrão."
+
+  IgnoreSurfaceSnap:
+    campo_java: "TilePropertyKey.IGNORE_SURFACE_SNAP"
+    tipo: boolean
+    descricao: >
+      Quando true, o objeto ignora o snap automático à superfície abaixo dele.
+      Permite posicionamento livre em vez de encaixar na mesa/balcão.
+    contexto: "Usado para objetos que devem ficar no chão mesmo quando há superfície disponível."
+
+  # ---------------------------------------------------------------------------
+  # 4. MOVIMENTAÇÃO E COLETA
+  # ---------------------------------------------------------------------------
+
+  IsMoveAble:
+    campo_java: "TilePropertyKey.IS_MOVE_ABLE"
+    tipo: boolean
+    descricao: >
+      Marca o tile como móvel — o jogador pode pegá-lo e reposicioná-lo.
+      Quando true, o objeto gera um item de inventário do tipo "moveable".
+    contexto: >
+      Ativa todo o sistema de moveables: o objeto aparece no modo "pegar móvel"
+      e pode ser carregado, rotacionado e recolocado pelo jogador.
+
+  isMoveAbleObject:
+    campo_java: "TilePropertyKey.IS_MOVE_ABLE_OBJECT"
+    tipo: boolean
+    descricao: "Variante de IsMoveAble para objetos compostos."
+
+  MoveType:
+    campo_java: "TilePropertyKey.MOVE_TYPE"
+    tipo: enum
+    descricao: >
+      Subtipo de objeto móvel. Afeta principalmente o ícone exibido no inventário
+      e, no caso de WallObject, altera ligeiramente a física de colisão.
+    padrao: "Object"
+    valores_permitidos:
+      - valor: "Normal"
+        significado: "Objeto padrão"
+      - valor: "WallObject"
+        significado: "Objeto fixado na parede (quadro, relógio, prateleira)"
+      - valor: "WindowObject"
+        significado: "Objeto de janela (cortina, persiana)"
+      - valor: "Window"
+        significado: "A própria janela"
+      - valor: "FloorTile"
+        significado: "Piso decorativo removível"
+      - valor: "FloorRug"
+        significado: "Tapete"
+      - valor: "Vegitation"
+        significado: "Vegetação (plantas decorativas)"
+      - valor: "WallOverlay"
+        significado: "Overlay sobre parede (papel de parede, pintura) — atribuído automaticamente"
+
+  PickUpTool:
+    campo_java: "TilePropertyKey.PICK_UP_TOOL"
+    tipo: enum
+    descricao: >
+      Ferramenta necessária para o jogador pegar/desmontar este objeto.
+      Cada ferramenta está associada a uma habilidade (perk) específica.
+    contexto: >
+      "None" ou ausência = pode pegar com as mãos. Cada ferramenta mapeia
+      para itens específicos e uma habilidade associada.
+    valores_permitidos:
+      - valor: "None"
+        significado: "Sem ferramenta necessária (mãos livres)"
+      - valor: "Hammer"
+        significado: "Martelo — requer Base.Hammer — habilidade: Carpintaria"
+      - valor: "Crowbar"
+        significado: "Pé de cabra — requer Tag.Crowbar — habilidade: Carpintaria"
+      - valor: "Electrician"
+        significado: "Chave de fenda — requer Base.Screwdriver — habilidade: Eletricidade"
+      - valor: "Cutter"
+        significado: "Faca/tesoura — requer Tag.SharpKnife ou Tag.Scissors — habilidade: Carpintaria"
+      - valor: "Shovel"
+        significado: "Pá — requer Base.Shovel — habilidade: Agricultura"
+      - valor: "Wrench"
+        significado: "Chave inglesa — requer Base.Wrench ou Base.PipeWrench — sem habilidade"
+      - valor: "Metal"
+        significado: "Chave de fenda (metal) — requer Base.Screwdriver — habilidade: Metalurgia"
+      - valor: "Screwdriver"
+        significado: "Chave de fenda — requer Base.Screwdriver — habilidade: Carpintaria"
+
+  PlaceTool:
+    campo_java: "TilePropertyKey.PLACE_TOOL"
+    tipo: enum
+    descricao: "Ferramenta necessária para COLOCAR o objeto de volta no mundo."
+    contexto: "Mesmos valores que PickUpTool. Se ausente, pode ser colocado sem ferramenta."
+    valores_permitidos: "Mesmos valores de PickUpTool"
+
+  PickUpLevel:
+    campo_java: "TilePropertyKey.PICK_UP_LEVEL"
+    tipo: integer
+    descricao: >
+      Nível mínimo na habilidade associada à PickUpTool para poder pegar o objeto.
+      Exemplo: PickUpTool="Hammer" com PickUpLevel=3 exige Carpintaria nível 3.
+    contexto: >
+      Responde à pergunta "PickUpLevel = 3, que significa?" — o jogador precisa
+      ter nível 3 na habilidade relevante (determinada pela PickUpTool) para
+      conseguir pegar/desmontar este objeto.
+    padrao: 0
+    exemplo: 3
+
+  PickUpWeight:
+    campo_java: "TilePropertyKey.PICK_UP_WEIGHT"
+    tipo: integer
+    descricao: >
+      Peso bruto do objeto (dividido por 10 para encumbrance no inventário).
+      Exemplo: PickUpWeight=200 resulta em peso 20.0 no inventário.
+      Também influencia o tempo da ação de pegar (mais pesado = mais lento).
+    contexto: "Se ForceSingleItem=true, é o peso total. Senão, peso de cada tile individual."
+    padrao: 50
+    exemplo: 200
+    formula: "peso_inventario = PickUpWeight / 10"
+
+  CanBreak:
+    campo_java: "TilePropertyKey.CAN_BREAK"
+    tipo: boolean
+    descricao: >
+      O objeto pode quebrar ao ser pego. A chance de quebra diminui conforme
+      o nível na habilidade associada (PickUpLevel) aumenta.
+    contexto: "Só funciona se PickUpTool estiver definido. Sem ferramenta, não pode quebrar."
+
+  ForceSingleItem:
+    campo_java: "TilePropertyKey.FORCE_SINGLE_ITEM"
+    tipo: boolean
+    descricao: >
+      Força objetos multi-tile a serem um único item no inventário em vez de
+      gerar um item por tile. O PickUpWeight será o peso total.
+    contexto: "Exemplo: um sofá de 3 tiles vira 1 item 'Sofá' em vez de 3 peças separadas."
+
+  IsClosedState:
+    campo_java: "TilePropertyKey.IS_CLOSED_STATE"
+    tipo: boolean
+    descricao: >
+      Indica que o sprite atual é o estado FECHADO do objeto. Usado para
+      objetos que alternam entre aberto/fechado (janelas, portas, armários).
+    contexto: "O sistema de moveables usa isso para gerenciar troca de sprites ao abrir/fechar."
+
+  WallObjectAllowDoorframe:
+    campo_java: "TilePropertyKey.WALL_OBJECT_ALLOW_DOORFRAME"
+    tipo: boolean
+    descricao: "Permite que este objeto de parede seja colocado em batentes de porta."
+
+  IsGridExtensionTile:
+    campo_java: "TilePropertyKey.IS_GRID_EXTENSION_TILE"
+    tipo: boolean
+    descricao: >
+      Marca como tile de extensão de grid — parte de um objeto multi-tile
+      que estende o grid base mas não é o tile principal.
+
+  # ---------------------------------------------------------------------------
+  # 5. MATERIAIS E DESMONTE
+  # ---------------------------------------------------------------------------
+
+  Material:
+    campo_java: "TilePropertyKey.MATERIAL"
+    tipo: string
+    descricao: >
+      Material primário do objeto. Determina quais itens são retornados ao
+      desmontar/sucatear e a saúde/resistência do objeto.
+    contexto: >
+      Cada material mapeia para itens de retorno definidos em ISMoveableDefinitions.
+      O material também afeta o som ao ser atingido e a ferramenta ideal.
+    valores_conhecidos:
+      - valor: "Wood"
+        retorno: "Base.Plank (até 3), Base.Nails (até 1)"
+      - valor: "Log"
+        retorno: "Base.Log (até 3)"
+      - valor: "Steel"
+        retorno: "Base.Screws (até 3)"
+      - valor: "Plumbing"
+        retorno: "Base.Screws (até 3)"
+      - valor: "Electric"
+        retorno: "Base.Screws (até 3)"
+      - valor: "Fabric"
+        retorno: "Base.Thread (até 1), Base.RippedSheets (até 3), Base.Sheet (até 1)"
+      - valor: "Leather"
+        retorno: "Base.Thread (até 1), Base.LeatherStrips (até 3)"
+      - valor: "Natural"
+        retorno: "Base.Twigs (até 3)"
+      - valor: "Brick"
+        retorno: "Base.ClayBrick (até 3)"
+      - valor: "Plastic"
+        retorno: "(ainda não implementado no jogo)"
+
+  Material2:
+    campo_java: "TilePropertyKey.MATERIAL_2"
+    tipo: string
+    descricao: "Material secundário — retorna itens adicionais ao desmontar."
+    contexto: "Valores 'Undefined' são ignorados. Mesma lista de materiais que Material."
+
+  Material3:
+    campo_java: "TilePropertyKey.MATERIAL_3"
+    tipo: string
+    descricao: "Material terciário — retorna ainda mais itens ao desmontar."
+    contexto: "Valores 'Undefined' são ignorados. Mesma lista de materiais que Material."
+
+  MaterialType:
+    campo_java: "TilePropertyKey.MATERIAL_TYPE"
+    tipo: string
+    descricao: >
+      Tipo de material para efeitos de som, partículas e dano. Diferente de
+      Material (que é para sistema de desmonte/craft). MaterialType afeta a
+      física e feedback sensorial ao interagir/destruir.
+    valores_conhecidos:
+      - "Metal_Large"
+      - "Metal_Small"
+      - "Metal_Sheet"
+      - "Metal_Bar"
+      - "Metal_Wire"
+      - "Wood_Large"
+      - "Wood_Small"
+      - "Wood_Bar"
+      - "Wood_Stairs"
+      - "Carpet"
+      - "Glass"
+      - "Stone"
+      - "Tile"
+      - "Water"
+      - "Dirt"
+      - "Concrete"
+
+  CanScrap:
+    campo_java: "TilePropertyKey.CAN_SCRAP"
+    tipo: boolean
+    descricao: >
+      Objeto pode ser sucateado (desmontado para materiais). Requer que
+      Material esteja definido e não seja "Undefined".
+    contexto: "Se CanScrap=true mas Material é inválido, o jogo força CanScrap=false."
+
+  ScrapSize:
+    campo_java: "TilePropertyKey.SCRAP_SIZE"
+    tipo: enum
+    descricao: >
+      Tamanho do trabalho de desmonte. Afeta quantos usos de ferramenta são
+      necessários para completar o desmonte.
+    padrao: "Medium"
+    valores_permitidos:
+      - valor: "Small"
+        usos_ferramenta: 3
+      - valor: "Medium"
+        usos_ferramenta: 5
+      - valor: "Large"
+        usos_ferramenta: 10
+
+  ScrapUseTool:
+    campo_java: "TilePropertyKey.SCRAP_USE_TOOL"
+    tipo: boolean
+    descricao: "Se presente, indica que o desmonte NÃO requer ferramenta (invertido!)."
+    contexto: "ATENÇÃO: lógica invertida no código — props:has('ScrapUseTool') = não usa ferramenta."
+    observacao: "Lógica contra-intuitiva: a PRESENÇA desta propriedade DESABILITA o requisito de ferramenta."
+
+  ScrapUseSkill:
+    campo_java: "TilePropertyKey.SCRAP_USE_SKILL"
+    tipo: boolean
+    descricao: "Se presente, indica que o desmonte NÃO requer habilidade (invertido!)."
+    contexto: "Mesma lógica invertida de ScrapUseTool."
+
+  ScrapToolUseOverride:
+    campo_java: "TilePropertyKey.SCRAP_TOOL_USE_OVERRIDE"
+    tipo: integer
+    descricao: "Sobrescreve o número padrão de usos de ferramenta para desmontar."
+    contexto: "Se < 0 ou ausente, usa o valor padrão baseado em ScrapSize."
+
+  # ---------------------------------------------------------------------------
+  # 6. COLISÃO E FÍSICA
+  # ---------------------------------------------------------------------------
+
+  solid:
+    campo_java: "TilePropertyKey.SOLID"
+    tipo: boolean
+    descricao: >
+      Tile é sólido — bloqueia completamente a passagem de personagens e zombies.
+      Nenhuma entidade pode atravessar este tile.
+
+  solidtrans:
+    campo_java: "TilePropertyKey.SOLID_TRANS"
+    tipo: boolean
+    descricao: >
+      Tile é sólido mas transparente visualmente. Bloqueia passagem como solid
+      mas permite que o jogador veja através (vidro, grades).
+
+  solidfloor:
+    campo_java: "TilePropertyKey.SOLID_FLOOR"
+    tipo: boolean
+    descricao: "Tile funciona como piso sólido (suporta peso, bloqueia queda)."
+
+  collideN:
+    campo_java: "TilePropertyKey.COLLIDE_N"
+    tipo: boolean
+    descricao: "Bloqueia colisão na borda Norte do tile (meia-parede, balcão)."
+    contexto: "Personagens não podem cruzar a borda norte deste tile."
+
+  collideW:
+    campo_java: "TilePropertyKey.COLLIDE_W"
+    tipo: boolean
+    descricao: "Bloqueia colisão na borda Oeste do tile."
+
+  BlocksPlacement:
+    campo_java: "TilePropertyKey.BLOCKS_PLACEMENT"
+    tipo: boolean
+    descricao: >
+      Quando true, nenhum outro tile pode ser colocado no mesmo quadrado.
+      Bloqueia posicionamento de novos objetos nesta posição.
+    contexto: "Impede empilhamento indesejado — objetos grandes usam isso para reservar espaço."
+
+  blocksight:
+    campo_java: "TilePropertyKey.BLOCK_SIGHT"
+    tipo: boolean
+    descricao: "Bloqueia a linha de visão. Personagens e zombies não veem através."
+
+  BlockRain:
+    campo_java: "TilePropertyKey.BLOCK_RAIN"
+    tipo: boolean
+    descricao: "Tile bloqueia a chuva — áreas abaixo ficam secas."
+
+  canPathN:
+    campo_java: "TilePropertyKey.CAN_PATH_N"
+    tipo: boolean
+    descricao: "NPCs/zombies podem traçar caminho pela borda Norte."
+
+  canPathW:
+    campo_java: "TilePropertyKey.CAN_PATH_W"
+    tipo: boolean
+    descricao: "NPCs/zombies podem traçar caminho pela borda Oeste."
+
+  CantClimb:
+    campo_java: "TilePropertyKey.CANT_CLIMB"
+    tipo: boolean
+    descricao: "Impede que personagens escalem este objeto."
+
+  HoppableN:
+    campo_java: "TilePropertyKey.HOPPABLE_N"
+    tipo: boolean
+    descricao: "Personagens podem pular por cima na borda Norte (cercas baixas, balcões)."
+
+  HoppableW:
+    campo_java: "TilePropertyKey.HOPPABLE_W"
+    tipo: boolean
+    descricao: "Personagens podem pular por cima na borda Oeste."
+
+  TallHoppableN:
+    campo_java: "TilePropertyKey.TALL_HOPPABLE_N"
+    tipo: boolean
+    descricao: "Personagens podem escalar pela borda Norte (cercas altas) — mais lento que Hoppable."
+
+  TallHoppableW:
+    campo_java: "TilePropertyKey.TALL_HOPPABLE_W"
+    tipo: boolean
+    descricao: "Personagens podem escalar pela borda Oeste (cercas altas)."
+
+  FenceTypeHigh:
+    campo_java: "TilePropertyKey.FENCE_TYPE_HIGH"
+    tipo: boolean
+    descricao: "Classifica como cerca alta — afeta animação de escalar."
+
+  FenceTypeLow:
+    campo_java: "TilePropertyKey.FENCE_TYPE_LOW"
+    tipo: boolean
+    descricao: "Classifica como cerca baixa — pulo rápido."
+
+  HitByCar:
+    campo_java: "TilePropertyKey.HIT_BY_CAR"
+    tipo: boolean
+    descricao: "Veículos podem atingir/destruir este objeto."
+
+  CarSlowFactor:
+    campo_java: "TilePropertyKey.CAR_SLOW_FACTOR"
+    tipo: number
+    descricao: "Fator de redução de velocidade de veículos ao passar por cima."
+
+  MinimumCarSpeedDmg:
+    campo_java: "TilePropertyKey.MINIMUM_CAR_SPEED_DMG"
+    tipo: number
+    descricao: "Velocidade mínima do carro para causar dano a este objeto."
+
+  StopCar:
+    campo_java: "TilePropertyKey.STOP_CAR"
+    tipo: boolean
+    descricao: "Para veículos completamente ao colidir (postes, árvores grandes)."
+
+  SpearOnlyAttackThrough:
+    campo_java: "TilePropertyKey.SPEAR_ONLY_ATTACK_THROUGH"
+    tipo: boolean
+    descricao: "Apenas lanças podem atacar através deste tile (grades, cercas com frestas)."
+
+  PhysicsMesh:
+    campo_java: "TilePropertyKey.PHYSICS_MESH"
+    tipo: string
+    descricao: "Malha de colisão customizada para física avançada."
+
+  PhysicsShape:
+    campo_java: "TilePropertyKey.PHYSICS_SHAPE"
+    tipo: string
+    descricao: "Forma geométrica de colisão (caixa, cilindro, etc)."
+
+  Movement:
+    campo_java: "TilePropertyKey.MOVEMENT"
+    tipo: number
+    descricao: "Modificador de velocidade de movimento ao caminhar sobre este tile."
+
+  # ---------------------------------------------------------------------------
+  # 7. PAREDES E ESTRUTURAS
+  # ---------------------------------------------------------------------------
+
+  WallN:
+    campo_java: "TilePropertyKey.WALL_N"
+    tipo: boolean
+    descricao: "Este tile é uma parede na borda Norte."
+
+  WallW:
+    campo_java: "TilePropertyKey.WALL_W"
+    tipo: boolean
+    descricao: "Este tile é uma parede na borda Oeste."
+
+  WallNW:
+    campo_java: "TilePropertyKey.WALL_NW"
+    tipo: boolean
+    descricao: "Parede de canto Norte-Oeste (pilar de esquina)."
+
+  WallSE:
+    campo_java: "TilePropertyKey.WALL_SE"
+    tipo: boolean
+    descricao: "Parede de canto Sudeste."
+
+  WallNTrans:
+    campo_java: "TilePropertyKey.WALL_N_TRANS"
+    tipo: boolean
+    descricao: "Parede Norte transparente (vitrine, grade)."
+
+  WallWTrans:
+    campo_java: "TilePropertyKey.WALL_W_TRANS"
+    tipo: boolean
+    descricao: "Parede Oeste transparente."
+
+  WallNWTrans:
+    campo_java: "TilePropertyKey.WALL_NW_TRANS"
+    tipo: boolean
+    descricao: "Canto NW transparente."
+
+  WallType:
+    campo_java: "TilePropertyKey.WALL_TYPE"
+    tipo: string
+    descricao: "Tipo/material da parede (afeta som, destruição, textura de dano)."
+
+  WallOverlay:
+    campo_java: "TilePropertyKey.WALL_OVERLAY"
+    tipo: boolean
+    descricao: "Overlay sobre parede existente (papel de parede, pintura aplicada)."
+
+  wall:
+    campo_java: "TilePropertyKey.WALL"
+    tipo: boolean
+    descricao: "Flag genérica — tile é uma parede."
+
+  CornerNorthWall:
+    campo_java: "TilePropertyKey.CORNER_NORTH_WALL"
+    tipo: boolean
+    descricao: "Tile de canto de parede norte (pilar estrutural)."
+
+  CornerWestWall:
+    campo_java: "TilePropertyKey.CORNER_WEST_WALL"
+    tipo: boolean
+    descricao: "Tile de canto de parede oeste."
+
+  doorN:
+    campo_java: "TilePropertyKey.DOOR_N"
+    tipo: boolean
+    descricao: "Porta na borda Norte."
+
+  doorW:
+    campo_java: "TilePropertyKey.DOOR_W"
+    tipo: boolean
+    descricao: "Porta na borda Oeste."
+
+  doorTrans:
+    campo_java: "TilePropertyKey.DOOR_TRANS"
+    tipo: boolean
+    descricao: "Porta transparente (vidro)."
+
+  doorFrN:
+    campo_java: "TilePropertyKey.DOOR_FR_N"
+    tipo: boolean
+    descricao: "Batente de porta na borda Norte."
+
+  doorFrW:
+    campo_java: "TilePropertyKey.DOOR_FR_W"
+    tipo: boolean
+    descricao: "Batente de porta na borda Oeste."
+
+  DoorWallN:
+    campo_java: "TilePropertyKey.DOOR_WALL_N"
+    tipo: boolean
+    descricao: "Parede com porta embutida na borda Norte."
+
+  DoorWallW:
+    campo_java: "TilePropertyKey.DOOR_WALL_W"
+    tipo: boolean
+    descricao: "Parede com porta embutida na borda Oeste."
+
+  DoorWallNW:
+    campo_java: "TilePropertyKey.DOOR_WALL_NW"
+    tipo: boolean
+    descricao: "Parede com porta no canto NW."
+
+  DoorWallNTrans:
+    campo_java: "TilePropertyKey.DOOR_WALL_N_TRANS"
+    tipo: boolean
+    descricao: "Parede com porta transparente na borda Norte."
+
+  DoorWallWTrans:
+    campo_java: "TilePropertyKey.DOOR_WALL_W_TRANS"
+    tipo: boolean
+    descricao: "Parede com porta transparente na borda Oeste."
+
+  DoorWallNWTrans:
+    campo_java: "TilePropertyKey.DOOR_WALL_NW_TRANS"
+    tipo: boolean
+    descricao: "Parede com porta transparente no canto NW."
+
+  DoorSound:
+    campo_java: "TilePropertyKey.DOOR_SOUND"
+    tipo: string
+    descricao: "Som reproduzido ao abrir/fechar esta porta."
+
+  DoubleDoor:
+    campo_java: "TilePropertyKey.DOUBLE_DOOR"
+    tipo: boolean
+    descricao: "Porta dupla (dois batentes)."
+
+  DoubleDoor1:
+    campo_java: "TilePropertyKey.DOUBLE_DOOR_1"
+    tipo: boolean
+    descricao: "Primeiro batente de porta dupla."
+
+  DoubleDoor2:
+    campo_java: "TilePropertyKey.DOUBLE_DOOR_2"
+    tipo: boolean
+    descricao: "Segundo batente de porta dupla."
+
+  GarageDoor:
+    campo_java: "TilePropertyKey.GARAGE_DOOR"
+    tipo: boolean
+    descricao: "Porta de garagem (abre verticalmente)."
+
+  WindowN:
+    campo_java: "TilePropertyKey.WINDOW_N"
+    tipo: boolean
+    descricao: "Janela na borda Norte."
+
+  WindowW:
+    campo_java: "TilePropertyKey.WINDOW_W"
+    tipo: boolean
+    descricao: "Janela na borda Oeste."
+
+  windowFN:
+    campo_java: "TilePropertyKey.WINDOW_FN"
+    tipo: boolean
+    descricao: "Frame de janela na borda Norte."
+
+  windowFW:
+    campo_java: "TilePropertyKey.WINDOW_FW"
+    tipo: boolean
+    descricao: "Frame de janela na borda Oeste."
+
+  WindowLocked:
+    campo_java: "TilePropertyKey.WINDOW_LOCKED"
+    tipo: boolean
+    descricao: "Janela trancada — não pode ser aberta sem arrombar."
+
+  UnbreakableWindowN:
+    campo_java: "TilePropertyKey.UNBREAKABLE_WINDOW_N"
+    tipo: boolean
+    descricao: "Janela Norte inquebrável (blindada)."
+
+  UnbreakableWindowW:
+    campo_java: "TilePropertyKey.UNBREAKABLE_WINDOW_W"
+    tipo: boolean
+    descricao: "Janela Oeste inquebrável."
+
+  UnbreakableWindowNW:
+    campo_java: "TilePropertyKey.UNBREAKABLE_WINDOW_NW"
+    tipo: boolean
+    descricao: "Janela canto NW inquebrável."
+
+  makeWindowInvincible:
+    campo_java: "TilePropertyKey.MAKE_WINDOW_INVINCIBLE"
+    tipo: boolean
+    descricao: "Torna a janela invencível (não pode ser destruída)."
+
+  forceLocked:
+    campo_java: "TilePropertyKey.FORCE_LOCKED"
+    tipo: boolean
+    descricao: "Força o estado trancado — impede abertura sem arrombamento."
+
+  forcedLocked:
+    campo_java: "TilePropertyKey.FORCED_LOCKED"
+    tipo: boolean
+    descricao: "Variante de forceLocked — trancamento forçado."
+
+  # ---------------------------------------------------------------------------
+  # 8. CONTAINERS E ARMAZENAMENTO
+  # ---------------------------------------------------------------------------
+
+  container:
+    campo_java: "TilePropertyKey.CONTAINER"
+    tipo: string
+    descricao: "Tipo de container associado a este tile (inventário que o jogador pode acessar)."
+    valores_comuns:
+      - "fridge"
+      - "freezer"
+      - "stove"
+      - "microwave"
+      - "clothingwasher"
+      - "clothingdryer"
+      - "shelves"
+      - "counter"
+      - "crate"
+
+  ContainerCapacity:
+    campo_java: "TilePropertyKey.CONTAINER_CAPACITY"
+    tipo: integer
+    descricao: "Capacidade de armazenamento do container em unidades de peso."
+    exemplo: 50
+
+  ContainerPosition:
+    campo_java: "TilePropertyKey.CONTAINER_POSITION"
+    tipo: string
+    descricao: "Posição visual do container (onde o ícone de inventário aparece)."
+
+  ContainerOpenSound:
+    campo_java: "TilePropertyKey.CONTAINER_OPEN_SOUND"
+    tipo: string
+    descricao: "Som ao abrir o container."
+
+  ContainerCloseSound:
+    campo_java: "TilePropertyKey.CONTAINER_CLOSE_SOUND"
+    tipo: string
+    descricao: "Som ao fechar o container."
+
+  ContainerPutSound:
+    campo_java: "TilePropertyKey.CONTAINER_PUT_SOUND"
+    tipo: string
+    descricao: "Som ao colocar item dentro do container."
+
+  ContainerTakeSound:
+    campo_java: "TilePropertyKey.CONTAINER_TAKE_SOUND"
+    tipo: string
+    descricao: "Som ao retirar item do container."
+
+  IsFridge:
+    campo_java: "TilePropertyKey.IS_FRIDGE"
+    tipo: boolean
+    descricao: "Tile é uma geladeira — resfria itens quando energizado."
+
+  Freezer:
+    campo_java: "TilePropertyKey.FREEZER"
+    tipo: boolean
+    descricao: "Tile é um freezer — congela itens quando energizado."
+
+  FreezerCapacity:
+    campo_java: "TilePropertyKey.FREEZER_CAPACITY"
+    tipo: integer
+    descricao: "Capacidade do compartimento de freezer."
+
+  FreezerPosition:
+    campo_java: "TilePropertyKey.FREEZER_POSITION"
+    tipo: string
+    descricao: "Posição do compartimento freezer no objeto (para geladeiras com freezer embutido)."
+
+  NoFreezer:
+    campo_java: "TilePropertyKey.NO_FREEZER"
+    tipo: boolean
+    descricao: "Geladeira sem compartimento de freezer."
+
+  IsTrashCan:
+    campo_java: "TilePropertyKey.IS_TRASH_CAN"
+    tipo: boolean
+    descricao: "Tile é uma lixeira — pode conter loot de lixo."
+
+  WheelieBin:
+    campo_java: "TilePropertyKey.WHEELIE_BIN"
+    tipo: boolean
+    descricao: "Lixeira com rodas."
+
+  IsWaterCollector:
+    campo_java: "TilePropertyKey.IS_WATER_COLLECTOR"
+    tipo: boolean
+    descricao: "Objeto coleta água da chuva automaticamente."
+
+  # ---------------------------------------------------------------------------
+  # 9. ILUMINAÇÃO E VISUAL
+  # ---------------------------------------------------------------------------
+
+  lightR:
+    campo_java: "TilePropertyKey.LIGHT_R"
+    tipo: number
+    descricao: "Componente vermelho (R) da luz emitida pelo objeto (0.0 a 1.0)."
+
+  lightG:
+    campo_java: "TilePropertyKey.LIGHT_G"
+    tipo: number
+    descricao: "Componente verde (G) da luz emitida."
+
+  lightB:
+    campo_java: "TilePropertyKey.LIGHT_B"
+    tipo: number
+    descricao: "Componente azul (B) da luz emitida."
+
+  LightRadius:
+    campo_java: "TilePropertyKey.LIGHT_RADIUS"
+    tipo: integer
+    descricao: "Raio da luz emitida pelo objeto em tiles."
+
+  LightFilterR:
+    campo_java: "TilePropertyKey.LIGHT_FILTER_R"
+    tipo: number
+    descricao: "Filtro de cor da luz — componente vermelho."
+
+  LightFilterG:
+    campo_java: "TilePropertyKey.LIGHT_FILTER_G"
+    tipo: number
+    descricao: "Filtro de cor da luz — componente verde."
+
+  LightFilterB:
+    campo_java: "TilePropertyKey.LIGHT_FILTER_B"
+    tipo: number
+    descricao: "Filtro de cor da luz — componente azul."
+
+  LightFilterIntensity:
+    campo_java: "TilePropertyKey.LIGHT_FILTER_INTENSITY"
+    tipo: number
+    descricao: "Intensidade do filtro de luz."
+
+  LightFilterMix:
+    campo_java: "TilePropertyKey.LIGHT_FILTER_MIX"
+    tipo: number
+    descricao: "Mistura entre luz natural e filtrada."
+
+  lightswitch:
+    campo_java: "TilePropertyKey.LIGHTSWITCH"
+    tipo: boolean
+    descricao: "Tile é um interruptor de luz — controla iluminação do cômodo."
+
+  streetlight:
+    campo_java: "TilePropertyKey.STREETLIGHT"
+    tipo: boolean
+    descricao: "Poste de luz — ilumina a área externa ao redor."
+
+  HasLightOnSprite:
+    campo_java: "TilePropertyKey.HAS_LIGHT_ON_SPRITE"
+    tipo: boolean
+    descricao: "Sprite possui indicador visual de luz acesa (LED, lâmpada no sprite)."
+
+  NoWallLighting:
+    campo_java: "TilePropertyKey.NO_WALL_LIGHTING"
+    tipo: boolean
+    descricao: "Desabilita o cálculo de iluminação de parede para este tile."
+
+  unlit:
+    campo_java: "TilePropertyKey.UNLIT"
+    tipo: boolean
+    descricao: "Tile não é afetado pela iluminação dinâmica (sempre escuro)."
+
+  alwaysDraw:
+    campo_java: "TilePropertyKey.ALWAYS_DRAW"
+    tipo: boolean
+    descricao: >
+      Força renderização mesmo quando normalmente seria ocultado pelo sistema
+      de cutaway (recorte de paredes/tetos para visibilidade interior).
+
+  forceRender:
+    campo_java: "TilePropertyKey.FORCE_RENDER"
+    tipo: boolean
+    descricao: "Força renderização incondicional deste tile."
+
+  forceFade:
+    campo_java: "TilePropertyKey.FORCE_FADE"
+    tipo: boolean
+    descricao: "Força o efeito de fade (transparência gradual) neste tile."
+
+  NeverCutaway:
+    campo_java: "TilePropertyKey.NEVER_CUTAWAY"
+    tipo: boolean
+    descricao: "Nunca aplica cutaway neste tile — sempre visível mesmo com paredes."
+
+  invisible:
+    campo_java: "TilePropertyKey.INVISIBLE"
+    tipo: boolean
+    descricao: "Tile invisível — existe no mundo mas não é renderizado."
+
+  trans:
+    campo_java: "TilePropertyKey.TRANS"
+    tipo: boolean
+    descricao: "Tile semi-transparente."
+
+  Translucent:
+    campo_java: "TilePropertyKey.TRANSLUCENT"
+    tipo: boolean
+    descricao: "Tile translúcido (vidro fosco, cortinas finas)."
+
+  transparentFloor:
+    campo_java: "TilePropertyKey.TRANSPARENT_FLOOR"
+    tipo: boolean
+    descricao: "Piso transparente (grade, vidro no chão)."
+
+  transparentN:
+    campo_java: "TilePropertyKey.TRANSPARENT_N"
+    tipo: boolean
+    descricao: "Borda Norte transparente."
+
+  transparentW:
+    campo_java: "TilePropertyKey.TRANSPARENT_W"
+    tipo: boolean
+    descricao: "Borda Oeste transparente."
+
+  TreatAsWallOrder:
+    campo_java: "TilePropertyKey.TREAT_AS_WALL_ORDER"
+    tipo: boolean
+    descricao: "Renderiza este tile na mesma ordem de desenho que paredes."
+
+  hidewalls:
+    campo_java: "TilePropertyKey.HIDE_WALLS"
+    tipo: boolean
+    descricao: "Oculta paredes adjacentes quando este tile é renderizado."
+
+  CutawayHint:
+    campo_java: "TilePropertyKey.CUTAWAY_HINT"
+    tipo: string
+    descricao: "Dica para o sistema de cutaway sobre como recortar este tile."
+
+  RenderLayer:
+    campo_java: "TilePropertyKey.RENDER_LAYER"
+    tipo: integer
+    descricao: "Camada de renderização — controla ordem de desenho entre tiles."
+
+  OpaquePixelsOnly:
+    campo_java: "TilePropertyKey.OPAQUE_PIXELS_ONLY"
+    tipo: boolean
+    descricao: "Renderiza apenas pixels opacos (ignora semi-transparência do sprite)."
+
+  UseObjectDepthTexture:
+    campo_java: "TilePropertyKey.USE_OBJECT_DEPTH_TEXTURE"
+    tipo: boolean
+    descricao: >
+      Usa a textura de profundidade do objeto abaixo. Overlays (itens em
+      prateleiras) herdam a profundidade do móvel base.
+
+  TileOverlay:
+    campo_java: "TilePropertyKey.TILE_OVERLAY"
+    tipo: boolean
+    descricao: "Tile é um overlay (camada adicional sobre outro tile)."
+
+  FloorOverlay:
+    campo_java: "TilePropertyKey.FLOOR_OVERLAY"
+    tipo: boolean
+    descricao: "Overlay de piso (poça d'água, sujeira, sangue)."
+
+  # ---------------------------------------------------------------------------
+  # 10. INTERAÇÃO E GAMEPLAY
+  # ---------------------------------------------------------------------------
+
+  bed:
+    campo_java: "TilePropertyKey.BED"
+    tipo: boolean
+    descricao: "Tile é uma cama — jogador pode dormir."
+
+  BedType:
+    campo_java: "TilePropertyKey.BED_TYPE"
+    tipo: string
+    descricao: "Tipo de cama (qualidade do sono, conforto)."
+
+  chairN:
+    campo_java: "TilePropertyKey.CHAIR_N"
+    tipo: boolean
+    descricao: "Cadeira virada para Norte — jogador pode sentar."
+
+  chairS:
+    campo_java: "TilePropertyKey.CHAIR_S"
+    tipo: boolean
+    descricao: "Cadeira virada para Sul."
+
+  chairE:
+    campo_java: "TilePropertyKey.CHAIR_E"
+    tipo: boolean
+    descricao: "Cadeira virada para Leste."
+
+  chairW:
+    campo_java: "TilePropertyKey.CHAIR_W"
+    tipo: boolean
+    descricao: "Cadeira virada para Oeste."
+
+  Microwave:
+    campo_java: "TilePropertyKey.MICROWAVE"
+    tipo: boolean
+    descricao: "Tile é um micro-ondas — aquece alimentos rapidamente, requer energia."
+
+  TV:
+    campo_java: "TilePropertyKey.TV"
+    tipo: boolean
+    descricao: "Tile é uma televisão."
+
+  radio:
+    campo_java: "TilePropertyKey.RADIO"
+    tipo: boolean
+    descricao: "Tile é um rádio."
+
+  jukebox:
+    campo_java: "TilePropertyKey.JUKEBOX"
+    tipo: boolean
+    descricao: "Tile é uma jukebox."
+
+  signal:
+    campo_java: "TilePropertyKey.SIGNAL"
+    tipo: string
+    descricao: "Sinal de rádio/TV que este aparelho recebe."
+
+  propaneTank:
+    campo_java: "TilePropertyKey.PROPANE_TANK"
+    tipo: boolean
+    descricao: "Tile é um tanque de propano — pode alimentar churrasqueiras."
+
+  fuelAmount:
+    campo_java: "TilePropertyKey.FUEL_AMOUNT"
+    tipo: integer
+    descricao: "Quantidade de combustível contida neste objeto."
+
+  GeneratorSound:
+    campo_java: "TilePropertyKey.GENERATOR_SOUND"
+    tipo: string
+    descricao: "Som emitido pelo gerador quando ligado."
+
+  GenericCraftingSurface:
+    campo_java: "TilePropertyKey.GENERIC_CRAFTING_SURFACE"
+    tipo: boolean
+    descricao: "Superfície pode ser usada para crafting genérico."
+
+  SinkType:
+    campo_java: "TilePropertyKey.SINK_TYPE"
+    tipo: string
+    descricao: "Tipo de pia — determina capacidade de água e funcionalidades."
+
+  firerequirement:
+    campo_java: "TilePropertyKey.FIRE_REQUIREMENT"
+    tipo: string
+    descricao: "Requisito de fogo para interagir com este objeto."
+
+  canBeCut:
+    campo_java: "TilePropertyKey.CAN_BE_CUT"
+    tipo: boolean
+    descricao: "Pode ser cortado (vegetação, árvores, arbustos)."
+
+  canBeRemoved:
+    campo_java: "TilePropertyKey.CAN_BE_REMOVED"
+    tipo: boolean
+    descricao: "Pode ser removido pelo jogador (sem necessidade de ferramenta especial)."
+
+  Bush:
+    campo_java: "TilePropertyKey.BUSH"
+    tipo: boolean
+    descricao: "Tile é um arbusto — pode ser cortado, pode esconder itens."
+
+  tree:
+    campo_java: "TilePropertyKey.TREE"
+    tipo: boolean
+    descricao: "Tile é uma árvore — pode ser derrubada com machado."
+
+  vegitation:
+    campo_java: "TilePropertyKey.VEGITATION"
+    tipo: boolean
+    descricao: "Tile é vegetação genérica."
+
+  CanAttachAnimal:
+    campo_java: "TilePropertyKey.CAN_ATTACH_ANIMAL"
+    tipo: boolean
+    descricao: "Pode amarrar animais neste objeto (postes, cercas)."
+
+  IsMirror:
+    campo_java: "TilePropertyKey.IS_MIRROR"
+    tipo: boolean
+    descricao: "Tile é um espelho — jogador pode ver sua aparência."
+
+  IsPaintable:
+    campo_java: "TilePropertyKey.IS_PAINTABLE"
+    tipo: boolean
+    descricao: "Superfície pode receber pintura pelo jogador."
+
+  PaintingType:
+    campo_java: "TilePropertyKey.PAINTING_TYPE"
+    tipo: string
+    descricao: "Tipo de pintura/quadro (afeta decoração e habilidade artística)."
+
+  CloseSneakBonus:
+    campo_java: "TilePropertyKey.CLOSE_SNEAK_BONUS"
+    tipo: number
+    descricao: "Bônus de furtividade quando agachado próximo a este objeto."
+
+  SeatMaterial:
+    campo_java: "TilePropertyKey.SEAT_MATERIAL"
+    tipo: string
+    descricao: "Material do assento — afeta som ao sentar e conforto."
+
+  livingRoom:
+    campo_java: "TilePropertyKey.LIVING_ROOM"
+    tipo: boolean
+    descricao: "Tile identifica o cômodo como sala de estar (para lógica de meta-zonas)."
+
+  # ---------------------------------------------------------------------------
+  # 11. CLIMA E AMBIENTE
+  # ---------------------------------------------------------------------------
+
+  MoveWithWind:
+    campo_java: "TilePropertyKey.MOVE_WITH_WIND"
+    tipo: boolean
+    descricao: "Sprite oscila com o vento (bandeiras, plantas, cortinas)."
+
+  WindType:
+    campo_java: "TilePropertyKey.WIND_TYPE"
+    tipo: string
+    descricao: "Tipo de animação de vento aplicada ao sprite."
+
+  HasRaindrop:
+    campo_java: "TilePropertyKey.HAS_RAINDROP"
+    tipo: boolean
+    descricao: "Gotas de chuva são renderizadas sobre este tile."
+
+  HasRainSplashes:
+    campo_java: "TilePropertyKey.HAS_RAIN_SPLASHES"
+    tipo: boolean
+    descricao: "Respingos de chuva são renderizados na superfície."
+
+  SnowTile:
+    campo_java: "TilePropertyKey.SNOW_TILE"
+    tipo: string
+    descricao: "Sprite alternativo usado quando há neve."
+
+  BurntTile:
+    campo_java: "TilePropertyKey.BURNT_TILE"
+    tipo: string
+    descricao: "Sprite alternativo quando o tile é queimado."
+
+  DamagedSprite:
+    campo_java: "TilePropertyKey.DAMAGED_SPRITE"
+    tipo: string
+    descricao: "Sprite alternativo quando o tile está danificado."
+
+  burning:
+    campo_java: "TilePropertyKey.BURNING"
+    tipo: boolean
+    descricao: "Tile está em chamas."
+
+  burntOut:
+    campo_java: "TilePropertyKey.BURNT_OUT"
+    tipo: boolean
+    descricao: "Tile já foi completamente queimado."
+
+  unflammable:
+    campo_java: "TilePropertyKey.UNFLAMMABLE"
+    tipo: boolean
+    descricao: "Tile não pode pegar fogo."
+
+  smoke:
+    campo_java: "TilePropertyKey.SMOKE"
+    tipo: boolean
+    descricao: "Emite partículas de fumaça."
+
+  AmbientSound:
+    campo_java: "TilePropertyKey.AMBIENT_SOUND"
+    tipo: string
+    descricao: "Som ambiente emitido constantemente pelo tile (buzzing, água correndo)."
+
+  ForceAmbient:
+    campo_java: "TilePropertyKey.FORCE_AMBIENT"
+    tipo: boolean
+    descricao: "Força emissão de som ambiente mesmo em condições que normalmente silenciam."
+
+  ThumpSound:
+    campo_java: "TilePropertyKey.THUMP_SOUND"
+    tipo: string
+    descricao: "Som ao ser atingido/socado por zombies."
+
+  # ---------------------------------------------------------------------------
+  # 12. PISOS E TELHADOS
+  # ---------------------------------------------------------------------------
+
+  grassFloor:
+    campo_java: "TilePropertyKey.GRASS_FLOOR"
+    tipo: boolean
+    descricao: "Tile é piso de grama — pode ser arado para plantio."
+
+  diamondFloor:
+    campo_java: "TilePropertyKey.DIAMOND_FLOOR"
+    tipo: boolean
+    descricao: "Piso com padrão diamante."
+
+  natureFloor:
+    campo_java: "TilePropertyKey.NATURE_FLOOR"
+    tipo: boolean
+    descricao: "Piso natural (terra, areia, cascalho)."
+
+  FloorMaterial:
+    campo_java: "TilePropertyKey.FLOOR_MATERIAL"
+    tipo: string
+    descricao: "Material do piso — afeta som de passos e velocidade."
+
+  FootstepMaterial:
+    campo_java: "TilePropertyKey.FOOTSTEP_MATERIAL"
+    tipo: string
+    descricao: "Material para som de passos (mais granular que FloorMaterial)."
+
+  GrimeType:
+    campo_java: "TilePropertyKey.GRIME_TYPE"
+    tipo: string
+    descricao: "Tipo de sujeira que se acumula neste piso ao longo do tempo."
+
+  RoofGroup:
+    campo_java: "TilePropertyKey.ROOF_GROUP"
+    tipo: string
+    descricao: "Grupo de telhado (para agrupamento de tiles de cobertura)."
+
+  WestRoofB:
+    campo_java: "TilePropertyKey.WEST_ROOF_B"
+    tipo: boolean
+    descricao: "Tile de telhado oeste — base."
+
+  WestRoofM:
+    campo_java: "TilePropertyKey.WEST_ROOF_M"
+    tipo: boolean
+    descricao: "Tile de telhado oeste — meio."
+
+  WestRoofT:
+    campo_java: "TilePropertyKey.WEST_ROOF_T"
+    tipo: boolean
+    descricao: "Tile de telhado oeste — topo."
+
+  isEave:
+    campo_java: "TilePropertyKey.IS_EAVE"
+    tipo: boolean
+    descricao: "Tile é beiral de telhado."
+
+  FasciaEdge:
+    campo_java: "TilePropertyKey.FASCIA_EDGE"
+    tipo: boolean
+    descricao: "Borda de fascia (acabamento horizontal do telhado)."
+
+  FasciaEdgeReversible:
+    campo_java: "TilePropertyKey.FASCIA_EDGE_REVERSIBLE"
+    tipo: boolean
+    descricao: "Fascia que pode ser invertida de direção."
+
+  # ---------------------------------------------------------------------------
+  # 13. ATTACHMENT E VINCULAÇÃO ESTRUTURAL
+  # ---------------------------------------------------------------------------
+
+  AttachedFloor:
+    campo_java: "TilePropertyKey.ATTACHED_FLOOR"
+    tipo: boolean
+    descricao: "Objeto vinculado ao piso — é destruído se o piso for removido."
+
+  attachedCeiling:
+    campo_java: "TilePropertyKey.ATTACHED_CEILING"
+    tipo: boolean
+    descricao: "Objeto vinculado ao teto (luminárias pendentes, ventiladores)."
+
+  attachedN:
+    campo_java: "TilePropertyKey.ATTACHED_N"
+    tipo: boolean
+    descricao: "Objeto vinculado à parede Norte — destruído se parede for removida."
+
+  attachedS:
+    campo_java: "TilePropertyKey.ATTACHED_S"
+    tipo: boolean
+    descricao: "Vinculado à parede Sul."
+
+  attachedE:
+    campo_java: "TilePropertyKey.ATTACHED_E"
+    tipo: boolean
+    descricao: "Vinculado à parede Leste."
+
+  attachedW:
+    campo_java: "TilePropertyKey.ATTACHED_W"
+    tipo: boolean
+    descricao: "Vinculado à parede Oeste."
+
+  attachedNW:
+    campo_java: "TilePropertyKey.ATTACHED_NW"
+    tipo: boolean
+    descricao: "Vinculado ao canto NW."
+
+  attachedSE:
+    campo_java: "TilePropertyKey.ATTACHED_SE"
+    tipo: boolean
+    descricao: "Vinculado ao canto SE."
+
+  attachedSurface:
+    campo_java: "TilePropertyKey.ATTACHED_SURFACE"
+    tipo: boolean
+    descricao: "Vinculado à superfície abaixo — destruído se o móvel base for removido."
+
+  AttachedToGlass:
+    campo_java: "TilePropertyKey.ATTACHED_TO_GLASS"
+    tipo: boolean
+    descricao: "Vinculado ao vidro da janela — destruído se vidro quebrar."
+
+  attachtostairs:
+    campo_java: "TilePropertyKey.ATTACH_TO_STAIRS"
+    tipo: boolean
+    descricao: "Vinculado a escada."
+
+  IsFloorAttached:
+    campo_java: "TilePropertyKey.IS_FLOOR_ATTACHED"
+    tipo: boolean
+    descricao: "Confirmação de que este tile está vinculado ao piso."
+
+  FloorAttachmentN:
+    campo_java: "TilePropertyKey.FLOOR_ATTACHMENT_N"
+    tipo: boolean
+    descricao: "Ponto de attachment no piso — lado Norte."
+
+  FloorAttachmentS:
+    campo_java: "TilePropertyKey.FLOOR_ATTACHMENT_S"
+    tipo: boolean
+    descricao: "Ponto de attachment no piso — lado Sul."
+
+  FloorAttachmentE:
+    campo_java: "TilePropertyKey.FLOOR_ATTACHMENT_E"
+    tipo: boolean
+    descricao: "Ponto de attachment no piso — lado Leste."
+
+  FloorAttachmentW:
+    campo_java: "TilePropertyKey.FLOOR_ATTACHMENT_W"
+    tipo: boolean
+    descricao: "Ponto de attachment no piso — lado Oeste."
+
+  # ---------------------------------------------------------------------------
+  # 14. ESCADAS E ELEVAÇÃO
+  # ---------------------------------------------------------------------------
+
+  stairsBN:
+    campo_java: "TilePropertyKey.STAIRS_BN"
+    tipo: boolean
+    descricao: "Base de escada orientada para Norte."
+
+  stairsBW:
+    campo_java: "TilePropertyKey.STAIRS_BW"
+    tipo: boolean
+    descricao: "Base de escada orientada para Oeste."
+
+  stairsMN:
+    campo_java: "TilePropertyKey.STAIRS_MN"
+    tipo: boolean
+    descricao: "Meio de escada orientada para Norte."
+
+  stairsMW:
+    campo_java: "TilePropertyKey.STAIRS_MW"
+    tipo: boolean
+    descricao: "Meio de escada orientada para Oeste."
+
+  stairsTN:
+    campo_java: "TilePropertyKey.STAIRS_TN"
+    tipo: boolean
+    descricao: "Topo de escada orientada para Norte."
+
+  stairsTW:
+    campo_java: "TilePropertyKey.STAIRS_TW"
+    tipo: boolean
+    descricao: "Topo de escada orientada para Oeste."
+
+  # ---------------------------------------------------------------------------
+  # 15. CORTINAS E DECORAÇÃO DE JANELA
+  # ---------------------------------------------------------------------------
+
+  curtainN:
+    campo_java: "TilePropertyKey.CURTAIN_N"
+    tipo: boolean
+    descricao: "Cortina no lado Norte da janela."
+
+  curtainS:
+    campo_java: "TilePropertyKey.CURTAIN_S"
+    tipo: boolean
+    descricao: "Cortina no lado Sul."
+
+  curtainE:
+    campo_java: "TilePropertyKey.CURTAIN_E"
+    tipo: boolean
+    descricao: "Cortina no lado Leste."
+
+  curtainW:
+    campo_java: "TilePropertyKey.CURTAIN_W"
+    tipo: boolean
+    descricao: "Cortina no lado Oeste."
+
+  CurtainOffset:
+    campo_java: "TilePropertyKey.CURTAIN_OFFSET"
+    tipo: integer
+    descricao: "Offset de sprite para estado da cortina (aberta/fechada)."
+
+  CurtainSound:
+    campo_java: "TilePropertyKey.CURTAIN_SOUND"
+    tipo: string
+    descricao: "Som ao abrir/fechar cortina."
+
+  climbSheetN:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_N"
+    tipo: boolean
+    descricao: "Pode-se escalar pela corda/lençol amarrado na janela Norte."
+
+  climbSheetS:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_S"
+    tipo: boolean
+    descricao: "Escalar pela janela Sul."
+
+  climbSheetE:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_E"
+    tipo: boolean
+    descricao: "Escalar pela janela Leste."
+
+  climbSheetW:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_W"
+    tipo: boolean
+    descricao: "Escalar pela janela Oeste."
+
+  climbSheetTopN:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_TOP_N"
+    tipo: boolean
+    descricao: "Topo da corda/lençol no lado Norte."
+
+  climbSheetTopS:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_TOP_S"
+    tipo: boolean
+    descricao: "Topo da corda no lado Sul."
+
+  climbSheetTopE:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_TOP_E"
+    tipo: boolean
+    descricao: "Topo da corda no lado Leste."
+
+  climbSheetTopW:
+    campo_java: "TilePropertyKey.CLIMB_SHEET_TOP_W"
+    tipo: boolean
+    descricao: "Topo da corda no lado Oeste."
+
+  TieSheetRope:
+    campo_java: "TilePropertyKey.TIE_SHEET_ROPE"
+    tipo: boolean
+    descricao: "Permite amarrar lençol/corda neste ponto para escape."
+
+  # ---------------------------------------------------------------------------
+  # 16. CONEXÃO E MULTI-TILE
+  # ---------------------------------------------------------------------------
+
+  connectX:
+    campo_java: "TilePropertyKey.CONNECT_X"
+    tipo: integer
+    descricao: "Ponto de conexão X para objetos interconectados."
+
+  connectY:
+    campo_java: "TilePropertyKey.CONNECT_Y"
+    tipo: integer
+    descricao: "Ponto de conexão Y para objetos interconectados."
+
+  GlassRemovedOffset:
+    campo_java: "TilePropertyKey.GLASS_REMOVED_OFFSET"
+    tipo: integer
+    descricao: "Offset para sprite sem vidro (janela quebrada)."
+
+  OpenTileOffset:
+    campo_java: "TilePropertyKey.OPEN_TILE_OFFSET"
+    tipo: integer
+    descricao: "Offset para sprite no estado aberto (portas, armários)."
+
+  open:
+    campo_java: "TilePropertyKey.OPEN"
+    tipo: boolean
+    descricao: "Estado inicial do tile é aberto."
+
+  SmashedTileOffset:
+    campo_java: "TilePropertyKey.SMASHED_TILE_OFFSET"
+    tipo: integer
+    descricao: "Offset para sprite destruído/quebrado."
+
+  StackReplaceTileOffset:
+    campo_java: "TilePropertyKey.STACK_REPLACE_TILE_OFFSET"
+    tipo: integer
+    descricao: "Offset do tile substituto ao empilhar."
+    padrao: 0
+
+  # ---------------------------------------------------------------------------
+  # 17. ENTIDADES E SCRIPTS
+  # ---------------------------------------------------------------------------
+
+  EntityScript:
+    campo_java: "TilePropertyKey.ENTITY_SCRIPT"
+    tipo: string
+    descricao: "Script de entidade vinculado a este tile (sistema Build 42)."
+
+  EntityScriptName:
+    campo_java: "TilePropertyKey.ENTITY_SCRIPT_NAME"
+    tipo: string
+    descricao: "Nome do script de entidade."
+
+  blueprint:
+    campo_java: "TilePropertyKey.BLUEPRINT"
+    tipo: string
+    descricao: "Blueprint associado (para sistema de construção)."
+
+  # ---------------------------------------------------------------------------
+  # 18. DIVERSOS
+  # ---------------------------------------------------------------------------
+
+  exterior:
+    campo_java: "TilePropertyKey.EXTERIOR"
+    tipo: boolean
+    descricao: "Tile está em área externa."
+
+  interior:
+    campo_java: "TilePropertyKey.INTERIOR"
+    tipo: boolean
+    descricao: "Tile está em área interna."
+
+  InteriorSide:
+    campo_java: "TilePropertyKey.INTERIOR_SIDE"
+    tipo: string
+    descricao: "Lado interior da parede (para renderização correta de textura interna vs externa)."
+
+  noStart:
+    campo_java: "TilePropertyKey.NO_START"
+    tipo: boolean
+    descricao: "Jogadores não podem iniciar spawn neste tile."
+
+  cutN:
+    campo_java: "TilePropertyKey.CUT_N"
+    tipo: boolean
+    descricao: "Permite cortar vegetação na borda Norte."
+
+  cutW:
+    campo_java: "TilePropertyKey.CUT_W"
+    tipo: boolean
+    descricao: "Permite cortar vegetação na borda Oeste."
+
+  taintedWater:
+    campo_java: "TilePropertyKey.TAINTED_WATER"
+    tipo: boolean
+    descricao: "Água neste tile está contaminada (causa doença se bebida sem ferver)."
+
+  water:
+    campo_java: "TilePropertyKey.WATER"
+    tipo: boolean
+    descricao: "Tile contém/é uma fonte de água."
+
+  waterAmount:
+    campo_java: "TilePropertyKey.WATER_AMOUNT"
+    tipo: integer
+    descricao: "Quantidade de água disponível."
+
+  waterMaxAmount:
+    campo_java: "TilePropertyKey.WATER_MAX_AMOUNT"
+    tipo: integer
+    descricao: "Capacidade máxima de água."
+
+  waterPiped:
+    campo_java: "TilePropertyKey.WATER_PIPED"
+    tipo: boolean
+    descricao: "Conectado à rede de água encanada."
+
+  SlopedSurfaceDirection:
+    campo_java: "TilePropertyKey.SLOPED_SURFACE_DIRECTION"
+    tipo: string
+    descricao: "Direção da inclinação da superfície (para telhados, rampas)."
+
+  SlopedSurfaceHeightMin:
+    campo_java: "TilePropertyKey.SLOPED_SURFACE_HEIGHT_MIN"
+    tipo: integer
+    descricao: "Altura mínima da superfície inclinada (0-100)."
+    padrao: 0
+
+  SlopedSurfaceHeightMax:
+    campo_java: "TilePropertyKey.SLOPED_SURFACE_HEIGHT_MAX"
+    tipo: integer
+    descricao: "Altura máxima da superfície inclinada (0-100)."
+    padrao: 0
+
+# =============================================================================
+# FLAGS (IsoFlagType) — Sistema separado de flags booleanas
+# =============================================================================
+# As flags são diferentes das propriedades: são um enum Java (IsoFlagType)
+# armazenado como bitmask. Aparecem na seção [FLG] do Inspetor de Objeto.
+# =============================================================================
+
+flags_iso:
+  canBeCut:
+    descricao: "Tile pode ser cortado (vegetação, arbustos, cercas vivas)."
+    contexto: "Usado pelo sistema de jardinagem e limpeza de terreno."
+
+  canBeRemoved:
+    descricao: "Tile pode ser removido manualmente pelo jogador."
+
+  collideN:
+    descricao: "Colisão na borda Norte — bloqueia passagem por esse lado."
+
+  collideW:
+    descricao: "Colisão na borda Oeste."
+
+  doorN:
+    descricao: "Flag de porta na borda Norte."
+
+  doorW:
+    descricao: "Flag de porta na borda Oeste."
+
+  DoorWallN:
+    descricao: "Parede com porta embutida — Norte."
+
+  DoorWallW:
+    descricao: "Parede com porta embutida — Oeste."
+
+  HoppableN:
+    descricao: "Pode ser pulado pela borda Norte (cerca baixa, balcão)."
+
+  HoppableW:
+    descricao: "Pode ser pulado pela borda Oeste."
+
+  solid:
+    descricao: "Completamente sólido — bloqueia toda passagem."
+
+  solidfloor:
+    descricao: "Piso sólido — suporta peso."
+
+  solidtrans:
+    descricao: "Sólido mas transparente (vidro, grade)."
+
+  taintedWater:
+    descricao: "Água contaminada."
+
+  TallHoppableN:
+    descricao: "Pode ser escalado (mais alto que Hoppable) — Norte."
+
+  TallHoppableW:
+    descricao: "Pode ser escalado — Oeste."
+
+  vegitation:
+    descricao: "É vegetação (afeta visibilidade, forageamento, erosão)."
+
+  WallN:
+    descricao: "Parede na borda Norte."
+
+  WallNTrans:
+    descricao: "Parede Norte transparente."
+
+  WallNW:
+    descricao: "Parede de canto Norte-Oeste."
+
+  WallW:
+    descricao: "Parede na borda Oeste."
+
+  WallWTrans:
+    descricao: "Parede Oeste transparente."
+
+  water:
+    descricao: "Tile contém água."
+
+  WindowN:
+    descricao: "Janela na borda Norte."
+
+  WindowW:
+    descricao: "Janela na borda Oeste."
+
+  WallOverlay:
+    descricao: "Overlay sobre parede (papel de parede, tinta aplicada)."
+
+# =============================================================================
+# REFERÊNCIA RÁPIDA: COORDENADAS DO MUNDO (para tooltip do Inspetor)
+# =============================================================================
+
+sistema_coordenadas:
+  descricao: >
+    Sistema de coordenadas isométrico do Project Zomboid.
+    Referencial: jogador olhando de frente para o objeto.
+  eixos:
+    X:
+      descricao: "Eixo horizontal isométrico (diagonal NE-SW)"
+      menor_valor: "Move para a DIREITA do jogador"
+      maior_valor: "Move para a ESQUERDA do jogador"
+      minimo: 0
+    Y:
+      descricao: "Eixo horizontal isométrico (diagonal NW-SE)"
+      menor_valor: "Move em DIREÇÃO ao jogador (mais perto)"
+      maior_valor: "Move PARA LONGE do jogador (mais distante)"
+      minimo: 0
+    Z:
+      descricao: "Eixo vertical (altura/andar)"
+      menor_valor: "Mais BAIXO (subsolo se < 0)"
+      maior_valor: "Mais ALTO (andares superiores)"
+      observacao: "Cada unidade = 1 andar do edifício"
