@@ -95,7 +95,42 @@ function LKS_Device_Cooking.obterTexturaInventario(recipiente, recipienteTipo, o
     return obterTexturaEstado(chaveConfiguracao, temEnergia)
 end
 
---- Constrói o submenu premium para fogões e micro-ondas no mundo.
+--- Constrói o submenu LKS para fogões e micro-ondas no mundo.
+---
+--- ## Como funciona o menu de contexto no Project Zomboid (ISContextMenu):
+---
+--- O jogo dispara o evento `OnFillWorldObjectContextMenu` para cada clique-direito
+--- no mundo. Múltiplos handlers (vanilla + mods) adicionam opções ao mesmo `menuContexto`.
+--- Para aparelhos como fogões e micro-ondas, o vanilla JÁ cria um submenu agrupador
+--- com o nome traduzido do objeto (ex: "Fogão Vermelho"), e dentro dele coloca as
+--- opções "Ligar/Desligar" e "Configurações" (timer, temperatura, potência).
+---
+--- ### Anatomia de uma opção (`menuContexto.options[i]`):
+--- - `.name`         → Texto exibido (string traduzida via getText)
+--- - `.onSelect`     → Callback executado ao clicar
+--- - `.target`       → Primeiro argumento passado ao callback
+--- - `.param1/.param2` → Argumentos adicionais do callback
+--- - `.iconTexture`  → Textura exibida à esquerda da opção
+--- - `.toolTip`      → Tooltip ISToolTip exibido ao passar o mouse
+--- - `.notAvailable` → Se true, a opção fica cinza/desabilitada
+--- - `.subOption`    → ID do submenu vinculado (via `addSubMenu`)
+---
+--- ### Operações principais da API ISContextMenu:
+--- - `menuContexto:addOption(texto, alvo, callback, param1, param2)` → Adiciona opção
+--- - `menuContexto:addOptionOnTop(texto)` → Adiciona no topo (prioridade visual)
+--- - `ISContextMenu:getNew(menuPai)` → Cria submenu vinculado ao menu pai
+--- - `menuContexto:addSubMenu(opcaoPai, submenu)` → Vincula submenu a uma opção
+--- - `menuContexto:removeOptionByName(texto)` → Remove opção por nome exato
+--- - `menuContexto:getSubMenu(idSubmenu)` → Obtém referência ao submenu de uma opção
+---
+--- ### Estratégia de sequestro do submenu vanilla:
+--- Em vez de criar um SEGUNDO submenu com o mesmo nome (causando duplicata),
+--- a abordagem correta é:
+--- 1. LOCALIZAR a opção vanilla existente pelo nome do objeto traduzido
+--- 2. OBTER o submenu vanilla já criado via `.subOption`
+--- 3. REMOVER apenas as opções que queremos substituir (Ligar/Desligar)
+--- 4. INJETAR nossas opções aprimoradas no submenu existente
+--- 5. PRESERVAR tudo que não tocamos (Configurações e qualquer outra)
 ---
 --- @param jogadorNumero number O índice do jogador local (0 a 3).
 --- @param menuContexto ISContextMenu O menu de contexto sendo preenchido.
@@ -112,6 +147,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         chaveConfiguracao = "microwave"
     end
 
+    -- Resolução do nome traduzido do aparelho via propriedades do sprite
     local nomeObjetoTraduzido = ""
     if ehFogao then
         nomeObjetoTraduzido = objetoEletrico:getName() or "Fogão"
@@ -130,6 +166,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         end
     end
 
+    -- Detecta estado elétrico do aparelho
     local temEnergia = false
     local containerInventario = objetoEletrico:getContainer()
     if containerInventario and containerInventario:isPowered() then
@@ -144,35 +181,94 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         estaAtivo = objetoEletrico:Activated()
     end
 
-    -- Remove as opções nativas obsoletas para fogão ou micro-ondas
-    for indice = #menuContexto.options, 1, -1 do
-        local opcao = menuContexto.options[indice]
-        local nomeOpcao = opcao and opcao.name and string.lower(opcao.name) or nil
-        if nomeOpcao and (string.find(nomeOpcao, "fogão") or string.find(nomeOpcao, "fogao") or string.find(nomeOpcao, "micro") or string.find(nomeOpcao, "oven") or string.find(nomeOpcao, "stove") or string.find(nomeOpcao, "microwave")) then
-            table.insert(menuContexto.optionPool, opcao)
-            for j = indice + 1, #menuContexto.options do
-                menuContexto.options[j-1] = menuContexto.options[j]
-                menuContexto.options[j-1].id = j-1
-            end
-            menuContexto.options[#menuContexto.options] = nil
-            menuContexto.numOptions = menuContexto.numOptions - 1
+    -- =========================================================================
+    -- PASSO 1: LOCALIZAR O SUBMENU VANILLA EXISTENTE
+    -- =========================================================================
+    -- O jogo base já cria uma opção-pai com o nome do aparelho (ex: "Fogão Vermelho")
+    -- e vincula um submenu a ela contendo "Ligar" e "Configurações".
+    -- Precisamos ENCONTRAR essa opção existente para sequestrar seu submenu,
+    -- em vez de criar um duplicado.
+    --
+    -- A busca é feita por nome exato (`opcao.name == nomeObjetoTraduzido`) e
+    -- verificando se a opção possui um submenu vinculado (`.subOption` preenchido).
+    -- =========================================================================
+    local opcaoVanillaEncontrada = nil
+    local submenuVanilla = nil
+
+    for _, opcao in ipairs(menuContexto.options) do
+        if opcao.name == nomeObjetoTraduzido and opcao.subOption then
+            opcaoVanillaEncontrada = opcao
+            submenuVanilla = menuContexto:getSubMenu(opcao.subOption)
+            break
         end
     end
-    menuContexto:calcHeight()
 
-    local opcaoMenuPai = menuContexto:addOptionOnTop(nomeObjetoTraduzido)
-    local submenu = ISContextMenu:getNew(menuContexto)
-    menuContexto:addSubMenu(opcaoMenuPai, submenu)
+    -- =========================================================================
+    -- PASSO 2: DECIDIR SE SEQUESTRA O VANILLA OU CRIA UM NOVO
+    -- =========================================================================
+    -- Se o vanilla já criou o submenu, reutilizamos ele.
+    -- Se não (caso de mods que alteram a ordem ou fogões sem submenu vanilla),
+    -- criamos o nosso normalmente como fallback.
+    -- =========================================================================
+    local submenu = nil
+    local opcaoMenuPai = nil
 
-    if texturaIconeMenu then
-        opcaoMenuPai.iconTexture = texturaIconeMenu
+    if submenuVanilla then
+        -- Sequestro: reutiliza o submenu vanilla existente
+        submenu = submenuVanilla
+        opcaoMenuPai = opcaoVanillaEncontrada
+
+        -- Aplica ícone LKS na opção-pai vanilla
+        if texturaIconeMenu then
+            opcaoMenuPai.iconTexture = texturaIconeMenu
+        end
+    else
+        -- Fallback: cria submenu próprio (caso o vanilla não tenha criado um)
+        opcaoMenuPai = menuContexto:addOptionOnTop(nomeObjetoTraduzido)
+        submenu = ISContextMenu:getNew(menuContexto)
+        menuContexto:addSubMenu(opcaoMenuPai, submenu)
+
+        if texturaIconeMenu then
+            opcaoMenuPai.iconTexture = texturaIconeMenu
+        end
     end
 
+    -- =========================================================================
+    -- PASSO 3: REMOVER OPÇÃO VANILLA DE LIGAR/DESLIGAR DO SUBMENU
+    -- =========================================================================
+    -- Remove apenas a opção de toggle do submenu vanilla (que substituiremos
+    -- pela nossa versão aprimorada com tooltips). A opção "Configurações" e
+    -- qualquer outra permanecem intactas.
+    --
+    -- Usamos `removeOptionByName` que é o método nativo do ISContextMenu para
+    -- remoção segura por nome exato — sem necessidade de manipulação manual
+    -- de índices da tabela `options`.
+    -- =========================================================================
+    local textoLigarVanilla = getText("ContextMenu_TurnOn")
+    local textoDesligarVanilla = getText("ContextMenu_TurnOff")
+
+    if submenu and submenu.removeOptionByName then
+        pcall(function() submenu:removeOptionByName(textoLigarVanilla) end)
+        pcall(function() submenu:removeOptionByName(textoDesligarVanilla) end)
+    end
+
+    -- =========================================================================
+    -- PASSO 4: INJETAR NOSSAS OPÇÕES APRIMORADAS NO SUBMENU
+    -- =========================================================================
+    -- Adicionamos nossa versão de Ligar/Desligar com:
+    -- - Ícones customizados (LKS_Button_Power_On/Off)
+    -- - Tooltips com temperatura atual em °C (fogão)
+    -- - Alertas de segurança coloridos (equipamento aquecido, metal no micro-ondas)
+    -- - Estado desabilitado visual quando não há energia
+    --
+    -- Estas opções são inseridas NO TOPO do submenu via `addOptionOnTop` para
+    -- que apareçam antes de "Configurações" (hierarquia: energia > ajustes).
+    -- =========================================================================
     local chaveTextoLigar = getText("ContextMenu_TurnOn") or "Ligar"
     local chaveTextoDesligar = getText("ContextMenu_TurnOff") or "Desligar"
 
     if estaAtivo then
-        local opcaoDesligar = submenu:addOption(chaveTextoDesligar, objetosMundo, function()
+        local opcaoDesligar = submenu:addOptionOnTop(chaveTextoDesligar, objetosMundo, function()
             if ehFogao then
                 ISWorldObjectContextMenu.onToggleStove(objetosMundo, objetoEletrico, jogadorNumero)
             elseif ehMicroondas then
@@ -192,7 +288,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         end
     else
         if temEnergia then
-            local opcaoLigar = submenu:addOption(chaveTextoLigar, objetosMundo, function()
+            local opcaoLigar = submenu:addOptionOnTop(chaveTextoLigar, objetosMundo, function()
                 if ehFogao then
                     ISWorldObjectContextMenu.onToggleStove(objetosMundo, objetoEletrico, jogadorNumero)
                 elseif ehMicroondas then
@@ -208,9 +304,9 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
                 opcaoLigar.toolTip = tooltipAviso
             end
         else
-            local opcaoLigarSemRequisitos = submenu:addOption(chaveTextoLigar, objetosMundo, nil)
+            -- Opção desabilitada: mostra visualmente que falta energia
+            local opcaoLigarSemRequisitos = submenu:addOptionOnTop(chaveTextoLigar, objetosMundo, nil)
             opcaoLigarSemRequisitos.notAvailable = true
-
             opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Menu_Electricity_Off.png")
 
             local tooltipErro = ISWorldObjectContextMenu.addToolTip()
