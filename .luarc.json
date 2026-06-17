@@ -1,0 +1,89 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime": {
+    "version": "Lua 5.1",
+    "path": [
+      "?.lua",
+      "?/init.lua"
+    ],
+    "pathStrict": false
+  },
+  "workspace": {
+    "library": [
+      "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/shared",
+      "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/client",
+      "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/server",
+      "C:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/.types"
+    ],
+    "ignoreDir": [
+      ".venv",
+      ".git",
+      ".github",
+      ".agents",
+      ".metadocs",
+      "scratch",
+      "tools",
+      "documents"
+    ],
+    "checkThirdParty": false
+  },
+  "diagnostics": {
+    "globals": [
+      "Container_ClothingDryer",
+      "Container_ClothingWasher",
+      "Container_Freezer",
+      "Container_Fridge",
+      "EventManager",
+      "Events",
+      "Fluid",
+      "FluidType",
+      "HUD",
+      "IsoDirections",
+      "IsoGenerator",
+      "IsoHeatSource",
+      "IsoLightSwitch",
+      "IsoObject",
+      "IsoSpriteManager",
+      "IsoStove",
+      "IsoThumpable",
+      "IsoUtils",
+      "Keyboard",
+      "Math",
+      "Mod",
+      "ModData",
+      "Translator",
+      "UIFont",
+      "ZombRand",
+      "getActivatedMods",
+      "getCell",
+      "getChunkSizeInSquares",
+      "getCore",
+      "getGameTime",
+      "getLoadedLua",
+      "getLoadedLuaCount",
+      "getModInfoByID",
+      "getPlayer",
+      "getSandboxOptions",
+      "getServerName",
+      "getShortenedFilename",
+      "getSpecificPlayer",
+      "getSquare",
+      "getText",
+      "getTextManager",
+      "getTexture",
+      "getTimestampMs",
+      "getWorld",
+      "instanceof",
+      "isClient",
+      "isServer",
+      "sendClientCommand",
+      "sendServerCommand"
+    ],
+    "disable": [
+      "lowercase-global"
+    ]
+  },
+  "hint": {
+    "enable": true
+  }
+}
