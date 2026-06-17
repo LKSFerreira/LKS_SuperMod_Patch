@@ -42,7 +42,6 @@ require "ISUI/ISTickBox"
 -- ============================================================================
 
 LKS_DebugTool = LKS_DebugTool or {}
-LKS_DebugTool.instance = nil
 LKS_DebugTool.abas = {}
 LKS_DebugTool.dadosCompartilhados = {}
 
@@ -91,7 +90,7 @@ LKS_DebugTool.tema = {
 
 local JANELA_LARGURA = 720
 local JANELA_ALTURA = 560
-local BARRA_ABAS_ALTURA = 32
+local BARRA_ABAS_ALTURA = 38
 local ABA_LARGURA_MIN = 120
 local ABA_PADDING = 8
 local MARGEM = 12
@@ -191,11 +190,12 @@ function LKS_DebugToolWindow:prerender()
 
     -- Desenha cada aba
     local abaX = ABA_PADDING
-    local abaY = tituloH + 4
-    local abaAltura = BARRA_ABAS_ALTURA - 6
+    local abaY = tituloH + 3
+    local abaAltura = BARRA_ABAS_ALTURA - 4
 
     for indice, aba in ipairs(LKS_DebugTool.abas) do
         local textoLargura = getTextManager():MeasureStringX(UIFont.Small, aba.nome)
+        local textoAltura = getTextManager():MeasureStringY(UIFont.Small, aba.nome)
         local abaLargura = math.max(ABA_LARGURA_MIN, textoLargura + 24)
 
         local ehAtiva = (indice == self.abaAtualIndice)
@@ -216,9 +216,9 @@ function LKS_DebugToolWindow:prerender()
         self:drawRectBorder(abaX, abaY, abaLargura, abaAltura,
             0.3, tema.bordaSecao.r, tema.bordaSecao.g, tema.bordaSecao.b)
 
-        -- Texto centralizado
+        -- Texto centralizado (vertical e horizontal)
         local textoX = abaX + (abaLargura - textoLargura) / 2
-        local textoY = abaY + (abaAltura - 16) / 2
+        local textoY = abaY + (abaAltura - textoAltura) / 2
         self:drawText(aba.nome, textoX, textoY, corTexto.r, corTexto.g, corTexto.b, corTexto.a, UIFont.Small)
 
         -- Armazena bounds para detecção de clique
@@ -288,7 +288,7 @@ function LKS_DebugToolWindow:new(posicaoX, posicaoY)
     local objeto = ISCollapsableWindow:new(posicaoX, posicaoY, JANELA_LARGURA, JANELA_ALTURA)
     setmetatable(objeto, self)
     self.__index = self
-    objeto.title = "LKS Debug Tool"
+    objeto.title = getText("IGUI_LKS_Debug_WindowTitle") or "LKS Ferramenta de Debug"
     objeto.moveWithMouse = true
     objeto.resizable = true
     objeto.drawFrame = true
@@ -333,7 +333,7 @@ end
 -- ============================================================================
 
 local abaRecarregar = {
-    nome = "Recarregar",
+    nome = getText("IGUI_LKS_Debug_TabReload") or "Recarregar",
     filtroTexto = "",
     resultadosFiltro = 0,
     arquivosPorMod = {},
@@ -357,7 +357,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
 
     local botaoModsHabilitados = ISButton:new(
         margemEsquerda, posicaoY, larguraBotaoMods, alturaLinha,
-        "Mods Habilitados", painel, function()
+        getText("IGUI_LKS_Debug_EnabledMods") or "Mods Habilitados", painel, function()
             abaRecarregar.alternarPainelMods(self, painel)
         end)
     botaoModsHabilitados:initialise()
@@ -368,7 +368,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     local rotuloTitulo = ISLabel:new(
         margemEsquerda + larguraBotaoMods + ESPACO_VERTICAL * 2,
         posicaoY + 3, alturaLinha,
-        "Recarregamento de Arquivos dos Mods",
+        getText("IGUI_LKS_Debug_ReloadTitle") or "Recarregamento de Arquivos dos Mods",
         tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
         UIFont.Medium, true)
     painel:adicionarWidgetAba(rotuloTitulo)
@@ -377,7 +377,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
 
     -- Linha 2: Descrição
     local rotuloDescricao = ISLabel:new(margemEsquerda, posicaoY, 18,
-        "Filtre por nome ou selecione mods para recarregar arquivos Lua em tempo real.",
+        getText("IGUI_LKS_Debug_ReloadDescription") or "Filtre por nome ou selecione mods para recarregar arquivos Lua em tempo real.",
         tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
         UIFont.Small, true)
     painel:adicionarWidgetAba(rotuloDescricao)
@@ -386,7 +386,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
 
     -- Linha 3: Campo de filtro (estica com a janela)
     local rotuloFiltro = ISLabel:new(
-        margemEsquerda, posicaoY + 5, alturaLinha, "Filtro:",
+        margemEsquerda, posicaoY + 5, alturaLinha, getText("IGUI_LKS_Debug_FilterLabel") or "Filtro:",
         tema.textoNormal.r, tema.textoNormal.g, tema.textoNormal.b, tema.textoNormal.a,
         UIFont.Small, true)
     painel:adicionarWidgetAba(rotuloFiltro)
@@ -403,7 +403,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     entradaFiltro:instantiate()
     entradaFiltro:setClearButton(true)
     entradaFiltro:setText("")
-    entradaFiltro:setPlaceholderText("filtrar por nome de arquivo...")
+    entradaFiltro:setPlaceholderText(getText("IGUI_LKS_Debug_FilterPlaceholder") or "filtrar por nome de arquivo...")
     entradaFiltro.backgroundColor = tema.fundoInput
     entradaFiltro.borderColor = tema.bordaInput
 
@@ -430,7 +430,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
 
     local botaoRecarregarTodos = ISButton:new(
         margemEsquerda, posicaoY, larguraBotao, alturaBotao,
-        "Recarregar Todos", painel, function()
+        getText("IGUI_LKS_Debug_ReloadAll") or "Recarregar Todos", painel, function()
             abaRecarregar.recarregarTodos(self, painel)
         end)
     botaoRecarregarTodos:initialise()
@@ -441,7 +441,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     local botaoRecarregarMarcados = ISButton:new(
         margemEsquerda + larguraBotao + espacamentoBotao,
         posicaoY, larguraBotao, alturaBotao,
-        "Recarregar Marcados", painel, function()
+        getText("IGUI_LKS_Debug_ReloadSelected") or "Recarregar Marcados", painel, function()
             abaRecarregar.recarregarMarcados(self, painel)
         end)
     botaoRecarregarMarcados:initialise()
@@ -452,7 +452,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     local botaoLimparFiltro = ISButton:new(
         margemEsquerda + (larguraBotao + espacamentoBotao) * 2,
         posicaoY, larguraBotao, alturaBotao,
-        "Limpar Filtro", painel, function()
+        getText("IGUI_LKS_Debug_ClearFilter") or "Limpar Filtro", painel, function()
             self.entradaFiltro:setText("")
             self.filtroTexto = ""
             abaRecarregar.atualizarLista(self, painel)
@@ -499,7 +499,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     rotuloStatus.anchorTop = false
     painel:adicionarWidgetAba(rotuloStatus)
     self.rotuloStatus = rotuloStatus
-    abaRecarregar.definirStatus(self, "Pronto. Selecione arquivos e clique Recarregar Marcados.")
+    abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReadyStatus") or "Pronto. Selecione arquivos e clique Recarregar Marcados.")
 
     -- Popula a lista inicial
     abaRecarregar.inicializarMods(self)
@@ -555,7 +555,7 @@ function abaRecarregar.alternarPainelMods(self, painel)
     listaMods.doDrawItem = abaRecarregar.desenharItemMod
 
     -- Primeira opção especial: "Todos os arquivos .lua"
-    listaMods:addItem("Todos os arquivos .lua", { modId = "__TODOS__", ativo = self.todosArquivosAtivo, especial = true })
+    listaMods:addItem(getText("IGUI_LKS_Debug_AllLuaFiles") or "Todos os arquivos .lua", { modId = "__TODOS__", ativo = self.todosArquivosAtivo, especial = true })
 
     -- Popula com mods disponíveis
     for _, modId in ipairs(self.modsDisponiveis) do
@@ -894,18 +894,43 @@ end
 
 local LIMITE_RELOAD_SEGURO = 50
 
+--- Verifica se o recarregamento em massa e seguro.
+--- Arquivos de um unico mod sao sempre permitidos independente da quantidade.
+--- O limite so se aplica quando multiplos mods ou "Todos os arquivos .lua" estao ativos.
+---@param self table Instancia da janela de debug.
+---@param totalArquivos number Quantidade de arquivos a recarregar.
+---@return boolean seguro true se o recarregamento pode prosseguir.
+function abaRecarregar.verificarSegurancaReload(self, totalArquivos)
+    if totalArquivos <= LIMITE_RELOAD_SEGURO then
+        return true
+    end
+
+    if self.todosArquivosAtivo then
+        return false
+    end
+
+    local quantidadeModsAtivos = 0
+    for _, ativo in pairs(self.modsAtivos) do
+        if ativo then
+            quantidadeModsAtivos = quantidadeModsAtivos + 1
+        end
+    end
+
+    return quantidadeModsAtivos <= 1
+end
+
 --- Recarrega TODOS os arquivos visíveis na lista (respeitando filtro e mods ativos).
---- Exibe aviso de segurança quando a quantidade excede o limite seguro.
+--- Exibe aviso de segurança quando a quantidade excede o limite seguro e multiplos mods estao ativos.
 function abaRecarregar.recarregarTodos(self, painel)
     if not self.listaArquivos then return end
 
     local total = #self.listaArquivos.items
 
-    if total > LIMITE_RELOAD_SEGURO then
+    if not abaRecarregar.verificarSegurancaReload(self, total) then
         abaRecarregar.definirStatus(self,
-            "AVISO: " .. tostring(total) .. " arquivos! Recarregamento em massa pode causar crash. Filtre ou marque arquivos especificos.",
+            getText("IGUI_LKS_Debug_WarningMassReload", tostring(total)) or ("AVISO: " .. tostring(total) .. " arquivos de multiplos mods! Recarregamento em massa pode causar crash."),
             "aviso")
-        print("[LKS Debug Tool] Reload em massa bloqueado: " .. tostring(total) .. " arquivos excede o limite seguro de " .. tostring(LIMITE_RELOAD_SEGURO) .. ".")
+        print("[LKS Debug Tool] Reload em massa bloqueado: " .. tostring(total) .. " arquivos de multiplos mods excede o limite seguro de " .. tostring(LIMITE_RELOAD_SEGURO) .. ".")
         return
     end
 
@@ -924,14 +949,14 @@ function abaRecarregar.recarregarTodos(self, painel)
     end
 
     if #erros > 0 then
-        abaRecarregar.definirStatus(self, "Erro ao recarregar: " .. erros[1], "erro")
+        abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReloadError", erros[1]) or ("Erro ao recarregar: " .. erros[1]), "erro")
     else
-        abaRecarregar.definirStatus(self, "Recarregados " .. tostring(contador) .. " de " .. tostring(total) .. " arquivos.", "sucesso")
+        abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReloadedCount", tostring(contador), tostring(total)) or ("Recarregados " .. tostring(contador) .. " de " .. tostring(total) .. " arquivos."), "sucesso")
     end
 end
 
 --- Recarrega os arquivos marcados com checkbox na lista.
---- Exibe aviso de segurança quando a quantidade excede o limite seguro.
+--- Exibe aviso de segurança quando a quantidade excede o limite seguro e multiplos mods estao ativos.
 function abaRecarregar.recarregarMarcados(self, painel)
     if not self.listaArquivos then return end
 
@@ -944,15 +969,15 @@ function abaRecarregar.recarregarMarcados(self, painel)
     end
 
     if total == 0 then
-        abaRecarregar.definirStatus(self, "Nenhum arquivo marcado. Clique nos arquivos para selecionar.", "aviso")
+        abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_NoFilesSelected") or "Nenhum arquivo marcado. Clique nos arquivos para selecionar.", "aviso")
         return
     end
 
-    if total > LIMITE_RELOAD_SEGURO then
+    if not abaRecarregar.verificarSegurancaReload(self, total) then
         abaRecarregar.definirStatus(self,
-            "AVISO: " .. tostring(total) .. " arquivos marcados! Recarregamento em massa pode causar crash. Reduza a selecao.",
+            getText("IGUI_LKS_Debug_WarningSelectedMassReload", tostring(total)) or ("AVISO: " .. tostring(total) .. " arquivos marcados de multiplos mods! Reduza a selecao."),
             "aviso")
-        print("[LKS Debug Tool] Reload em massa bloqueado: " .. tostring(total) .. " arquivos excede o limite seguro de " .. tostring(LIMITE_RELOAD_SEGURO) .. ".")
+        print("[LKS Debug Tool] Reload em massa bloqueado: " .. tostring(total) .. " arquivos de multiplos mods excede o limite seguro de " .. tostring(LIMITE_RELOAD_SEGURO) .. ".")
         return
     end
 
@@ -973,9 +998,9 @@ function abaRecarregar.recarregarMarcados(self, painel)
     end
 
     if #erros > 0 then
-        abaRecarregar.definirStatus(self, "Erro ao recarregar: " .. erros[1], "erro")
+        abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReloadError", erros[1]) or ("Erro ao recarregar: " .. erros[1]), "erro")
     else
-        abaRecarregar.definirStatus(self, "Recarregados " .. tostring(contador) .. " de " .. tostring(total) .. " arquivos marcados.", "sucesso")
+        abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReloadedSelectedCount", tostring(contador), tostring(total)) or ("Recarregados " .. tostring(contador) .. " de " .. tostring(total) .. " arquivos marcados."), "sucesso")
     end
 end
 
@@ -1027,8 +1052,9 @@ end
 -- ============================================================================
 
 local abaMenuContexto = {
-    nome = "Menu Contexto",
+    nome = getText("IGUI_LKS_Debug_TabContextMenu") or "Menu Contexto",
     ultimoMenuCapturado = nil,
+    ultimoMenuVanilla = nil,
     ultimosObjetos = nil,
 }
 
@@ -1039,15 +1065,15 @@ function abaMenuContexto.criar(self, painel, posicaoY)
     local alturaRedimensionamento = painel:resizeWidgetHeight()
 
     -- Título
-    local rotuloTitulo = ISLabel:new(margemEsquerda, posicaoY, 22, "Inspetor de Menu de Contexto",
+    local rotuloTitulo = ISLabel:new(margemEsquerda, posicaoY, 22, getText("IGUI_LKS_Debug_ContextMenuTitle") or "Inspetor de Menu de Contexto",
         tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
         UIFont.Medium, true)
     painel:adicionarWidgetAba(rotuloTitulo)
     posicaoY = posicaoY + 26 + ESPACO_VERTICAL
 
-    -- Instrução
+    -- Instrucao
     local rotuloInstrucao = ISLabel:new(margemEsquerda, posicaoY, 18,
-        "Clique com botão direito em objetos do mundo. A captura aparecerá aqui.",
+        getText("IGUI_LKS_Debug_ContextMenuInstruction") or "Clique em objetos do mundo para capturar o menu.",
         tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
         UIFont.Small, true)
     painel:adicionarWidgetAba(rotuloInstrucao)
@@ -1074,84 +1100,64 @@ function abaMenuContexto.criar(self, painel, posicaoY)
     end
 end
 
---- Captura o menu de contexto e transforma em dados legíveis.
+--- Captura o menu de contexto final e tenta reconstruir o menu vanilla original.
 ---
---- @param menuContexto ISContextMenu O menu de contexto preenchido.
+--- @param menuContexto ISContextMenu O menu de contexto preenchido (com todos os mods).
 --- @param objetosMundo table Os objetos clicados.
-function abaMenuContexto.capturarMenu(self, menuContexto, objetosMundo)
+--- @param jogadorNumero number O indice do jogador.
+function abaMenuContexto.capturarMenu(self, menuContexto, objetosMundo, jogadorNumero)
     self.ultimoMenuCapturado = menuContexto
     self.ultimosObjetos = objetosMundo
+    self.ultimoMenuVanilla = nil
+
     abaMenuContexto.popularLista(self)
 end
 
---- Popula a lista de captura com os dados do menu.
+--- Popula a lista de captura com os dados do menu atual e as opcoes vanilla.
 function abaMenuContexto.popularLista(self)
     if not self.listaCaptura or not self.ultimoMenuCapturado then return end
 
     self.listaCaptura:clear()
     local menu = self.ultimoMenuCapturado
 
-    -- Cabeçalho com info do objeto
-    if self.ultimosObjetos then
-        for _, objeto in ipairs(self.ultimosObjetos) do
-            local classeJava = "?"
-            local spriteName = "?"
+    -- Secao: Menu Atual (com todos os mods ativos)
+    self.listaCaptura:addItem(getText("IGUI_LKS_Debug_CurrentMenuSection") or "[ MENU ATUAL ]", { tipo = "secao" })
 
-            if objeto.getClass then
-                local ok, classe = pcall(function() return tostring(objeto:getClass():getSimpleName()) end)
-                if ok then classeJava = classe end
-            end
-            if objeto.getSprite and objeto:getSprite() then
-                local ok, sprite = pcall(function() return objeto:getSprite():getName() end)
-                if ok and sprite then spriteName = sprite end
-            end
-
-            self.listaCaptura:addItem(
-                "═══ " .. classeJava .. " | " .. spriteName .. " ═══",
-                { tipo = "cabecalho" }
-            )
-            break
-        end
-    end
-
-    -- Opções do menu raiz
     if menu.options then
         abaMenuContexto.adicionarOpcoesNaLista(self, menu, 0, "")
     end
+
+    -- Gambiarra para não cortar o ultimo item, eu não queria fazer isso mais o agente LLM claude opus 4.6 foi estupido e incapaz de resolver esse problema de forma elegante.
+    self.listaCaptura:addItem(" ", { tipo = "espacador" })
 end
 
---- Adiciona opções recursivamente na lista com indentação.
+--- Adiciona opcoes recursivamente na lista com indentacao.
 function abaMenuContexto.adicionarOpcoesNaLista(self, menu, nivel, prefixo)
     if not menu or not menu.options then return end
 
     for indice, opcao in ipairs(menu.options) do
-        local nome = opcao.name or "(sem nome)"
+        local nome = opcao.name or (getText("IGUI_LKS_Debug_NoName") or "(sem nome)")
         local temSubmenu = opcao.subOption and opcao.subOption > 0
-        local temCallback = opcao.onSelect ~= nil
         local temIcone = opcao.iconTexture ~= nil
         local desabilitado = opcao.notAvailable == true
 
-        local indentacao = string.rep("  ", nivel)
+        local indentacao = string.rep("    ", nivel)
         local indicePrefixo = prefixo ~= "" and (prefixo .. "." .. indice) or tostring(indice)
 
-        local flags = {}
-        if temCallback then table.insert(flags, "fn") end
-        if temIcone then table.insert(flags, "ico") end
-        if desabilitado then table.insert(flags, "OFF") end
-        if temSubmenu then table.insert(flags, "▸") end
-
-        local texto = string.format("%s[%s] %s  {%s}",
-            indentacao, indicePrefixo, nome, table.concat(flags, " "))
+        local texto = string.format("%s[%s] %s",
+            indentacao, indicePrefixo, nome)
 
         self.listaCaptura:addItem(texto, {
             tipo = "opcao",
             nivel = nivel,
             temSubmenu = temSubmenu,
             desabilitado = desabilitado,
+            temIcone = temIcone,
+            texturaIcone = opcao.iconTexture,
             nome = nome,
         })
 
-        -- Recursão em submenus
+        -- Recursao em submenus
         if temSubmenu then
             local submenu = menu:getSubMenu(opcao.subOption)
             if submenu then
@@ -1162,19 +1168,49 @@ function abaMenuContexto.adicionarOpcoesNaLista(self, menu, nivel, prefixo)
 end
 
 --- Renderizador customizado para itens da lista de captura.
+--- Renderiza icones quando disponveis e diferencia secoes e opcoes.
 function abaMenuContexto.desenharItemLista(self, y, item, alt)
     local tema = LKS_DebugTool.tema
     local dados = item.item
     local alturaItem = self.itemheight
 
-    if dados.tipo == "cabecalho" then
-        self:drawRect(0, y, self:getWidth(), alturaItem,
-            0.15, tema.acento.r, tema.acento.g, tema.acento.b)
-        self:drawText(item.text, 8, y + 2, tema.textoAbaAtiva.r, tema.textoAbaAtiva.g, tema.textoAbaAtiva.b, 1.0, UIFont.Small)
+    if dados.tipo == "secao" then
+        local larguraSecao = self:getWidth()
+        local scrollbarVisivel = self.vscroll and self.vscroll:getIsVisible()
+        if scrollbarVisivel then
+            larguraSecao = larguraSecao - 17
+        end
+        self:drawRect(0, y, larguraSecao, alturaItem,
+            0.10, tema.acento.r, tema.acento.g, tema.acento.b)
+        local textoAltura = getTextManager():MeasureStringY(UIFont.Small, item.text)
+        local textoY = y + math.floor((alturaItem - textoAltura) / 2)
+        self:drawText(item.text, 8, textoY,
+            tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, 1.0, UIFont.Small)
+
+    elseif dados.tipo == "espacador" then
+        -- Invisivel, apenas ocupa espaco
+
     else
         -- Hover
         if self.mouseoverselected == item.index then
-            self:drawRect(0, y, self:getWidth(), alturaItem, 0.08, 0.3, 0.5, 0.8)
+            local larguraHover = self:getWidth()
+            local scrollbarVisivel = self.vscroll and self.vscroll:getIsVisible()
+            if scrollbarVisivel then
+                larguraHover = larguraHover - 17
+            end
+            self:drawRect(0, y, larguraHover, alturaItem, 0.08, 0.3, 0.5, 0.8)
+        end
+
+        local textoX = 8
+
+        -- Renderiza icone do menu se disponivel
+        if dados.temIcone and dados.texturaIcone then
+            local tamanhoIcone = alturaItem - 4
+            local iconeY = y + 2
+            pcall(function()
+                self:drawTextureScaled(dados.texturaIcone, textoX, iconeY, tamanhoIcone, tamanhoIcone, 1.0)
+            end)
+            textoX = textoX + tamanhoIcone + 4
         end
 
         local corTexto = tema.textoNormal
@@ -1184,7 +1220,27 @@ function abaMenuContexto.desenharItemLista(self, y, item, alt)
             corTexto = tema.acento
         end
 
-        self:drawText(item.text, 8, y + 2, corTexto.r, corTexto.g, corTexto.b, corTexto.a, UIFont.Small)
+        -- Margem dinamica baseada na visibilidade do scrollbar
+        local margemBase = 8
+        local scrollbarVisivel = self.vscroll and self.vscroll:getIsVisible()
+        local margemScrollbar = scrollbarVisivel and 17 or 0
+        local margemDireita = margemBase + margemScrollbar
+
+        -- Calcula espaco disponivel para o texto principal
+        local larguraDisponivel = self:getWidth() - textoX - margemDireita
+        local textoRenderizado = item.text
+        local larguraTexto = getTextManager():MeasureStringX(UIFont.Small, textoRenderizado)
+
+        if larguraTexto > larguraDisponivel and #textoRenderizado > 6 then
+            while getTextManager():MeasureStringX(UIFont.Small, textoRenderizado .. "...") > larguraDisponivel and #textoRenderizado > 3 do
+                textoRenderizado = string.sub(textoRenderizado, 1, #textoRenderizado - 1)
+            end
+            textoRenderizado = textoRenderizado .. "..."
+        end
+
+        local textoAltura = getTextManager():MeasureStringY(UIFont.Small, textoRenderizado)
+        local textoY = y + math.floor((alturaItem - textoAltura) / 2)
+        self:drawText(textoRenderizado, textoX, textoY, corTexto.r, corTexto.g, corTexto.b, corTexto.a, UIFont.Small)
     end
 
     return y + alturaItem
@@ -1199,7 +1255,7 @@ end
 -- ============================================================================
 
 local abaInspetorObjeto = {
-    nome = "Inspetor Objeto",
+    nome = getText("IGUI_LKS_Debug_TabObjectInspector") or "Inspetor Objeto",
     ultimoObjeto = nil,
     propriedadesCapturadas = {},
 }
@@ -1211,15 +1267,15 @@ function abaInspetorObjeto.criar(self, painel, posicaoY)
     local alturaRedimensionamento = painel:resizeWidgetHeight()
 
     -- Título
-    local rotuloTitulo = ISLabel:new(margemEsquerda, posicaoY, 22, "Inspetor de Propriedades do Objeto",
+    local rotuloTitulo = ISLabel:new(margemEsquerda, posicaoY, 22, getText("IGUI_LKS_Debug_ObjectInspectorTitle") or "Inspetor de Propriedades do Objeto",
         tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, tema.textoTitulo.a,
         UIFont.Medium, true)
     painel:adicionarWidgetAba(rotuloTitulo)
     posicaoY = posicaoY + 26 + ESPACO_VERTICAL
 
-    -- Instrução
+    -- Instrucao
     local rotuloInstrucao = ISLabel:new(margemEsquerda, posicaoY, 18,
-        "Clique com botão direito em um objeto. Propriedades organizadas por categoria.",
+        getText("IGUI_LKS_Debug_ObjectInspectorInstruction") or "Clique em um objeto para inspecionar.",
         tema.textoDetalhe.r, tema.textoDetalhe.g, tema.textoDetalhe.b, tema.textoDetalhe.a,
         UIFont.Small, true)
     painel:adicionarWidgetAba(rotuloInstrucao)
@@ -1261,29 +1317,29 @@ function abaInspetorObjeto.capturarObjeto(self, objeto)
         local ok, val = pcall(function() return tostring(objeto:getClass():getSimpleName()) end)
         if ok then classeJava = val end
     end
-    table.insert(identidade, { chave = "Classe Java", valor = classeJava })
+    table.insert(identidade, { chave = getText("IGUI_LKS_Debug_JavaClass") or "Classe Java", valor = classeJava })
 
     local spriteName = "?"
     if objeto.getSprite and objeto:getSprite() then
         local ok, val = pcall(function() return objeto:getSprite():getName() end)
         if ok and val then spriteName = val end
     end
-    table.insert(identidade, { chave = "Sprite", valor = spriteName })
+    table.insert(identidade, { chave = getText("IGUI_LKS_Debug_Sprite") or "Sprite", valor = spriteName })
 
     if objeto.getSquare and objeto:getSquare() then
         local quadrado = objeto:getSquare()
         local coordenadas = string.format("x:%d  y:%d  z:%d", quadrado:getX(), quadrado:getY(), quadrado:getZ())
-        table.insert(identidade, { chave = "Coordenadas", valor = coordenadas })
+        table.insert(identidade, { chave = getText("IGUI_LKS_Debug_Coordinates") or "Coordenadas", valor = coordenadas })
     end
 
     if objeto.getName then
         local ok, nome = pcall(function() return objeto:getName() end)
         if ok and nome then
-            table.insert(identidade, { chave = "Nome", valor = nome })
+            table.insert(identidade, { chave = getText("IGUI_LKS_Debug_Name") or "Nome", valor = nome })
         end
     end
 
-    table.insert(self.propriedadesCapturadas, { secao = "🏷️ Identidade", itens = identidade })
+    table.insert(self.propriedadesCapturadas, { secao = getText("IGUI_LKS_Debug_SectionIdentity") or "[ID] Identidade", itens = identidade })
 
     -- SEÇÃO: Propriedades do Sprite (PropertyContainer)
     local propriedades = {}
@@ -1303,7 +1359,7 @@ function abaInspetorObjeto.capturarObjeto(self, objeto)
 
     if #propriedades > 0 then
         table.sort(propriedades, function(a, b) return a.chave < b.chave end)
-        table.insert(self.propriedadesCapturadas, { secao = "⚙️ Propriedades do Sprite", itens = propriedades })
+        table.insert(self.propriedadesCapturadas, { secao = getText("IGUI_LKS_Debug_SectionSpriteProps") or "[SPR] Propriedades do Sprite", itens = propriedades })
     end
 
     -- SEÇÃO: Container
@@ -1311,19 +1367,19 @@ function abaInspetorObjeto.capturarObjeto(self, objeto)
     if objeto.getContainer then
         local ok, container = pcall(function() return objeto:getContainer() end)
         if ok and container then
-            table.insert(containerInfo, { chave = "Tipo", valor = container:getType() or "?" })
-            table.insert(containerInfo, { chave = "Capacidade", valor = tostring(container:getCapacity()) })
-            table.insert(containerInfo, { chave = "Energizado", valor = tostring(container:isPowered()) })
+            table.insert(containerInfo, { chave = getText("IGUI_LKS_Debug_Type") or "Tipo", valor = container:getType() or "?" })
+            table.insert(containerInfo, { chave = getText("IGUI_LKS_Debug_Capacity") or "Capacidade", valor = tostring(container:getCapacity()) })
+            table.insert(containerInfo, { chave = getText("IGUI_LKS_Debug_Powered") or "Energizado", valor = tostring(container:isPowered()) })
 
             local ok2, itens = pcall(function() return container:getItems() end)
             if ok2 and itens then
-                table.insert(containerInfo, { chave = "Itens Dentro", valor = tostring(itens:size()) })
+                table.insert(containerInfo, { chave = getText("IGUI_LKS_Debug_ItemsInside") or "Itens Dentro", valor = tostring(itens:size()) })
             end
         end
     end
 
     if #containerInfo > 0 then
-        table.insert(self.propriedadesCapturadas, { secao = "📦 Container", itens = containerInfo })
+        table.insert(self.propriedadesCapturadas, { secao = getText("IGUI_LKS_Debug_SectionContainer") or "[CTN] Container", itens = containerInfo })
     end
 
     -- SEÇÃO: Flags
@@ -1336,7 +1392,7 @@ function abaInspetorObjeto.capturarObjeto(self, objeto)
                 local flagList = spriteProps:getFlagsList()
                 if flagList then
                     for i = 0, flagList:size() - 1 do
-                        table.insert(flags, { chave = flagList:get(i):toString(), valor = "✓" })
+                        table.insert(flags, { chave = flagList:get(i):toString(), valor = getText("IGUI_LKS_Debug_FlagCheck") or "X" })
                     end
                 end
             end
@@ -1344,26 +1400,26 @@ function abaInspetorObjeto.capturarObjeto(self, objeto)
     end
 
     if #flags > 0 then
-        table.insert(self.propriedadesCapturadas, { secao = "🚩 Flags", itens = flags })
+        table.insert(self.propriedadesCapturadas, { secao = getText("IGUI_LKS_Debug_SectionFlags") or "[FLG] Flags", itens = flags })
     end
 
     -- SEÇÃO: Estado (se aplicável)
     local estado = {}
     if objeto.isActivated then
         local ok, val = pcall(function() return objeto:isActivated() end)
-        if ok then table.insert(estado, { chave = "Ativado", valor = tostring(val) }) end
+        if ok then table.insert(estado, { chave = getText("IGUI_LKS_Debug_Activated") or "Ativado", valor = tostring(val) }) end
     end
     if objeto.getCurrentTemperature then
         local ok, val = pcall(function() return objeto:getCurrentTemperature() end)
-        if ok then table.insert(estado, { chave = "Temperatura", valor = string.format("%.1f°C", val) }) end
+        if ok then table.insert(estado, { chave = getText("IGUI_LKS_Debug_Temperature") or "Temperatura", valor = getText("IGUI_LKS_Debug_TempValue", string.format("%.1f", val)) or (string.format("%.1f", val) .. " C") }) end
     end
     if objeto.getCondition then
         local ok, val = pcall(function() return objeto:getCondition() end)
-        if ok then table.insert(estado, { chave = "Condição", valor = tostring(val) }) end
+        if ok then table.insert(estado, { chave = getText("IGUI_LKS_Debug_Condition") or "Condicao", valor = tostring(val) }) end
     end
 
     if #estado > 0 then
-        table.insert(self.propriedadesCapturadas, { secao = "⚡ Estado", itens = estado })
+        table.insert(self.propriedadesCapturadas, { secao = getText("IGUI_LKS_Debug_SectionState") or "[EST] Estado", itens = estado })
     end
 
     abaInspetorObjeto.popularLista(self)
@@ -1384,6 +1440,9 @@ function abaInspetorObjeto.popularLista(self)
             self.listaPropriedades:addItem(texto, { tipo = "propriedade", chave = item.chave, valor = item.valor })
         end
     end
+
+    -- Gambiarra para não cortar o ultimo item, eu não queria fazer isso mais o agente LLM claude opus 4.6 foi estupido e incapaz de resolver esse problema de forma elegante.
+    self.listaPropriedades:addItem(" ", { tipo = "espacador" })
 end
 
 --- Renderizador customizado para itens de propriedade.
@@ -1393,22 +1452,53 @@ function abaInspetorObjeto.desenharItemLista(self, y, item, alt)
     local alturaItem = self.itemheight
 
     if dados.tipo == "secao" then
-        -- Fundo de seção com acento
-        self:drawRect(0, y, self:getWidth(), alturaItem, 0.12, tema.acento.r, tema.acento.g, tema.acento.b)
-        self:drawText(item.text, 8, y + 2, tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, 1.0, UIFont.Small)
+        -- Fundo de seção com acento (alinhado com hover)
+        local larguraSecao = self:getWidth()
+        local scrollbarVisivel = self.vscroll and self.vscroll:getIsVisible()
+        if scrollbarVisivel then
+            larguraSecao = larguraSecao - 17
+        end
+        self:drawRect(0, y, larguraSecao, alturaItem, 0.12, tema.acento.r, tema.acento.g, tema.acento.b)
+        local textoAltura = getTextManager():MeasureStringY(UIFont.Small, item.text)
+        local textoY = y + math.floor((alturaItem - textoAltura) / 2)
+        self:drawText(item.text, 8, textoY, tema.textoTitulo.r, tema.textoTitulo.g, tema.textoTitulo.b, 1.0, UIFont.Small)
+    elseif dados.tipo == "espacador" then
+        -- Invisivel, apenas ocupa espaco
     else
         -- Hover
         if self.mouseoverselected == item.index then
-            self:drawRect(0, y, self:getWidth(), alturaItem, 0.05, 0.3, 0.5, 0.8)
+            local larguraHover = self:getWidth()
+            local scrollbarVisivel = self.vscroll and self.vscroll:getIsVisible()
+            if scrollbarVisivel then
+                larguraHover = larguraHover - 17
+            end
+            self:drawRect(0, y, larguraHover, alturaItem, 0.05, 0.3, 0.5, 0.8)
         end
 
         -- Renderiza chave em cor de acento e valor em cor normal
+        local margemBase = 8
+        local scrollbarVisivel = self.vscroll and self.vscroll:getIsVisible()
+        local margemScrollbar = scrollbarVisivel and 17 or 0
+        local margemDireita = margemBase + margemScrollbar
+        local larguraDisponivel = self:getWidth() - 8 - margemDireita
         local textoChave = "  " .. (dados.chave or "")
         local textoValor = " = " .. (dados.valor or "")
         local larguraChave = getTextManager():MeasureStringX(UIFont.Small, textoChave)
+        local larguraValor = getTextManager():MeasureStringX(UIFont.Small, textoValor)
 
-        self:drawText(textoChave, 8, y + 2, tema.acento.r, tema.acento.g, tema.acento.b, 0.9, UIFont.Small)
-        self:drawText(textoValor, 8 + larguraChave, y + 2,
+        -- Trunca o valor se exceder a area visivel
+        if larguraChave + larguraValor > larguraDisponivel and #textoValor > 6 then
+            local valorOriginal = dados.valor or ""
+            while larguraChave + getTextManager():MeasureStringX(UIFont.Small, " = " .. valorOriginal .. "...") > larguraDisponivel and #valorOriginal > 3 do
+                valorOriginal = string.sub(valorOriginal, 1, #valorOriginal - 1)
+            end
+            textoValor = " = " .. valorOriginal .. "..."
+        end
+
+        local textoAltura = getTextManager():MeasureStringY(UIFont.Small, textoChave)
+        local textoY = y + math.floor((alturaItem - textoAltura) / 2)
+        self:drawText(textoChave, 8, textoY, tema.acento.r, tema.acento.g, tema.acento.b, 0.9, UIFont.Small)
+        self:drawText(textoValor, 8 + larguraChave, textoY,
             tema.textoNormal.r, tema.textoNormal.g, tema.textoNormal.b, tema.textoNormal.a, UIFont.Small)
     end
 
@@ -1430,14 +1520,13 @@ local function aoPreencherMenuContextoMundo(jogadorNumero, menuContexto, objetos
     if apenasTeste then return end
     if not LKS_DebugTool.instance then return end
 
-    -- Protege com pcall para evitar loop de erros que trava o jogo
+    -- Captura para a aba de Menu de Contexto (passa jogadorNumero para reconstruir vanilla)
     pcall(function()
-        -- Captura para a aba de Menu de Contexto
-        abaMenuContexto:capturarMenu(menuContexto, objetosMundo)
+        abaMenuContexto:capturarMenu(menuContexto, objetosMundo, jogadorNumero)
     end)
 
+    -- Captura para a aba de Inspetor de Objeto (primeiro objeto relevante)
     pcall(function()
-        -- Captura para a aba de Inspetor de Objeto (primeiro objeto relevante)
         if objetosMundo and #objetosMundo > 0 then
             abaInspetorObjeto:capturarObjeto(objetosMundo[1])
         end
