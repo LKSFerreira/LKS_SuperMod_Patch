@@ -22,9 +22,65 @@ module LKS_Cooking
         WorldStaticModel = LKS_AcendedorImprovisado,
     }
 
+    /** Bobina Elétrica — Componente de craft para fogão de indução.
+     */
+    item LKS_Bobina
+    {
+        DisplayName = Bobina Elétrica,
+        DisplayCategory = Electronics,
+        Type = Normal,
+        Weight = 0.5,
+        Icon = LKS_Bobina,
+        WorldStaticModel = LKS_Bobina,
+        MetalValue = 10.0,
+        Tags = base:hasmetal,
+    }
+
+    /** Fogão de Indução — Aparelho colocável em balcão.
+     *  Funciona exclusivamente com eletricidade.
+     *  Só aquece panelas de metal. Qualidade superior.
+     */
+    item LKS_FogaoInducao
+    {
+        DisplayName = Fogão de Indução,
+        DisplayCategory = Appliance,
+        Type = Normal,
+        Weight = 5.0,
+        Icon = LKS_FogaoInducao,
+        WorldStaticModel = LKS_FogaoInducao,
+        Tags = base:hasmetal;base:smeltablesteellarge,
+        Tooltip = Tooltip_LKS_FogaoInducao,
+    }
+
+    /** Revista: Cooktops Modernos — Ensina receita do fogão de indução.
+     */
+    item LKS_RevistaEletricaInducao
+    {
+        DisplayName = Revista: Cooktops Modernos,
+        DisplayCategory = SkillBook,
+        Type = Literature,
+        Weight = 0.3,
+        Icon = LKS_RevistaEletrica,
+        TeachRecipe = MakeLKS_FogaoInducao,
+        Tags = base:media,
+    }
+
+    /** Manual do Fogão de Indução — Easter egg raro.
+     *  Explica que apenas panelas de metal funcionam, dicas, truques
+     *  e uma receita especial exclusiva.
+     */
+    item LKS_ManualFogaoInducao
+    {
+        DisplayName = Manual: Fogão de Indução,
+        DisplayCategory = SkillBook,
+        Type = Literature,
+        Weight = 0.2,
+        Icon = LKS_ManualFogao,
+        Tags = base:media,
+    }
+
     /** Receita: Criar Acendedor Improvisado
      *  Requer: 1 Pilha (mínimo 20% carga) + 1 Palha de Aço
-     *  A palha de aço é consumida. A pilha perde carga no processo.
      */
     craftRecipe MakeLKS_AcendedorImprovisado
     {
@@ -40,6 +96,32 @@ module LKS_Cooking
         outputs
         {
             item 1 LKS_Cooking.LKS_AcendedorImprovisado,
+        }
+    }
+
+    /** Receita: Criar Fogão de Indução
+     *  Requer aprender receita (revista, Elétrica 5, ou desmontar 2 fogões).
+     */
+    craftRecipe MakeLKS_FogaoInducao
+    {
+        timedAction = Making,
+        time = 300,
+        NeedToBeLearn = true,
+        category = Electrical,
+        AutoLearnAny = Electricity:5,
+        xpAward = Electricity:25,
+        inputs
+        {
+            item 3 [Base.SheetMetal],
+            item 8 [Base.Screws],
+            item 1 [Base.BlowTorch] flags[NotEmpty],
+            item 1 LKS_Cooking.LKS_Bobina,
+            item 2 [Base.ElectricWire],
+            item 1 [Base.ElectronicsScrap],
+        }
+        outputs
+        {
+            item 1 LKS_Cooking.LKS_FogaoInducao,
         }
     }
 }
