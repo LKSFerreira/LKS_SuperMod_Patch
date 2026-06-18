@@ -28,6 +28,16 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 - [ ] **Mapeamento Completo de Propriedades de CraftRecipe (ZedScript)**: A Indie Stone não documenta oficialmente todas as propriedades e valores válidos de `craftRecipe` (ex: `timedAction`, `Tags`, `flags`, `mode`). Realizar engenharia reversa nos scripts vanilla para catalogar e documentar em YAML todas as propriedades aceitas, valores válidos de `timedAction` (com descrição da animação de cada um), `Tags` de estação de craft, `flags` de items e `mode` de consumo. Salvar em `documents/` no mesmo formato de `propriedades_sprite_objetos_pz.yaml`.
 
+- [ ] **Roadmap e Histórico Desatualizados**: Os commits recentes do sprint de Fogões/Gás (sistema de gás, qualidade de comida, modo bateria para indução, botijão, receitas, itens elétricos) não estão refletidos no roadmap nem no histórico. Atualizar ambos os arquivos com o progresso parcial da feature "Mecânica de Fogões e Fornos".
+
+- [ ] **Arquivos Lua Fora da Hierarquia Documentada**: `LKS_Cooking_Quality.lua`, `LKS_Cooking_GasSystem.lua` e `LKS_Cooking_SpriteClassification.lua` estão na raiz de `shared/` ao invés de em subdiretório temático. A arquitetura documenta `core/`, `data/`, `utils/`, `actions/`. Avaliar criação de `shared/cooking/` ou redistribuição nos subdiretórios existentes.
+
+- [ ] **Markdown Solto na Raiz do Repositório**: `persona_prompt.md`, `prompt_crriar_editar_imagens_assets.md` (typo no nome) e `verificar_problemas_compatibilidades.md` estão na raiz sem organização. Migrar para `.metadocs/` ou `documents/` conforme o conteúdo.
+
+- [ ] **Sem Manifesto de Dependências Python**: Nenhum `pyproject.toml` ou inline script dependencies nos 6 scripts de `tools/`. Ambiente não é reproduzível por terceiros via `uv`. Adicionar manifesto ou PEP 723 inline metadata.
+
+- [ ] **`README.MD` com Extensão Maiúscula**: O arquivo na raiz usa `.MD` ao invés da convenção padrão `.md`. Renomear para `README.md`.
+
 ## Concluído
 
 - [x] **Melhorias Visuais do Termostato (12/06/2026)**: Ampliação das setas para 24px, alinhamento vertical matemático, resolução de crashes por valor nulo, espaçamento de respiro vertical para evitar cortes e tradução adaptativa para PT-BR.
