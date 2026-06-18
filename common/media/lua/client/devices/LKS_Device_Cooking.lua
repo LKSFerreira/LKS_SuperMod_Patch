@@ -238,19 +238,20 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         -- Sequestro: reutiliza o submenu vanilla existente
         submenu = submenuVanilla
         opcaoMenuPai = opcaoVanillaEncontrada
-
-        -- Aplica ícone LKS na opção-pai vanilla
-        if texturaIconeMenu then
-            opcaoMenuPai.iconTexture = texturaIconeMenu
-        end
+        -- NÃO sobrescreve iconTexture: vanilla já define o sprite correto do objeto
     else
         -- Fallback: cria submenu próprio (caso o vanilla não tenha criado um)
         opcaoMenuPai = menuContexto:addOptionOnTop(nomeObjetoTraduzido)
         submenu = ISContextMenu:getNew(menuContexto)
         menuContexto:addSubMenu(opcaoMenuPai, submenu)
 
-        if texturaIconeMenu then
-            opcaoMenuPai.iconTexture = texturaIconeMenu
+        -- No fallback, usa o sprite real do objeto via splitIcon()
+        local spriteObjeto = objetoEletrico:getSprite()
+        if spriteObjeto then
+            local texturaSplit = getTexture(spriteObjeto:getName())
+            if texturaSplit then
+                opcaoMenuPai.iconTexture = texturaSplit:splitIcon()
+            end
         end
     end
 
