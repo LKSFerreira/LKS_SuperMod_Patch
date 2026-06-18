@@ -1,0 +1,45 @@
+module LKS_Cooking
+{
+    imports
+    {
+        Base
+    }
+
+    /** Acendedor Improvisado — Pilha + Palha de Aço
+     *  Item consumível de uso único para ignição manual de fogões.
+     *  Mecânica: curto-circuito da pilha na palha de aço gera fagulha.
+     *  Resultado: palha consumida, pilha perde 20% de carga.
+     */
+    item LKS_AcendedorImprovisado
+    {
+        DisplayName = Acendedor Improvisado,
+        DisplayCategory = FireSource,
+        Type = Normal,
+        Weight = 0.2,
+        Icon = LKS_AcendedorImprovisado,
+        Tags = base:startfire,
+        Tooltip = Tooltip_LKS_AcendedorImprovisado,
+        WorldStaticModel = LKS_AcendedorImprovisado,
+    }
+
+    /** Receita: Criar Acendedor Improvisado
+     *  Requer: 1 Pilha (mínimo 20% carga) + 1 Palha de Aço
+     *  A palha de aço é consumida. A pilha perde carga no processo.
+     */
+    craftRecipe MakeLKS_AcendedorImprovisado
+    {
+        timedAction = Making,
+        time = 30,
+        category = Survivalist,
+        Tags = AnySurfaceCraft,
+        inputs
+        {
+            item 1 [Base.Battery] mode:keep flags[NotEmpty],
+            item 1 Base.SteelWool mode:destroy,
+        }
+        outputs
+        {
+            item 1 LKS_Cooking.LKS_AcendedorImprovisado,
+        }
+    }
+}
