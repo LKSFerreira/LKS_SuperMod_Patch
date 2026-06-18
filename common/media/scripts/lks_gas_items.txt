@@ -1,0 +1,51 @@
+module LKS_Gas
+{
+    imports
+    {
+        Base
+    }
+
+    /** Botijão de Gás 15kg — Residencial
+     *  NÃO cabe no inventário (peso impeditivo).
+     *  Transporte: mesma mecânica de carregar geradores.
+     *  Conectável ao fogão via mangueira a até 2 tiles.
+     */
+    item LKS_Botijao15kg
+    {
+        DisplayName = Botijão de Gás 15kg,
+        DisplayCategory = Material,
+        Type = Drainable,
+        Weight = 15.0,
+        WeightEmpty = 5.0,
+        Icon = LKS_Botijao15kg,
+        UseDelta = 0.0001,
+        UseWhileEquipped = false,
+        UseWorldItem = true,
+        cantBeConsolided = true,
+        WorldStaticModel = LKS_Botijao15kg,
+        KeepOnDeplete = true,
+        Tags = base:hasmetal;base:smeltablesteellarge,
+    }
+
+    /** Botijão de Gás 45kg — Comercial/Industrial
+     *  NÃO cabe no inventário (peso impeditivo).
+     *  Transporte: mesma mecânica de arrastar corpos de zumbi.
+     *  Conectável ao fogão via mangueira a até 2 tiles.
+     */
+    item LKS_Botijao45kg
+    {
+        DisplayName = Botijão de Gás 45kg,
+        DisplayCategory = Material,
+        Type = Drainable,
+        Weight = 45.0,
+        WeightEmpty = 15.0,
+        Icon = LKS_Botijao45kg,
+        UseDelta = 0.00005,
+        UseWhileEquipped = false,
+        UseWorldItem = true,
+        cantBeConsolided = true,
+        WorldStaticModel = LKS_Botijao45kg,
+        KeepOnDeplete = true,
+        Tags = base:hasmetal;base:smeltablesteellarge,
+    }
+}
