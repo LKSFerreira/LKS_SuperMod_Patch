@@ -137,5 +137,10 @@
     "IGUI_LKS_Debug_TempValue": "%1°C",
     "IGUI_LKS_Debug_Condition": "Condition",
     "IGUI_LKS_Debug_SectionState": "[EST] State",
-    "IGUI_LKS_Debug_CapturedHeader": "--- %1 | %2 ---"
+    "IGUI_LKS_Debug_CapturedHeader": "--- %1 | %2 ---",
+    "IGUI_LKS_RequerFonteCalor": "Requires a heat source (lighter, matches, etc.) to ignite.",
+    "IGUI_LKS_RequerGasOuEletricidade": "Requires piped gas, connected gas tank, or electricity.",
+    "IGUI_LKS_RequerEletricidade": "Requires an electricity source (grid or generator).",
+    "IGUI_LKS_GasEncanadoDisponivel": "Piped gas available",
+    "IGUI_LKS_GasEncanadoCortado": "Gas supply shut off"
 }

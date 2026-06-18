@@ -3,9 +3,12 @@
 -- EXTENSÃO: LKS SuperMod Patch (Módulo de Comportamento de Culinária)
 -- OBJETIVO: Driver de comportamento e texturas para fogões (Stoves) e
 --           micro-ondas (Microwaves) no gerenciador LKS_ApplianceManager.
--- AUTOR: LKS FERREIRA & Antigravity AI
--- VERSÃO: 1.0 (Project Zomboid Build 42)
--- DATA DA ÚLTIMA MODIFICAÇÃO: 14/06/2026
+--           Suporta 3 tipos de fogão: Convencional (gás), Antigo (lenha)
+--           e Indução (eletricidade). A classificação é feita por sprite
+--           via LKS_Cooking_SpriteClassification.
+-- AUTOR: LKS FERREIRA
+-- VERSÃO: 2.0 (Project Zomboid Build 42)
+-- DATA DA ÚLTIMA MODIFICAÇÃO: 18/06/2026
 -- ============================================================================
 
 -- Inicialização defensiva do gerenciador para robustez de carregamento
@@ -18,6 +21,9 @@ if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("
     print("[LKS PATCH - LKS_Device_Cooking.lua] Culinária desativada no sandbox.")
     return
 end
+
+local ClassificacaoSprites = require("LKS_Cooking_SpriteClassification")
+local SistemaGas = require("LKS_Cooking_GasSystem")
 
 local LKS_Device_Cooking = {
     recipientesAceitos = {"stove", "microwave"},
@@ -166,11 +172,26 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         end
     end
 
-    -- Detecta estado elétrico do aparelho
+    -- Identifica o tipo de fogão por sprite (convencional, inducao ou antigo)
+    local tipoFogao = nil
+    if ehFogao then
+        tipoFogao = ClassificacaoSprites.obterTipoFogao(objetoEletrico)
+    end
+
+    -- Detecta fonte de energia usando o sistema unificado
+    local jogador = getSpecificPlayer(jogadorNumero)
+    local fonteEnergia = nil
     local temEnergia = false
     local containerInventario = objetoEletrico:getContainer()
-    if containerInventario and containerInventario:isPowered() then
-        temEnergia = true
+
+    if ehFogao and tipoFogao then
+        fonteEnergia = SistemaGas.verificarFonteEnergia(objetoEletrico, jogador, tipoFogao)
+        temEnergia = fonteEnergia.disponivel
+    else
+        -- Micro-ondas: mantém lógica original (só eletricidade)
+        if containerInventario and containerInventario:isPowered() then
+            temEnergia = true
+        end
     end
 
     local texturaIconeMenu = obterTexturaEstado(chaveConfiguracao, temEnergia)
@@ -304,14 +325,24 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
                 opcaoLigar.toolTip = tooltipAviso
             end
         else
-            -- Opção desabilitada: mostra visualmente que falta energia
+            -- Opção desabilitada: mostra visualmente que falta energia/gás/fonte de calor
             local opcaoLigarSemRequisitos = submenu:addOptionOnTop(chaveTextoLigar, objetosMundo, nil)
             opcaoLigarSemRequisitos.notAvailable = true
             opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Menu_Electricity_Off.png")
 
             local tooltipErro = ISWorldObjectContextMenu.addToolTip()
             tooltipErro:setName(nomeObjetoTraduzido)
-            tooltipErro.description = getText("IGUI_LKS_RequerEnergiaProxima") or "Requer uma fonte de energia próxima."
+
+            if fonteEnergia and fonteEnergia.requerIgnicaoManual and not fonteEnergia.temIgnicaoManual then
+                tooltipErro.description = getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor (isqueiro, fósforos, etc.) para acender."
+            elseif tipoFogao == "convencional" then
+                tooltipErro.description = getText("IGUI_LKS_RequerGasOuEletricidade") or "Requer gás encanado, botijão de gás conectado ou eletricidade."
+            elseif tipoFogao == "inducao" then
+                tooltipErro.description = getText("IGUI_LKS_RequerEletricidade") or "Requer uma fonte de eletricidade (rede ou gerador)."
+            else
+                tooltipErro.description = getText("IGUI_LKS_RequerEnergiaProxima") or "Requer uma fonte de energia próxima."
+            end
+
             opcaoLigarSemRequisitos.toolTip = tooltipErro
         end
     end
