@@ -177,6 +177,14 @@
   "IGUI_LKS_InstalarBotijao": "Instalar Botijão",
   "IGUI_LKS_TrocarBotijao": "Trocar Botijão",
   "IGUI_LKS_DesinstalarBotijao": "Desinstalar Botijão",
-  "IGUI_LKS_FaltaItem": "Falta: "
+  "IGUI_LKS_Instalar": "Instalar",
+  "IGUI_LKS_Trocar": "Trocar",
+  "IGUI_LKS_Desinstalar": "Desinstalar",
+  "IGUI_LKS_FaltaItem": "Falta: ",
+  "IGUI_LKS_GasBotijao": "Botijão de Gás",
+  "IGUI_LKS_Conectar": "Conectar",
+  "IGUI_LKS_MateriaisNecessarios": "Materiais necessários:",
+  "IGUI_LKS_Material": "Material:",
+  "IGUI_LKS_Ferramenta": "Ferramenta:"
 }
 

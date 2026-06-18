@@ -159,5 +159,13 @@
     "IGUI_LKS_InstalarBotijao": "Install Gas Tank",
     "IGUI_LKS_TrocarBotijao": "Replace Gas Tank",
     "IGUI_LKS_DesinstalarBotijao": "Uninstall Gas Tank",
-    "IGUI_LKS_FaltaItem": "Missing: "
+    "IGUI_LKS_Instalar": "Install",
+    "IGUI_LKS_Trocar": "Replace",
+    "IGUI_LKS_Desinstalar": "Uninstall",
+    "IGUI_LKS_FaltaItem": "Missing: ",
+    "IGUI_LKS_GasBotijao": "Gas Tank",
+    "IGUI_LKS_Conectar": "Connect",
+    "IGUI_LKS_MateriaisNecessarios": "Required materials:",
+    "IGUI_LKS_Material": "Material:",
+    "IGUI_LKS_Ferramenta": "Tool:"
 }
