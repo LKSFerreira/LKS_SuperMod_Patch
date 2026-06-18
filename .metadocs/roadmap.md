@@ -24,6 +24,8 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 - [ ] **Atenção à Compatibilidade com [B42] Useful Barrels**: O criador de *Generator Powered Buildings* (Beathoven) pode ter reaproveitado lógica/arquivos do mod *[B42] Useful Barrels* (particularmente nas mecânicas de barris/combustível). Ao traduzir ou alterar o *Useful Barrels* no futuro, deve-se auditar possíveis colisões de escopo, arquivos clonados ou hooks conflitantes para evitar falhas ou quebras em ambos os sistemas.
 
+- [ ] **Ícones Personalizados do Menu de Botijão de Gás**: Criar ícones PNG dedicados para as opções de menu de contexto de botijão. Atualmente reutiliza `LKS_Connect.png` (Instalar/Trocar) e `LKS_Disconnect.png` (Desinstalar), que são ícones genéricos do sistema elétrico. Desenhar ícones temáticos de gás/botijão para diferenciação visual.
+
 - [ ] **Mapeamento Completo de Propriedades de CraftRecipe (ZedScript)**: A Indie Stone não documenta oficialmente todas as propriedades e valores válidos de `craftRecipe` (ex: `timedAction`, `Tags`, `flags`, `mode`). Realizar engenharia reversa nos scripts vanilla para catalogar e documentar em YAML todas as propriedades aceitas, valores válidos de `timedAction` (com descrição da animação de cada um), `Tags` de estação de craft, `flags` de items e `mode` de consumo. Salvar em `documents/` no mesmo formato de `propriedades_sprite_objetos_pz.yaml`.
 
 ## Concluído
