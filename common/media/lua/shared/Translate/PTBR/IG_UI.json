@@ -160,6 +160,15 @@
   "IGUI_LKS_RequerGasOuEletricidade": "Requer gás encanado, botijão de gás conectado ou eletricidade.",
   "IGUI_LKS_RequerEletricidade": "Requer uma fonte de eletricidade (rede ou gerador).",
   "IGUI_LKS_GasEncanadoDisponivel": "Gás encanado disponível",
-  "IGUI_LKS_GasEncanadoCortado": "Fornecimento de gás cortado"
+  "IGUI_LKS_GasEncanadoCortado": "Fornecimento de gás cortado",
+  "ItemName_LKS_Cooking.LKS_AcendedorImprovisado": "Acendedor Improvisado",
+  "ItemName_LKS_Cooking.LKS_FogaoInducao": "Fogão de Indução",
+  "ItemName_LKS_Cooking.LKS_RevistaEletricaInducao": "Revista: Cooktops Modernos",
+  "ItemName_LKS_Cooking.LKS_ManualFogaoInducao": "Manual: Fogão de Indução",
+  "ItemName_LKS_Electrical.LKS_Bobina": "Bobina Elétrica",
+  "ItemName_LKS_Electrical.LKS_InversorCorrente": "Inversor de Corrente",
+  "ItemName_LKS_Electrical.LKS_MiniTransformador": "Mini Transformador",
+  "ItemName_LKS_Gas.LKS_Botijao15kg": "Botijão de Gás 15kg",
+  "ItemName_LKS_Gas.LKS_Botijao45kg": "Botijão de Gás 45kg"
 }
 

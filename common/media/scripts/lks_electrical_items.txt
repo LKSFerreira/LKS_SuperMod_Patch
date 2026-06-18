@@ -1,0 +1,37 @@
+module LKS_Electrical
+{
+    imports
+    {
+        Base
+    }
+
+    item LKS_Bobina
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 0.5,
+        Icon = LKS_Bobina,
+        MetalValue = 10.0,
+        Tags = base:hasmetal,
+    }
+
+    item LKS_InversorCorrente
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 1.5,
+        Icon = LKS_InversorCorrente,
+        MetalValue = 15.0,
+        Tags = base:hasmetal,
+    }
+
+    item LKS_MiniTransformador
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 1.0,
+        Icon = LKS_MiniTransformador,
+        MetalValue = 10.0,
+        Tags = base:hasmetal,
+    }
+}

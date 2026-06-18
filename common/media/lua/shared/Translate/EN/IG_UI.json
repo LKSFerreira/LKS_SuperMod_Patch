@@ -142,5 +142,14 @@
     "IGUI_LKS_RequerGasOuEletricidade": "Requires piped gas, connected gas tank, or electricity.",
     "IGUI_LKS_RequerEletricidade": "Requires an electricity source (grid or generator).",
     "IGUI_LKS_GasEncanadoDisponivel": "Piped gas available",
-    "IGUI_LKS_GasEncanadoCortado": "Gas supply shut off"
+    "IGUI_LKS_GasEncanadoCortado": "Gas supply shut off",
+    "ItemName_LKS_Cooking.LKS_AcendedorImprovisado": "Improvised Fire Starter",
+    "ItemName_LKS_Cooking.LKS_FogaoInducao": "Induction Cooktop",
+    "ItemName_LKS_Cooking.LKS_RevistaEletricaInducao": "Magazine: Modern Cooktops",
+    "ItemName_LKS_Cooking.LKS_ManualFogaoInducao": "Manual: Induction Cooktop",
+    "ItemName_LKS_Electrical.LKS_Bobina": "Electric Coil",
+    "ItemName_LKS_Electrical.LKS_InversorCorrente": "Power Inverter",
+    "ItemName_LKS_Electrical.LKS_MiniTransformador": "Mini Transformer",
+    "ItemName_LKS_Gas.LKS_Botijao15kg": "Gas Tank 15kg",
+    "ItemName_LKS_Gas.LKS_Botijao45kg": "Gas Tank 45kg"
 }
