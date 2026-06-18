@@ -4,8 +4,8 @@
 🎨 TOOLS ASSETS - LKS SUPERMOD PATCH
 ================================================================================
 Autor: LKS FERREIRA
-Versão: 1.3 (Project Zomboid Build 42)
-Data da Última Modificação: 14/06/2026
+Versão: 1.4 (Project Zomboid Build 42)
+Data da Última Modificação: 18/06/2026
 
 PROPÓSITO:
 Ferramenta utilitária de linha de comando (CLI) e menu interativo para o mod.
@@ -25,6 +25,8 @@ COMO USAR:
     python tools/LKS_Tools.py -e <Nome_Sprite_Original>
 - Busca Unificada de Referências:
     python tools/LKS_Tools.py -b <Termo_de_Busca>
+    (na seleção interativa, aceita múltiplos números separados por vírgula,
+    ponto-e-vírgula ou espaço — ex: "1, 3, 5" ou "1;3;5")
 - Inspeção de Imagem:
     python tools/LKS_Tools.py -i <Caminho_do_PNG>
 - Otimização para 8-bit:
@@ -1085,16 +1087,27 @@ def buscar_referencias_assets(termo_busca, pasta_jogo):
     print(f"{CYAN}└───{RESET}")
 
     # 4. Oferece extração interativa simplificada baseada em números
+    # Aceita múltiplos valores separados por vírgula, ponto-e-vírgula ou espaço.
     total_encontrados = sprites_ui + sprites_mundo
     if total_encontrados:
         try:
-            escolha = input(f"\nDeseja extrair/copiar algum destes assets? (Digite o número correspondente ou Enter para sair): ").strip()
+            escolha = input(f"\nDeseja extrair/copiar algum destes assets? (números separados por vírgula, ou Enter para sair): ").strip()
             if escolha:
-                num = int(escolha)
-                if 1 <= num <= len(total_encontrados):
+                tokens = re.split(r"[,;\s]+", escolha)
+                numeros_validos = []
+                for token in tokens:
+                    if not token:
+                        continue
+                    num = int(token)
+                    if 1 <= num <= len(total_encontrados):
+                        numeros_validos.append(num)
+                    else:
+                        print(f"{RED}[-] Número {num} fora do intervalo (1–{len(total_encontrados)}). Ignorado.{RESET}")
+
+                for num in numeros_validos:
                     asset_alvo = total_encontrados[num - 1]
                     sprite_nome = asset_alvo["sprite"]
-                    
+
                     if asset_alvo.get("pack") == "avulso":
                         caminho_origem = asset_alvo["caminho_avulso"]
                         caminho_destino = Path(DIRETORIO_UI_MOD) / sprite_nome
@@ -1107,10 +1120,8 @@ def buscar_referencias_assets(termo_busca, pasta_jogo):
                         print(f"\n[*] Extraindo '{sprite_nome}'...")
                         mapeamento = {sprite_nome: nome_saida}
                         extrair_assets_do_jogo(pasta_jogo, mapeamento, DIRETORIO_UI_MOD)
-                else:
-                    print(f"{RED}[-] Número inválido.{RESET}")
         except ValueError:
-            print(f"{RED}[-] Entrada inválida (digite apenas números).{RESET}")
+            print(f"{RED}[-] Entrada inválida (use apenas números separados por vírgula).{RESET}")
         except Exception as e:
             print(f"{RED}[-] Erro na seleção/cópia: {e}{RESET}")
 
