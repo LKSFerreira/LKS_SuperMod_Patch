@@ -23,18 +23,19 @@ local IDS_BOTIJAO = {
 }
 
 --- Itens necessários para instalação completa de um botijão.
+--- Busca desacoplada via ItemTag quando possível, fallback por ID para itens específicos.
 local ITENS_INSTALACAO = {
-    { id = "Base.RubberHose",      quantidade = 1, nome = "Mangueira de Borracha", tipo = "material" },
-    { id = "Base.HoseClamp",       quantidade = 2, nome = "Enforca-gato", tipo = "material", alternativas = {"Base.HoseClamp", "Base.HoseClamb"} },
-    { id = "Base.DuctTape",        quantidade = 1, nome = "Fita Isolante", tipo = "material" },
-    { id = "Base.HuntingKnife",    quantidade = 1, nome = "Objeto Perfurocortante", tipo = "ferramenta", alternativas = {"Base.KitchenKnife", "Base.HuntingKnife", "Base.Scissors"} },
-    { id = "Base.Pliers",          quantidade = 1, nome = "Alicate", tipo = "ferramenta" },
+    { tags = {ItemTag.SIPHON_GAS},              quantidade = 1, nome = "Mangueira de Borracha", tipo = "material" },
+    { id = "Base.Zipties",                      quantidade = 2, nome = "Enforca Gato", tipo = "material" },
+    { id = "Base.DuctTape",                     quantidade = 1, nome = "Fita Isolante", tipo = "material" },
+    { tags = {ItemTag.CUT_PLANT, ItemTag.SCISSORS}, quantidade = 1, nome = "Objeto Perfurocortante", tipo = "ferramenta" },
+    { id = "Base.Pliers",                       quantidade = 1, nome = "Alicate", tipo = "ferramenta" },
 }
 
 --- Itens necessários para trocar um botijão (reaproveitando mangueira existente).
 local ITENS_TROCA = {
-    { id = "Base.HoseClamp",       quantidade = 1, nome = "Enforca-gato", tipo = "material", alternativas = {"Base.HoseClamp", "Base.HoseClamb"} },
-    { id = "Base.Pliers",          quantidade = 1, nome = "Alicate", tipo = "ferramenta" },
+    { id = "Base.Zipties",                      quantidade = 1, nome = "Enforca Gato", tipo = "material" },
+    { id = "Base.Pliers",                       quantidade = 1, nome = "Alicate", tipo = "ferramenta" },
 }
 
 -- ============================================================================
@@ -42,6 +43,8 @@ local ITENS_TROCA = {
 -- ============================================================================
 
 --- Verifica se o jogador possui todos os itens necessários para uma operação.
+--- Suporta busca por ID (campo `id`), alternativas (campo `alternativas`)
+--- e busca desacoplada por ItemTag (campo `tags`).
 ---
 --- @param jogador IsoPlayer O jogador a verificar.
 --- @param listaItens table Lista de itens requeridos.
@@ -57,7 +60,14 @@ local function verificarItensNecessarios(jogador, listaItens)
     for _, requisito in ipairs(listaItens) do
         local encontrado = false
 
-        if requisito.alternativas then
+        if requisito.tags then
+            for _, tag in ipairs(requisito.tags) do
+                if inventario:getFirstTagRecurse(tag) then
+                    encontrado = true
+                    break
+                end
+            end
+        elseif requisito.alternativas then
             for _, alternativaId in ipairs(requisito.alternativas) do
                 if inventario:getFirstTypeRecurse(alternativaId) then
                     encontrado = true
@@ -279,7 +289,14 @@ local function montarTooltipRequisitos(jogador, listaItens, nomeSprite)
     for _, requisito in ipairs(listaItens) do
         local encontrado = false
         if inventario then
-            if requisito.alternativas then
+            if requisito.tags then
+                for _, tag in ipairs(requisito.tags) do
+                    if inventario:getFirstTagRecurse(tag) then
+                        encontrado = true
+                        break
+                    end
+                end
+            elseif requisito.alternativas then
                 for _, alternativaId in ipairs(requisito.alternativas) do
                     if inventario:getFirstTypeRecurse(alternativaId) then
                         encontrado = true
