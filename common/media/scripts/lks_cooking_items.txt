@@ -2,7 +2,8 @@ module LKS_Cooking
 {
     imports
     {
-        Base
+        Base,
+        LKS_Electrical,
     }
 
     item LKS_FogaoInducao
@@ -41,13 +42,13 @@ module LKS_Cooking
         AutoLearnAny = Electricity:5,
         xpAward = Electricity:25,
         Tags = AnySurfaceCraft,
-        timedAction = Welding_Surface,
+        timedAction = MakingElectrical,
         inputs
         {
             item 3 [Base.SheetMetal],
             item 8 [Base.Screws],
             item 1 [Base.BlowTorch] flags[NotEmpty],
-            item 1 LKS_Electrical.LKS_Bobina,
+            item 1 [LKS_Electrical.LKS_Bobina],
             item 2 [Base.ElectricWire],
             item 1 [Base.ElectronicsScrap],
         }
