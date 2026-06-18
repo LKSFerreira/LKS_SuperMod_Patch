@@ -42,7 +42,7 @@ module LKS_Cooking
         AutoLearnAny = Electricity:5,
         xpAward = Electricity:25,
         Tags = AnySurfaceCraft,
-        timedAction = MakingElectrical,
+        timedAction = Making_Surface,
         inputs
         {
             item 3 [Base.SheetMetal],

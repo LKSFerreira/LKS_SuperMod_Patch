@@ -19,7 +19,7 @@ module LKS_Utilities
         time = 30,
         category = Survivalist,
         Tags = AnySurfaceCraft,
-        timedAction = Craft_Surface,
+        timedAction = Making,
         inputs
         {
             item 1 [Base.Battery] mode:keep flags[NotEmpty],

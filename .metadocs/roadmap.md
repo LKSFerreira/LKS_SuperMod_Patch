@@ -24,6 +24,8 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 - [ ] **Atenção à Compatibilidade com [B42] Useful Barrels**: O criador de *Generator Powered Buildings* (Beathoven) pode ter reaproveitado lógica/arquivos do mod *[B42] Useful Barrels* (particularmente nas mecânicas de barris/combustível). Ao traduzir ou alterar o *Useful Barrels* no futuro, deve-se auditar possíveis colisões de escopo, arquivos clonados ou hooks conflitantes para evitar falhas ou quebras em ambos os sistemas.
 
+- [ ] **Mapeamento Completo de Propriedades de CraftRecipe (ZedScript)**: A Indie Stone não documenta oficialmente todas as propriedades e valores válidos de `craftRecipe` (ex: `timedAction`, `Tags`, `flags`, `mode`). Realizar engenharia reversa nos scripts vanilla para catalogar e documentar em YAML todas as propriedades aceitas, valores válidos de `timedAction` (com descrição da animação de cada um), `Tags` de estação de craft, `flags` de items e `mode` de consumo. Salvar em `documents/` no mesmo formato de `propriedades_sprite_objetos_pz.yaml`.
+
 ## Concluído
 
 - [x] **Melhorias Visuais do Termostato (12/06/2026)**: Ampliação das setas para 24px, alinhamento vertical matemático, resolução de crashes por valor nulo, espaçamento de respiro vertical para evitar cortes e tradução adaptativa para PT-BR.
