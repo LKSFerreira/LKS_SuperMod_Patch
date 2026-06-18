@@ -79,6 +79,36 @@ module LKS_Cooking
         Tags = base:media,
     }
 
+    /** Inversor de Corrente — Componente para modo emergência do fogão de indução.
+     *  Converte corrente DC das baterias para AC necessária para a indução.
+     */
+    item LKS_InversorCorrente
+    {
+        DisplayName = Inversor de Corrente,
+        DisplayCategory = Electronics,
+        Type = Normal,
+        Weight = 1.5,
+        Icon = LKS_InversorCorrente,
+        WorldStaticModel = LKS_InversorCorrente,
+        MetalValue = 15.0,
+        Tags = base:hasmetal,
+    }
+
+    /** Mini Transformador — Componente para modo emergência do fogão de indução.
+     *  Regula a voltagem fornecida pelas baterias para o fogão.
+     */
+    item LKS_MiniTransformador
+    {
+        DisplayName = Mini Transformador,
+        DisplayCategory = Electronics,
+        Type = Normal,
+        Weight = 1.0,
+        Icon = LKS_MiniTransformador,
+        WorldStaticModel = LKS_MiniTransformador,
+        MetalValue = 10.0,
+        Tags = base:hasmetal,
+    }
+
     /** Receita: Criar Acendedor Improvisado
      *  Requer: 1 Pilha (mínimo 20% carga) + 1 Palha de Aço
      */

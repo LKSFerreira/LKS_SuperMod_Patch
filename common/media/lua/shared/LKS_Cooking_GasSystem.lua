@@ -172,13 +172,26 @@ local function verificarFonteEnergia(objetoFogao, jogador, tipoFogao)
 
     if not objetoFogao then return resultado end
 
-    -- Indução: exclusivamente eletricidade
+    -- Indução: eletricidade OU modo emergência (baterias)
     if tipoFogao == "inducao" then
         local containerFogao = objetoFogao:getContainer()
         if containerFogao and containerFogao:isPowered() then
             resultado.tipo = "eletricidade"
             resultado.disponivel = true
+            return resultado
         end
+
+        -- Modo emergência: verifica se há conjunto bateria+inversor+transformador conectado
+        local dadosMod = objetoFogao:getModData()
+        if dadosMod and dadosMod.LKS_ModoBateriaAtivo == true then
+            local cargaRestante = dadosMod.LKS_BateriaCargaRestante or 0
+            if cargaRestante > 0 then
+                resultado.tipo = "bateria_emergencia"
+                resultado.disponivel = true
+                return resultado
+            end
+        end
+
         return resultado
     end
 
