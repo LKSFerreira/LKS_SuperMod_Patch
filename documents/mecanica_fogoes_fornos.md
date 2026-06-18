@@ -456,7 +456,7 @@ A limpeza **não** causa incêndio nem afeta funcionamento — apenas impacta a 
 | **Fase 4** | Fogão de indução com eletricidade obrigatória | LKS_EletricidadeConstrucao |
 | **Fase 5** | Botijão de gás pós-corte | Pesquisa de items |
 | **Fase 6** | Qualidade de comida e integração Cooking skill | Sistema de buffs |
-| **Fase 7** | Biodigestor e gás renovável | Farming + construções |
+| **Fase 7** | Biodigestor e gás renovável | **Mecânica independente** — ver roadmap |
 | **Fase 8** | Pilha + Palha de aço (fonte de calor craftável) | Receitas de craft |
 | **Fase 9** | Modo bateria para indução | Sistema de baterias |
 

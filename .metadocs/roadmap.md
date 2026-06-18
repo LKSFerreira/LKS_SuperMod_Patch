@@ -11,8 +11,10 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 ## Próximos passos
 
+- **Mecânica de Fogões e Fornos**: Recategorização dos fogões em 3 tipos (Convencional/Antigo/Indução) com mecânicas de gás, combustível sólido, eletricidade, qualidade de comida e botijões. Design em `documents/mecanica_fogoes_fornos.md`, pesquisa em `documents/pesquisa_fogoes_fase1.md`.
 - **Implementação Nativa do Mod de Cheats**: Absorver nativamente o mod de cheats independente (spawner de itens, forçar estados elétricos/hidráulicos, validar mecânicas). Mod ainda não incorporado ao LKS SuperMod Patch.
 - **Botão de Ajuda (?) na Interface de Energia**: Ver dívida técnica abaixo.
+- **Biodigestor e Gás Renovável**: Mecânica independente de longo prazo. Construção craftável que converte resíduos orgânicos em biogás para restaurar gás encanado pós-corte. Requer Farming + Carpintaria. Será documentada em arquivo de design próprio quando priorizada.
 
 ## Dívidas Técnicas
 
