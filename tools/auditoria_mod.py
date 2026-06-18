@@ -714,6 +714,248 @@ def executar_auditoria_completa(diretorio_raiz):
 # MÉTODO DE ENTRADA CLI (MAIN)
 # ============================================================================
 
+def executar_documentacao_api(diretorio_raiz, caminho_saida):
+    """
+    Varre todos os arquivos Lua do mod e extrai documentação de API
+    a partir das anotações EmmyLua (---@param, ---@return, docstrings).
+
+    Gera um arquivo Markdown estruturado com todas as funções documentadas,
+    organizadas por arquivo/módulo.
+
+    :param diretorio_raiz: Diretório raiz do mod.
+    :param caminho_saida: Caminho do arquivo .md de saída.
+    :return: True se executou com sucesso.
+    """
+    diretorio_lua = os.path.join(diretorio_raiz, "common", "media", "lua")
+    if not os.path.isdir(diretorio_lua):
+        print(f"{RED}[!] Diretório Lua não encontrado: {diretorio_lua}{RESET}")
+        return False
+
+    # Coleta todos os arquivos .lua recursivamente
+    arquivos_lua = []
+    for raiz_atual, _, arquivos in os.walk(diretorio_lua):
+        for arquivo in sorted(arquivos):
+            if arquivo.endswith(".lua"):
+                caminho_completo = os.path.join(raiz_atual, arquivo)
+                arquivos_lua.append(caminho_completo)
+
+    if not arquivos_lua:
+        print(f"{YELLOW}[!] Nenhum arquivo Lua encontrado.{RESET}")
+        return False
+
+    print(f"{CYAN}[*] Analisando {len(arquivos_lua)} arquivos Lua...{RESET}")
+
+    # Regex para detectar definições de função
+    regex_funcao_local = re.compile(
+        r'^local\s+function\s+(\w+)\s*\((.*?)\)'
+    )
+    regex_funcao_global = re.compile(
+        r'^function\s+([\w.:]+)\s*\((.*?)\)'
+    )
+    # Regex para anotações EmmyLua
+    regex_param = re.compile(r'^---\s*@param\s+(\w+)\s+(\S+)\s*(.*)')
+    regex_return = re.compile(r'^---\s*@return\s+(\S+)\s*(\w*)\s*(.*)')
+    regex_docline = re.compile(r'^---\s?(.*)')
+
+    # Estrutura de dados: { caminho_relativo: [funcoes] }
+    modulos = {}
+    total_funcoes = 0
+    funcoes_documentadas = 0
+
+    for caminho_arquivo in arquivos_lua:
+        caminho_relativo = os.path.relpath(caminho_arquivo, diretorio_lua)
+        funcoes_do_arquivo = []
+
+        with open(caminho_arquivo, 'r', encoding='utf-8', errors='replace') as arquivo_handle:
+            linhas = arquivo_handle.readlines()
+
+        bloco_doc = []
+        parametros = []
+        retornos = []
+        coletando_doc = False
+
+        for numero_linha, linha in enumerate(linhas, 1):
+            linha_strip = linha.rstrip()
+
+            # Detecta linhas de documentação EmmyLua
+            match_doc = regex_docline.match(linha_strip)
+            if match_doc:
+                coletando_doc = True
+                conteudo = match_doc.group(1)
+
+                # Verifica se é @param
+                match_param = regex_param.match(linha_strip)
+                if match_param:
+                    parametros.append({
+                        'nome': match_param.group(1),
+                        'tipo': match_param.group(2),
+                        'descricao': match_param.group(3).strip(),
+                    })
+                    continue
+
+                # Verifica se é @return
+                match_ret = regex_return.match(linha_strip)
+                if match_ret:
+                    retornos.append({
+                        'tipo': match_ret.group(1),
+                        'nome': match_ret.group(2).strip(),
+                        'descricao': match_ret.group(3).strip(),
+                    })
+                    continue
+
+                # Linha de documentação genérica (não vazia)
+                if conteudo.strip():
+                    bloco_doc.append(conteudo)
+                continue
+
+            # Se não é linha de doc, verifica se é definição de função
+            if coletando_doc:
+                match_local = regex_funcao_local.match(linha_strip)
+                match_global = regex_funcao_global.match(linha_strip)
+
+                if match_local or match_global:
+                    match = match_local or match_global
+                    nome_funcao = match.group(1)
+                    params_texto = match.group(2).strip()
+                    escopo = "local" if match_local else "global"
+
+                    funcoes_do_arquivo.append({
+                        'nome': nome_funcao,
+                        'parametros_texto': params_texto,
+                        'escopo': escopo,
+                        'linha': numero_linha,
+                        'documentacao': bloco_doc[:],
+                        'params': parametros[:],
+                        'retornos': retornos[:],
+                    })
+                    total_funcoes += 1
+                    if bloco_doc or parametros or retornos:
+                        funcoes_documentadas += 1
+
+                # Reset do bloco de documentação
+                bloco_doc = []
+                parametros = []
+                retornos = []
+                coletando_doc = False
+            else:
+                # Detecta funções SEM documentação
+                match_local = regex_funcao_local.match(linha_strip)
+                match_global = regex_funcao_global.match(linha_strip)
+                if match_local or match_global:
+                    match = match_local or match_global
+                    nome_funcao = match.group(1)
+                    params_texto = match.group(2).strip()
+                    escopo = "local" if match_local else "global"
+
+                    funcoes_do_arquivo.append({
+                        'nome': nome_funcao,
+                        'parametros_texto': params_texto,
+                        'escopo': escopo,
+                        'linha': numero_linha,
+                        'documentacao': [],
+                        'params': [],
+                        'retornos': [],
+                    })
+                    total_funcoes += 1
+
+        if funcoes_do_arquivo:
+            modulos[caminho_relativo] = funcoes_do_arquivo
+
+    # Gera o Markdown de saída
+    linhas_saida = []
+    linhas_saida.append("# Referência da API Interna — LKS SuperMod Patch")
+    linhas_saida.append("")
+    linhas_saida.append("> Documento gerado automaticamente por `python tools/auditoria_mod.py documentar-api`")
+    linhas_saida.append(f"> Total: **{total_funcoes}** funções em **{len(modulos)}** módulos")
+    linhas_saida.append(f"> Cobertura de documentação: **{funcoes_documentadas}/{total_funcoes}** ({(funcoes_documentadas/max(total_funcoes,1)*100):.0f}%)")
+    linhas_saida.append("")
+    linhas_saida.append("---")
+    linhas_saida.append("")
+
+    # Índice por categoria (client, shared, server)
+    categorias = {"client": [], "shared": [], "server": []}
+    for caminho_rel in sorted(modulos.keys()):
+        for categoria in categorias:
+            if caminho_rel.startswith(categoria):
+                categorias[categoria].append(caminho_rel)
+                break
+
+    linhas_saida.append("## Índice")
+    linhas_saida.append("")
+    for categoria, caminhos in categorias.items():
+        if caminhos:
+            linhas_saida.append(f"### {categoria}/")
+            for caminho_rel in caminhos:
+                nome_arquivo = os.path.basename(caminho_rel)
+                quantidade = len(modulos[caminho_rel])
+                anchor = caminho_rel.replace("\\", "/").replace("/", "").replace(".", "").replace("_", "").lower()
+                linhas_saida.append(f"- [`{nome_arquivo}`](#{anchor}) ({quantidade} funções)")
+            linhas_saida.append("")
+
+    linhas_saida.append("---")
+    linhas_saida.append("")
+
+    # Detalhe de cada módulo
+    for caminho_rel in sorted(modulos.keys()):
+        funcoes = modulos[caminho_rel]
+        caminho_display = caminho_rel.replace("\\", "/")
+        linhas_saida.append(f"## `{caminho_display}`")
+        linhas_saida.append("")
+
+        for func in funcoes:
+            # Cabeçalho da função
+            badge_escopo = "🔒" if func['escopo'] == "local" else "🌐"
+            assinatura = f"{func['nome']}({func['parametros_texto']})"
+            linhas_saida.append(f"### {badge_escopo} `{assinatura}` <sub>L{func['linha']}</sub>")
+            linhas_saida.append("")
+
+            # Documentação
+            if func['documentacao']:
+                for linha_doc in func['documentacao']:
+                    linhas_saida.append(f"> {linha_doc}")
+                linhas_saida.append("")
+
+            # Parâmetros
+            if func['params']:
+                linhas_saida.append("| Parâmetro | Tipo | Descrição |")
+                linhas_saida.append("|-----------|------|-----------|")
+                for param in func['params']:
+                    linhas_saida.append(f"| `{param['nome']}` | `{param['tipo']}` | {param['descricao']} |")
+                linhas_saida.append("")
+
+            # Retornos
+            if func['retornos']:
+                linhas_saida.append("**Retorno:**")
+                for ret in func['retornos']:
+                    nome_ret = f"`{ret['nome']}`" if ret['nome'] else ""
+                    linhas_saida.append(f"- `{ret['tipo']}` {nome_ret} — {ret['descricao']}")
+                linhas_saida.append("")
+
+            # Sem documentação
+            if not func['documentacao'] and not func['params'] and not func['retornos']:
+                linhas_saida.append(f"⚠️ *Função sem documentação EmmyLua*")
+                linhas_saida.append("")
+
+            linhas_saida.append("---")
+            linhas_saida.append("")
+
+    # Escreve arquivo de saída
+    os.makedirs(os.path.dirname(caminho_saida), exist_ok=True)
+    with open(caminho_saida, 'w', encoding='utf-8') as arquivo_saida:
+        arquivo_saida.write("\n".join(linhas_saida))
+
+    print(f"{GREEN}[✓] Documentação gerada com sucesso: {caminho_saida}{RESET}")
+    print(f"    {CYAN}Módulos:{RESET} {len(modulos)}")
+    print(f"    {CYAN}Funções:{RESET} {total_funcoes}")
+    print(f"    {CYAN}Documentadas:{RESET} {funcoes_documentadas}/{total_funcoes} ({(funcoes_documentadas/max(total_funcoes,1)*100):.0f}%)")
+
+    nao_documentadas = total_funcoes - funcoes_documentadas
+    if nao_documentadas > 0:
+        print(f"    {YELLOW}Sem documentação:{RESET} {nao_documentadas}")
+
+    return True
+
+
 def main():
     diretorio_script = os.path.dirname(os.path.abspath(__file__))
     diretorio_raiz_padrao = os.path.abspath(os.path.join(diretorio_script, ".."))
@@ -794,6 +1036,22 @@ def main():
         help="Diretório raiz do mod."
     )
 
+    # Comando: documentar-api
+    parser_docapi = subparsers.add_parser(
+        "documentar-api",
+        help="Extrai anotações EmmyLua de todos os arquivos Lua e gera referência de API interna."
+    )
+    parser_docapi.add_argument(
+        "--raiz",
+        default=diretorio_raiz_padrao,
+        help="Diretório raiz do mod."
+    )
+    parser_docapi.add_argument(
+        "--saida",
+        default=os.path.join(diretorio_raiz_padrao, "documents", "referencia_api_interna_lks.md"),
+        help="Caminho do arquivo Markdown de saída."
+    )
+
     args = parser.parse_args()
 
     if args.comando == "validar-sintaxe":
@@ -807,6 +1065,9 @@ def main():
         sys.exit(0 if sucesso else 1)
     elif args.comando == "auditar-assets":
         sucesso = executar_auditoria_assets(args.raiz)
+        sys.exit(0 if sucesso else 1)
+    elif args.comando == "documentar-api":
+        sucesso = executar_documentacao_api(args.raiz, args.saida)
         sys.exit(0 if sucesso else 1)
     elif args.comando == "completa":
         sucesso = executar_auditoria_completa(args.raiz)
