@@ -6,11 +6,13 @@ Este documento descreve a proposta de mecânica realista para fogões e fornos n
 
 O mod vanilla do Project Zomboid trata todos os fogões como um único tipo funcional (`IsoStove`). Esta proposta recategoriza os aparelhos em 3 tipos com mecânicas independentes, criando progressão de gameplay e escolhas significativas para o jogador no pós-apocalipse.
 
-| Tipo | Combustível primário | Ignição | Eletricidade | Qualidade da comida | Complexidade |
+| Tipo | Combustível primário | Ignição | Eletricidade | Qualidade da comida | Colocação |
 |---|---|---|---|---|---|
-| **Convencional** | Gás (encanado ou botijão) | Elétrica ou fonte de calor manual | Opcional (acendedor) | Boa | Média |
-| **Antigo** | Lenha / combustível sólido | Fonte de calor manual obrigatória | Nenhuma | Normal (chance de queimar) | Baixa |
-| **Indução** | Nenhum | Automática | Obrigatória | Boa a Excelente | Alta |
+| **Convencional** | Gás (encanado ou botijão) | Elétrica ou fonte de calor manual | Opcional (acendedor) | Boa | Chão (fogão de pé) |
+| **Antigo** | Lenha / combustível sólido | Fonte de calor manual obrigatória | Nenhuma | Normal (chance de queimar) | Chão |
+| **Indução** | Nenhum | Automática | Obrigatória | Boa a Excelente | Balcão (colocável) |
+
+O tipo **Indução** engloba tanto os sprites vanilla modernos (selecionados manualmente — variante "resistência elétrica") quanto o item novo craftável do mod. Ambos compartilham **exatamente a mesma mecânica**: só eletricidade, só panela de metal, qualidade superior, colocável em balcão. A única diferença é a origem (sprite vanilla reclassificado vs. item craftado pelo jogador).
 
 ---
 
