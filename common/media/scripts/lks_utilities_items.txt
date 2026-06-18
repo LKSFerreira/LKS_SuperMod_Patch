@@ -1,0 +1,33 @@
+module LKS_Utilities
+{
+    imports
+    {
+        Base
+    }
+
+    item LKS_AcendedorImprovisado
+    {
+        DisplayCategory = FireSource,
+        ItemType = base:normal,
+        Weight = 0.2,
+        Icon = LKS_AcendedorImprovisado,
+        Tags = base:startfire,
+    }
+
+    craftRecipe MakeLKS_AcendedorImprovisado
+    {
+        time = 30,
+        category = Survivalist,
+        Tags = AnySurfaceCraft,
+        timedAction = Craft_Surface,
+        inputs
+        {
+            item 1 [Base.Battery] mode:keep flags[NotEmpty],
+            item 1 [Base.SteelWool] mode:destroy,
+        }
+        outputs
+        {
+            item 1 LKS_Utilities.LKS_AcendedorImprovisado,
+        }
+    }
+}

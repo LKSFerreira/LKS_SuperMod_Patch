@@ -5,15 +5,6 @@ module LKS_Cooking
         Base
     }
 
-    item LKS_AcendedorImprovisado
-    {
-        DisplayCategory = FireSource,
-        ItemType = base:normal,
-        Weight = 0.2,
-        Icon = LKS_AcendedorImprovisado,
-        Tags = base:startfire,
-    }
-
     item LKS_FogaoInducao
     {
         DisplayCategory = Appliance,
@@ -40,23 +31,6 @@ module LKS_Cooking
         Weight = 0.2,
         Icon = LKS_ManualFogao,
         Tags = base:media,
-    }
-
-    craftRecipe MakeLKS_AcendedorImprovisado
-    {
-        time = 30,
-        category = Survivalist,
-        Tags = AnySurfaceCraft,
-        timedAction = Craft_Surface,
-        inputs
-        {
-            item 1 [Base.Battery] mode:keep flags[NotEmpty],
-            item 1 [Base.SteelWool] mode:destroy,
-        }
-        outputs
-        {
-            item 1 LKS_Cooking.LKS_AcendedorImprovisado,
-        }
     }
 
     craftRecipe MakeLKS_FogaoInducao

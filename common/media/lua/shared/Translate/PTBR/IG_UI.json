@@ -161,7 +161,7 @@
   "IGUI_LKS_RequerEletricidade": "Requer uma fonte de eletricidade (rede ou gerador).",
   "IGUI_LKS_GasEncanadoDisponivel": "Gás encanado disponível",
   "IGUI_LKS_GasEncanadoCortado": "Fornecimento de gás cortado",
-  "ItemName_LKS_Cooking.LKS_AcendedorImprovisado": "Acendedor Improvisado",
+  "ItemName_LKS_Utilities.LKS_AcendedorImprovisado": "Acendedor Improvisado",
   "ItemName_LKS_Cooking.LKS_FogaoInducao": "Fogão de Indução",
   "ItemName_LKS_Cooking.LKS_RevistaEletricaInducao": "Revista: Cooktops Modernos",
   "ItemName_LKS_Cooking.LKS_ManualFogaoInducao": "Manual: Fogão de Indução",

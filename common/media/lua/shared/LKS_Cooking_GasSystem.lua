@@ -110,7 +110,7 @@ local FONTES_CALOR_ACEITAS = {
     "Base.Matchbox",
     "Base.MagnesiumFirestarter",
     "Base.CandleLit",
-    "LKS.LKS_AcendedorImprovisado",
+    "LKS_Utilities.LKS_AcendedorImprovisado",
 }
 
 --- Verifica se o jogador possui uma fonte de calor no inventário para acender
