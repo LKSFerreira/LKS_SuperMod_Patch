@@ -154,5 +154,10 @@
     "ItemName_LKS_Electrical.LKS_InversorCorrente": "Power Inverter",
     "ItemName_LKS_Electrical.LKS_MiniTransformador": "Mini Transformer",
     "ItemName_LKS_Gas.LKS_Botijao15kg": "Gas Tank 15kg",
-    "ItemName_LKS_Gas.LKS_Botijao45kg": "Gas Tank 45kg"
+    "ItemName_LKS_Gas.LKS_Botijao45kg": "Gas Tank 45kg",
+    "IGUI_LKS_Fogao": "Stove",
+    "IGUI_LKS_InstalarBotijao": "Install Gas Tank",
+    "IGUI_LKS_TrocarBotijao": "Replace Gas Tank",
+    "IGUI_LKS_DesinstalarBotijao": "Uninstall Gas Tank",
+    "IGUI_LKS_FaltaItem": "Missing: "
 }

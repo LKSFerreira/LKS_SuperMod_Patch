@@ -3,17 +3,29 @@
 -- EXTENSÃO: LKS SuperMod Patch (Menu de Contexto de Botijões de Gás)
 -- OBJETIVO: Gerencia interações de instalar, trocar e desinstalar botijões
 --           de gás em fogões convencionais via menu de contexto do mundo.
+--           Relacionamento 1:1 com dupla validação:
+--           - Clicou no fogão → lista botijões próximos para conectar
+--           - Clicou no botijão → lista fogões próximos para conectar
 -- AUTOR: LKS FERREIRA
--- VERSÃO: 1.0 (Project Zomboid Build 42)
+-- VERSÃO: 2.0 (Project Zomboid Build 42)
 -- DATA DA ÚLTIMA MODIFICAÇÃO: 18/06/2026
 -- ============================================================================
 
+require "LKS_Cooking_SpriteClassification"
+
 local DISTANCIA_MAXIMA_MANGUEIRA = 2
+
+--- IDs de itens aceitos como botijão de gás (vanilla + mod).
+local IDS_BOTIJAO = {
+    ["Base.PropaneTank"] = true,
+    ["LKS_Gas.LKS_Botijao15kg"] = true,
+    ["LKS_Gas.LKS_Botijao45kg"] = true,
+}
 
 --- Itens necessários para instalação completa de um botijão.
 local ITENS_INSTALACAO = {
     { id = "Base.RubberHose",      quantidade = 1, nome = "Mangueira de Borracha" },
-    { id = "Base.HoseClamb",       quantidade = 2, nome = "Enforca-gato" },
+    { id = "Base.HoseClamp",       quantidade = 2, nome = "Enforca-gato", alternativas = {"Base.HoseClamp", "Base.HoseClamb"} },
     { id = "Base.DuctTape",        quantidade = 1, nome = "Fita Isolante" },
     { id = "Base.HuntingKnife",    quantidade = 1, nome = "Ferramenta de Corte", alternativas = {"Base.KitchenKnife", "Base.HuntingKnife", "Base.Scissors"} },
     { id = "Base.Pliers",          quantidade = 1, nome = "Alicate" },
@@ -21,9 +33,13 @@ local ITENS_INSTALACAO = {
 
 --- Itens necessários para trocar um botijão (reaproveitando mangueira existente).
 local ITENS_TROCA = {
-    { id = "Base.HoseClamb",       quantidade = 1, nome = "Enforca-gato" },
+    { id = "Base.HoseClamp",       quantidade = 1, nome = "Enforca-gato", alternativas = {"Base.HoseClamp", "Base.HoseClamb"} },
     { id = "Base.Pliers",          quantidade = 1, nome = "Alicate" },
 }
+
+-- ============================================================================
+-- FUNÇÕES AUXILIARES
+-- ============================================================================
 
 --- Verifica se o jogador possui todos os itens necessários para uma operação.
 ---
@@ -47,8 +63,7 @@ local function verificarItensNecessarios(jogador, listaItens)
                 end
             end
         else
-            local item = inventario:getFirstTypeRecurse(requisito.id)
-            if item then
+            if inventario:getFirstTypeRecurse(requisito.id) then
                 encontrado = true
             end
         end
@@ -59,23 +74,6 @@ local function verificarItensNecessarios(jogador, listaItens)
     end
 
     return true, nil
-end
-
---- Verifica se um fogão convencional está na distância permitida do botijão.
----
---- @param botijao IsoObject O botijão no mundo.
---- @param fogao IsoObject O fogão no mundo.
---- @return boolean dentroDoAlcance True se a distância é ≤ 2 tiles.
-local function dentroDoAlcanceMangueira(botijao, fogao)
-    if not botijao or not fogao then return false end
-
-    local distanciaX = math.abs(botijao:getX() - fogao:getX())
-    local distanciaY = math.abs(botijao:getY() - fogao:getY())
-    local distanciaZ = math.abs(botijao:getZ() - fogao:getZ())
-
-    return distanciaX <= DISTANCIA_MAXIMA_MANGUEIRA
-        and distanciaY <= DISTANCIA_MAXIMA_MANGUEIRA
-        and distanciaZ == 0
 end
 
 --- Verifica se o fogão já tem um botijão conectado.
@@ -115,16 +113,12 @@ end
 --- Conecta um botijão ao fogão via moddata.
 ---
 --- @param fogao IsoObject O fogão a conectar.
---- @param botijao IsoObject O botijão sendo conectado.
 --- @param jogador IsoPlayer O jogador realizando a ação.
-local function conectarBotijao(fogao, botijao, jogador)
-    if not fogao or not botijao then return end
+local function conectarBotijao(fogao, jogador)
+    if not fogao then return end
 
     local dadosModFogao = fogao:getModData()
     dadosModFogao.LKS_BotijaoConectado = true
-    dadosModFogao.LKS_BotijaoX = botijao:getX()
-    dadosModFogao.LKS_BotijaoY = botijao:getY()
-    dadosModFogao.LKS_BotijaoZ = botijao:getZ()
 
     if calcularRiscoVazamento(jogador) then
         dadosModFogao.LKS_VazamentoGasPendente = true
@@ -139,13 +133,114 @@ local function desconectarBotijao(fogao)
 
     local dadosModFogao = fogao:getModData()
     dadosModFogao.LKS_BotijaoConectado = nil
-    dadosModFogao.LKS_BotijaoX = nil
-    dadosModFogao.LKS_BotijaoY = nil
-    dadosModFogao.LKS_BotijaoZ = nil
     dadosModFogao.LKS_VazamentoGasPendente = nil
 end
 
---- Constrói as opções do menu de contexto para botijões.
+-- ============================================================================
+-- BUSCA DE OBJETOS PRÓXIMOS (mesma abordagem do ISBBQMenu vanilla)
+-- ============================================================================
+
+--- Busca botijões de gás nos tiles ao redor de um fogão (inventário + chão).
+--- Usa a mesma abordagem do vanilla ISBBQMenu.FindPropaneTank.
+---
+--- @param fogao IsoObject O fogão de referência.
+--- @param jogador IsoPlayer O jogador (para verificar inventário).
+--- @return table Lista de botijões encontrados {item, origem, descricao}.
+local function buscarBotijoesProximos(fogao, jogador)
+    local resultados = {}
+    if not fogao then return resultados end
+
+    local fogaoX = fogao:getX()
+    local fogaoY = fogao:getY()
+    local fogaoZ = fogao:getZ()
+    local celula = getCell()
+    if not celula then return resultados end
+
+    for deslocamentoY = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
+        for deslocamentoX = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
+            local quadrado = celula:getGridSquare(fogaoX + deslocamentoX, fogaoY + deslocamentoY, fogaoZ)
+            if quadrado then
+                local objetosMundoNoQuadrado = quadrado:getWorldObjects()
+                if objetosMundoNoQuadrado then
+                    for indice = 0, objetosMundoNoQuadrado:size() - 1 do
+                        local objetoMundo = objetosMundoNoQuadrado:get(indice)
+                        if objetoMundo and objetoMundo:getItem() then
+                            local tipoCompleto = objetoMundo:getItem():getFullType()
+                            if IDS_BOTIJAO[tipoCompleto] then
+                                table.insert(resultados, {
+                                    item = objetoMundo,
+                                    nome = objetoMundo:getItem():getDisplayName() or tipoCompleto,
+                                    noChao = true,
+                                })
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Verifica inventário do jogador
+    if jogador then
+        local inventario = jogador:getInventory()
+        if inventario then
+            for idBotijao, _ in pairs(IDS_BOTIJAO) do
+                local item = inventario:getFirstTypeRecurse(idBotijao)
+                if item then
+                    table.insert(resultados, {
+                        item = item,
+                        nome = item:getDisplayName() or idBotijao,
+                        noChao = false,
+                    })
+                end
+            end
+        end
+    end
+
+    return resultados
+end
+
+--- Busca fogões IsoStove nos tiles ao redor de um ponto.
+---
+--- @param centroX number Coordenada X central.
+--- @param centroY number Coordenada Y central.
+--- @param centroZ number Coordenada Z central.
+--- @return table Lista de fogões encontrados.
+local function buscarFogoesProximos(centroX, centroY, centroZ)
+    local resultados = {}
+    local celula = getCell()
+    if not celula then return resultados end
+
+    for deslocamentoY = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
+        for deslocamentoX = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
+            local quadrado = celula:getGridSquare(centroX + deslocamentoX, centroY + deslocamentoY, centroZ)
+            if quadrado then
+                local objetos = quadrado:getObjects()
+                if objetos then
+                    for indice = 0, objetos:size() - 1 do
+                        local objeto = objetos:get(indice)
+                        if objeto and instanceof(objeto, "IsoStove") then
+                            local nomeFogao = objeto:getName() or getText("IGUI_LKS_Fogao") or "Fogão"
+                            table.insert(resultados, {
+                                fogao = objeto,
+                                nome = nomeFogao,
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return resultados
+end
+
+-- ============================================================================
+-- MENU DE CONTEXTO — DUPLA VALIDAÇÃO
+-- ============================================================================
+
+--- Handler principal do menu de contexto do mundo.
+--- Detecta fogões e botijões clicados e oferece opções de conexão.
 ---
 --- @param jogadorNumero number Índice do jogador.
 --- @param menuContexto ISContextMenu O menu de contexto.
@@ -154,88 +249,127 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
     local jogador = getSpecificPlayer(jogadorNumero)
     if not jogador then return end
 
+    local fogaoClicado = nil
+    local botijaoClicado = nil
+
+    -- Identifica o que foi clicado
     for _, objetoMundo in ipairs(objetosMundo) do
-        local tipoObjeto = objetoMundo:getType() or ""
-        local ehBotijao = tipoObjeto == "LKS_Botijao15kg" or tipoObjeto == "LKS_Botijao45kg"
-            or tipoObjeto == "PropaneTank"
+        local quadrado = objetoMundo:getSquare()
+        if quadrado then
+            -- Procura IsoStove no quadrado clicado
+            local objetos = quadrado:getObjects()
+            if objetos then
+                for indice = 0, objetos:size() - 1 do
+                    local objeto = objetos:get(indice)
+                    if objeto and instanceof(objeto, "IsoStove") and not fogaoClicado then
+                        fogaoClicado = objeto
+                    end
+                end
+            end
 
-        if not ehBotijao then
-            local nomeSprite = objetoMundo:getSpriteName() or ""
-            ehBotijao = nomeSprite:find("PropaneTank") or nomeSprite:find("LKS_Botijao")
-        end
-
-        if ehBotijao then
-            local quadradoBotijao = objetoMundo:getSquare()
-            if not quadradoBotijao then return end
-
-            -- Busca fogões próximos
-            local celula = getCell()
-            if not celula then return end
-
-            for deslocamentoX = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
-                for deslocamentoY = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
-                    local quadrado = celula:getGridSquare(
-                        quadradoBotijao:getX() + deslocamentoX,
-                        quadradoBotijao:getY() + deslocamentoY,
-                        quadradoBotijao:getZ()
-                    )
-                    if quadrado then
-                        local objetos = quadrado:getObjects()
-                        if objetos then
-                            for indice = 0, objetos:size() - 1 do
-                                local objeto = objetos:get(indice)
-                                if objeto and instanceof(objeto, "IsoStove") then
-                                    local fogao = objeto
-                                    local temConexao = fogaoTemBotijaoConectado(fogao)
-                                    local nomeFogao = fogao:getName() or getText("IGUI_LKS_Fogao") or "Fogão"
-
-                                    if temConexao then
-                                        -- Opção: Trocar botijão
-                                        local temItensTroca, faltanteTroca = verificarItensNecessarios(jogador, ITENS_TROCA)
-                                        local opcaoTrocar = menuContexto:addOption(
-                                            getText("IGUI_LKS_TrocarBotijao") or "Trocar Botijão → " .. nomeFogao,
-                                            objetosMundo,
-                                            function()
-                                                desconectarBotijao(fogao)
-                                                conectarBotijao(fogao, objetoMundo, jogador)
-                                            end
-                                        )
-                                        if not temItensTroca then
-                                            opcaoTrocar.notAvailable = true
-                                            local tooltipFalta = ISWorldObjectContextMenu.addToolTip()
-                                            tooltipFalta.description = (getText("IGUI_LKS_FaltaItem") or "Falta: ") .. (faltanteTroca or "?")
-                                            opcaoTrocar.toolTip = tooltipFalta
-                                        end
-
-                                        -- Opção: Desinstalar botijão
-                                        menuContexto:addOption(
-                                            getText("IGUI_LKS_DesinstalarBotijao") or "Desinstalar Botijão ← " .. nomeFogao,
-                                            objetosMundo,
-                                            function()
-                                                desconectarBotijao(fogao)
-                                            end
-                                        )
-                                    else
-                                        -- Opção: Instalar botijão
-                                        local temItensInstalacao, faltanteInstalacao = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
-                                        local opcaoInstalar = menuContexto:addOption(
-                                            getText("IGUI_LKS_InstalarBotijao") or "Instalar Botijão → " .. nomeFogao,
-                                            objetosMundo,
-                                            function()
-                                                conectarBotijao(fogao, objetoMundo, jogador)
-                                            end
-                                        )
-                                        if not temItensInstalacao then
-                                            opcaoInstalar.notAvailable = true
-                                            local tooltipFalta = ISWorldObjectContextMenu.addToolTip()
-                                            tooltipFalta.description = (getText("IGUI_LKS_FaltaItem") or "Falta: ") .. (faltanteInstalacao or "?")
-                                            opcaoInstalar.toolTip = tooltipFalta
-                                        end
-                                    end
-                                end
-                            end
+            -- Procura botijões no chão do quadrado clicado
+            local objetosNoChao = quadrado:getWorldObjects()
+            if objetosNoChao then
+                for indice = 0, objetosNoChao:size() - 1 do
+                    local objetoChao = objetosNoChao:get(indice)
+                    if objetoChao and objetoChao:getItem() then
+                        local tipoCompleto = objetoChao:getItem():getFullType()
+                        if IDS_BOTIJAO[tipoCompleto] and not botijaoClicado then
+                            botijaoClicado = objetoChao
                         end
                     end
+                end
+            end
+        end
+    end
+
+    -- CAMINHO 1: Clicou num fogão → mostra botijões próximos
+    if fogaoClicado then
+        local temConexao = fogaoTemBotijaoConectado(fogaoClicado)
+
+        if temConexao then
+            -- Opções: Trocar ou Desinstalar
+            local botijoesProximos = buscarBotijoesProximos(fogaoClicado, jogador)
+
+            if #botijoesProximos > 0 then
+                for _, botijaoInfo in ipairs(botijoesProximos) do
+                    local temItensTroca, faltanteTroca = verificarItensNecessarios(jogador, ITENS_TROCA)
+                    local textoOpcao = (getText("IGUI_LKS_TrocarBotijao") or "Trocar Botijão") .. " ← " .. botijaoInfo.nome
+                    local opcaoTrocar = menuContexto:addOption(textoOpcao, objetosMundo, function()
+                        desconectarBotijao(fogaoClicado)
+                        conectarBotijao(fogaoClicado, jogador)
+                    end)
+                    if not temItensTroca then
+                        opcaoTrocar.notAvailable = true
+                        local tooltipFalta = ISWorldObjectContextMenu.addToolTip()
+                        tooltipFalta.description = (getText("IGUI_LKS_FaltaItem") or "Falta: ") .. (faltanteTroca or "?")
+                        opcaoTrocar.toolTip = tooltipFalta
+                    end
+                end
+            end
+
+            local opcaoDesinstalar = menuContexto:addOption(
+                getText("IGUI_LKS_DesinstalarBotijao") or "Desinstalar Botijão",
+                objetosMundo,
+                function() desconectarBotijao(fogaoClicado) end
+            )
+        else
+            -- Opção: Instalar botijão
+            local botijoesProximos = buscarBotijoesProximos(fogaoClicado, jogador)
+
+            if #botijoesProximos > 0 then
+                for _, botijaoInfo in ipairs(botijoesProximos) do
+                    local temItensInstalacao, faltanteInstalacao = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
+                    local textoOpcao = (getText("IGUI_LKS_InstalarBotijao") or "Instalar Botijão") .. " ← " .. botijaoInfo.nome
+                    local opcaoInstalar = menuContexto:addOption(textoOpcao, objetosMundo, function()
+                        conectarBotijao(fogaoClicado, jogador)
+                    end)
+                    if not temItensInstalacao then
+                        opcaoInstalar.notAvailable = true
+                        local tooltipFalta = ISWorldObjectContextMenu.addToolTip()
+                        tooltipFalta.description = (getText("IGUI_LKS_FaltaItem") or "Falta: ") .. (faltanteInstalacao or "?")
+                        opcaoInstalar.toolTip = tooltipFalta
+                    end
+                end
+            end
+        end
+    end
+
+    -- CAMINHO 2: Clicou num botijão → mostra fogões próximos
+    if botijaoClicado then
+        local botijaoX = botijaoClicado:getX()
+        local botijaoY = botijaoClicado:getY()
+        local botijaoZ = botijaoClicado:getZ()
+
+        local fogoesProximos = buscarFogoesProximos(botijaoX, botijaoY, botijaoZ)
+
+        for _, fogaoInfo in ipairs(fogoesProximos) do
+            local temConexao = fogaoTemBotijaoConectado(fogaoInfo.fogao)
+
+            if temConexao then
+                local temItensTroca, faltanteTroca = verificarItensNecessarios(jogador, ITENS_TROCA)
+                local textoOpcao = (getText("IGUI_LKS_TrocarBotijao") or "Trocar Botijão") .. " → " .. fogaoInfo.nome
+                local opcaoTrocar = menuContexto:addOption(textoOpcao, objetosMundo, function()
+                    desconectarBotijao(fogaoInfo.fogao)
+                    conectarBotijao(fogaoInfo.fogao, jogador)
+                end)
+                if not temItensTroca then
+                    opcaoTrocar.notAvailable = true
+                    local tooltipFalta = ISWorldObjectContextMenu.addToolTip()
+                    tooltipFalta.description = (getText("IGUI_LKS_FaltaItem") or "Falta: ") .. (faltanteTroca or "?")
+                    opcaoTrocar.toolTip = tooltipFalta
+                end
+            else
+                local temItensInstalacao, faltanteInstalacao = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
+                local textoOpcao = (getText("IGUI_LKS_InstalarBotijao") or "Instalar Botijão") .. " → " .. fogaoInfo.nome
+                local opcaoInstalar = menuContexto:addOption(textoOpcao, objetosMundo, function()
+                    conectarBotijao(fogaoInfo.fogao, jogador)
+                end)
+                if not temItensInstalacao then
+                    opcaoInstalar.notAvailable = true
+                    local tooltipFalta = ISWorldObjectContextMenu.addToolTip()
+                    tooltipFalta.description = (getText("IGUI_LKS_FaltaItem") or "Falta: ") .. (faltanteInstalacao or "?")
+                    opcaoInstalar.toolTip = tooltipFalta
                 end
             end
         end

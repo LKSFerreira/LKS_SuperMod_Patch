@@ -172,6 +172,11 @@
   "ItemName_LKS_Electrical.LKS_InversorCorrente": "Inversor de Corrente",
   "ItemName_LKS_Electrical.LKS_MiniTransformador": "Mini Transformador",
   "ItemName_LKS_Gas.LKS_Botijao15kg": "Botijão de Gás 15kg",
-  "ItemName_LKS_Gas.LKS_Botijao45kg": "Botijão de Gás 45kg"
+  "ItemName_LKS_Gas.LKS_Botijao45kg": "Botijão de Gás 45kg",
+  "IGUI_LKS_Fogao": "Fogão",
+  "IGUI_LKS_InstalarBotijao": "Instalar Botijão",
+  "IGUI_LKS_TrocarBotijao": "Trocar Botijão",
+  "IGUI_LKS_DesinstalarBotijao": "Desinstalar Botijão",
+  "IGUI_LKS_FaltaItem": "Falta: "
 }
 
