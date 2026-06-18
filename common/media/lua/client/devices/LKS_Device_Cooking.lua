@@ -26,8 +26,8 @@ local ClassificacaoSprites = require("LKS_Cooking_SpriteClassification")
 local SistemaGas = require("LKS_Cooking_GasSystem")
 
 local LKS_Device_Cooking = {
-    recipientesAceitos = {"stove", "microwave"},
-    classesJava = {"IsoStove", "IsoMicrowave"},
+    recipientesAceitos = {"stove", "microwave", "woodstove", "fireplace"},
+    classesJava = {"IsoStove", "IsoMicrowave", "IsoFireplace"},
     brilhoInativo = "escurece25"
 }
 
