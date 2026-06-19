@@ -211,8 +211,9 @@ local function verificarFonteEnergia(objetoFogao, jogador, tipoFogao)
     local dadosMod = objetoFogao:getModData()
     local temBotijao = dadosMod and dadosMod.LKS_BotijaoConectado == true or false
 
-    -- Validação defensiva: confirma que existe botijão físico perto do fogão.
-    -- Se moddata diz conectado mas não há botijão no raio, limpa automaticamente.
+    -- Validação defensiva: confirma que existe botijão físico conectado a ESTE fogão.
+    -- Se moddata diz conectado mas não há botijão no raio cujo moddata aponte para
+    -- este fogão, limpa automaticamente.
     -- Cobre: jogador pegou, item destruído, despawn, multiplayer.
     if temBotijao then
         local botijaoFisicoEncontrado = false
@@ -235,8 +236,14 @@ local function verificarFonteEnergia(objetoFogao, jogador, tipoFogao)
                                     if tipo == "Base.PropaneTank"
                                         or tipo == "LKS_Propano.LKS_Botijao15kg"
                                         or tipo == "LKS_Propano.LKS_Botijao45kg" then
-                                        botijaoFisicoEncontrado = true
-                                        break
+                                        -- Verifica se o moddata do botijão aponta para ESTE fogão
+                                        local dadosItem = obj:getItem():getModData()
+                                        if dadosItem.LKS_ConectadoAoFogaoX == fogaoX
+                                            and dadosItem.LKS_ConectadoAoFogaoY == fogaoY
+                                            and dadosItem.LKS_ConectadoAoFogaoZ == fogaoZ then
+                                            botijaoFisicoEncontrado = true
+                                            break
+                                        end
                                     end
                                 end
                             end

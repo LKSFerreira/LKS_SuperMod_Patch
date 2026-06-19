@@ -613,4 +613,107 @@ for _, classe in ipairs(LKS_Device_Cooking.classesJava) do
     LKS_ApplianceManager.javaClassMap[classe] = LKS_Device_Cooking
 end
 
+-- ============================================================================
+-- MONKEY-PATCH: ISOvenUI — Sincroniza toggle com mecânica de propano
+-- ============================================================================
+-- O vanilla ISOvenUI:updateButtons() desabilita o botão Ligar quando
+-- isPowered() é false. Para fogões a propano, precisamos habilitar quando
+-- há combustível disponível e usar nossa ignição (addGeneratorPos).
+-- Registrado em OnGameStart para garantir que ISOvenUI já esteja carregado.
+-- ============================================================================
+
+local function aplicarPatchISOvenUI()
+    if not ISOvenUI then
+        pcall(function() require("ISUI/Fireplace/ISOvenUI") end)
+    end
+
+    if not ISOvenUI then
+        print("[LKS PATCH - LKS_Device_Cooking.lua] ISOvenUI nao encontrado, patch ignorado")
+        return
+    end
+
+    local vanillaUpdateButtons = ISOvenUI.updateButtons
+    local vanillaOnClick = ISOvenUI.onClick
+
+    --- Override de updateButtons para habilitar toggle em fogões a propano.
+    --- Sincroniza texto (Acender/Apagar) e tooltip com o menu de contexto.
+    function ISOvenUI:updateButtons()
+        vanillaUpdateButtons(self)
+
+        if not self.oven or not instanceof(self.oven, "IsoStove") then return end
+
+        local tipoFogao = ClassificacaoSprites.obterTipoFogao(self.oven)
+        if tipoFogao ~= "convencional" and tipoFogao ~= "antigo" then return end
+
+        local estaAtivo = self.oven.Activated and self.oven:Activated() or false
+
+        if estaAtivo then
+            self.ok:setTitle(getText("IGUI_LKS_Apagar") or "Apagar")
+            self.ok:setEnable(true)
+            self.ok.tooltip = nil
+        else
+            local fonteEnergia = SistemaPropano.verificarFonteEnergia(self.oven, self.character, tipoFogao)
+
+            if fonteEnergia.disponivel then
+                local fontesCalor = buscarFontesCalorInventario(self.character)
+                if #fontesCalor > 0 then
+                    self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
+                    self.ok:setEnable(true)
+                    self.ok.tooltip = nil
+                else
+                    self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
+                    self.ok:setEnable(false)
+                    self.ok.tooltip = getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor"
+                end
+            else
+                self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
+                self.ok:setEnable(false)
+                if tipoFogao == "convencional" then
+                    self.ok.tooltip = getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gas encanado ou botijao"
+                else
+                    self.ok.tooltip = getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustivel solido"
+                end
+            end
+        end
+    end
+
+    --- Override de onClick para usar ignição por propano em vez do vanilla.
+    --- Usa acenderFogaoPropano/apagarFogaoPropano para fogões a combustão,
+    --- mantendo sincronização com o menu de contexto.
+    function ISOvenUI:onClick(button)
+        if button.internal == "OK" and self.oven and instanceof(self.oven, "IsoStove") then
+            local dadosMod = self.oven:getModData()
+            local acesoPorPropano = dadosMod.LKS_FogaoAcesoPropano == true
+
+            -- Se acendemos via propano, apagamos via propano (removeGeneratorPos)
+            if acesoPorPropano then
+                apagarFogaoPropano(self.oven)
+                return
+            end
+
+            -- Se fogão desligado e sem eletricidade, tenta acender via propano
+            local containerFogao = self.oven:getContainer()
+            local temEletricidade = containerFogao and containerFogao:isPowered() or false
+            local estaAtivo = self.oven.Activated and self.oven:Activated() or false
+
+            if not temEletricidade and not estaAtivo then
+                local tipoFogao = ClassificacaoSprites.obterTipoFogao(self.oven)
+                if tipoFogao == "convencional" or tipoFogao == "antigo" then
+                    local fonteEnergia = SistemaPropano.verificarFonteEnergia(self.oven, self.character, tipoFogao)
+                    if fonteEnergia.disponivel then
+                        acenderFogaoPropano(self.oven, self.character)
+                    end
+                    return
+                end
+            end
+        end
+
+        vanillaOnClick(self, button)
+    end
+
+    print("[LKS PATCH - LKS_Device_Cooking.lua] Monkey-patch ISOvenUI aplicado")
+end
+
+Events.OnGameStart.Add(aplicarPatchISOvenUI)
+
 print("[LKS PATCH - LKS_Device_Cooking.lua] Carregado com sucesso!")

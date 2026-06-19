@@ -192,5 +192,9 @@
   "IGUI_LKS_RequerCombustivelSolido": "Requer combustível sólido (lenha, tábuas) no interior.",
   "IGUI_LKS_RequerMaterialInflamavel": "Requer material inflamável (papel, pano, álcool) para iniciar a combustão.",
   "IGUI_LKS_RequerOutroBotijao": "Necessário outro botijão de gás próximo para realizar a troca.",
-  "IGUI_LKS_SemFonteCalor": "Nenhuma fonte de calor disponível"
+  "IGUI_LKS_SemFonteCalor": "Nenhuma fonte de calor disponível",
+  "IGUI_LKS_BotijaoJaConectado": "Este botijão já está conectado a outro fogão. Desinstale-o primeiro.",
+
+  "IGUI_Oven_Celsius": "°C",
+  "IGUI_Oven_Fahrenheit": "°F"
 }

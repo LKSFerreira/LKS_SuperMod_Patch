@@ -12,8 +12,134 @@
 -- ============================================================================
 
 require "LKS_Cooking_SpriteClassification"
+require "TimedActions/ISBaseTimedAction"
 
 local DISTANCIA_MAXIMA_MANGUEIRA = 2
+
+-- ============================================================================
+-- TIMED ACTION UNIFICADA: Todas as operações com botijão de propano
+-- ============================================================================
+-- Modos: "instalar", "trocar", "desinstalar", "pegar"
+-- Todas compartilham: walkAdj + faceThisObject + agachar + barra de ação.
+-- ============================================================================
+
+LKS_BotijaoAction = ISBaseTimedAction:derive("LKS_BotijaoAction")
+
+--- Referências para funções locais (registradas após definição).
+--- @type function
+LKS_BotijaoAction._conectar = nil
+--- @type function
+LKS_BotijaoAction._desconectar = nil
+
+--- Cria a ação unificada de operação com botijão.
+---
+--- @param jogador IsoPlayer O jogador.
+--- @param fogao IsoObject|nil O fogão alvo (nil para "pegar").
+--- @param modo string "instalar"|"trocar"|"desinstalar"|"pegar".
+--- @param botijaoInfo table|nil Info do botijão {item, nome, noChao} (nil para "desinstalar").
+--- @return LKS_BotijaoAction A ação criada.
+function LKS_BotijaoAction:new(jogador, fogao, modo, botijaoInfo)
+    local o = ISBaseTimedAction.new(self, jogador)
+    o.fogao = fogao
+    o.modo = modo
+    o.botijaoInfo = botijaoInfo
+    o.maxTime = 250
+    o.stopOnWalk = true
+    o.stopOnRun = true
+    return o
+end
+
+function LKS_BotijaoAction:isValid()
+    if self.modo == "pegar" then
+        return self.botijaoInfo and self.botijaoInfo.item
+            and self.botijaoInfo.item:getSquare() ~= nil
+    elseif self.modo == "desinstalar" then
+        return self.fogao ~= nil
+    else
+        if self.botijaoInfo and not self.botijaoInfo.noChao then
+            return self.fogao and self.botijaoInfo.item
+                and self.character:getInventory():contains(self.botijaoInfo.item)
+        end
+        return self.fogao ~= nil
+    end
+end
+
+function LKS_BotijaoAction:start()
+    self:setActionAnim("Loot")
+    self:setAnimVariable("LootPosition", "Low")
+    self:setOverrideHandModels(nil, nil)
+    -- Face o fogão ou o botijão conforme a operação
+    if self.fogao then
+        self.character:faceThisObject(self.fogao)
+    elseif self.botijaoInfo and self.botijaoInfo.noChao and self.botijaoInfo.item then
+        self.character:faceThisObject(self.botijaoInfo.item)
+    end
+end
+
+function LKS_BotijaoAction:perform()
+    if self.modo == "instalar" then
+        self:executarInstalar()
+    elseif self.modo == "trocar" then
+        self:executarTrocar()
+    elseif self.modo == "desinstalar" then
+        self:executarDesinstalar()
+    elseif self.modo == "pegar" then
+        self:executarPegar()
+    end
+    ISBaseTimedAction.perform(self)
+end
+
+function LKS_BotijaoAction:executarInstalar()
+    if not self.fogao or not self.botijaoInfo then return end
+
+    -- Se botijão está no inventário, larga no chão primeiro
+    if not self.botijaoInfo.noChao then
+        local destino = self.character:getCurrentSquare()
+        if not destino then return end
+        local direcaoX = self.fogao:getX() - self.character:getX()
+        local direcaoY = self.fogao:getY() - self.character:getY()
+        local offsetX = 0.5 + (direcaoX * 0.3)
+        local offsetY = 0.5 + (direcaoY * 0.3)
+        self.character:getInventory():Remove(self.botijaoInfo.item)
+        destino:AddWorldInventoryItem(self.botijaoInfo.item, offsetX, offsetY, 0)
+        -- Atualiza referência para noChao (agora está no chão)
+        self.botijaoInfo.noChao = true
+    end
+
+    LKS_BotijaoAction._conectar(self.fogao, self.character, self.botijaoInfo)
+end
+
+function LKS_BotijaoAction:executarTrocar()
+    if not self.fogao or not self.botijaoInfo then return end
+    LKS_BotijaoAction._desconectar(self.fogao)
+    self:executarInstalar()
+end
+
+function LKS_BotijaoAction:executarDesinstalar()
+    if not self.fogao then return end
+    LKS_BotijaoAction._desconectar(self.fogao)
+end
+
+function LKS_BotijaoAction:executarPegar()
+    if not self.botijaoInfo or not self.botijaoInfo.noChao then return end
+    local objetoMundo = self.botijaoInfo.item
+    local item = objetoMundo:getItem()
+    if not item then return end
+
+    -- Limpa moddata de conexão
+    local dadosModItem = item:getModData()
+    dadosModItem.LKS_ConectadoAoFogaoX = nil
+    dadosModItem.LKS_ConectadoAoFogaoY = nil
+    dadosModItem.LKS_ConectadoAoFogaoZ = nil
+
+    -- Remove do chão e adiciona ao inventário
+    self.character:getInventory():AddItem(item)
+    local quadrado = objetoMundo:getSquare()
+    if quadrado then
+        quadrado:transmitRemoveItemFromSquare(objetoMundo)
+        quadrado:removeWorldObject(objetoMundo)
+    end
+end
 
 --- IDs de itens aceitos como botijão de propano (vanilla + mod).
 local IDS_BOTIJAO = {
@@ -122,42 +248,125 @@ local function calcularRiscoVazamento(jogador)
     return false
 end
 
---- Conecta um botijão ao fogão via moddata.
+--- Verifica se um botijão (via moddata do item) está conectado a um fogão específico.
+---
+--- @param dadosModItem table ModData do item do botijão.
+--- @param fogaoX number Coordenada X do fogão.
+--- @param fogaoY number Coordenada Y do fogão.
+--- @param fogaoZ number Coordenada Z do fogão.
+--- @return boolean True se o botijão está conectado a este fogão específico.
+local function botijaoConectadoAEsteFogao(dadosModItem, fogaoX, fogaoY, fogaoZ)
+    return dadosModItem.LKS_ConectadoAoFogaoX == fogaoX
+        and dadosModItem.LKS_ConectadoAoFogaoY == fogaoY
+        and dadosModItem.LKS_ConectadoAoFogaoZ == fogaoZ
+end
+
+--- Verifica se um botijão está conectado a qualquer fogão.
+---
+--- @param dadosModItem table ModData do item do botijão.
+--- @return boolean True se o botijão está conectado a algum fogão.
+local function botijaoConectadoAAlgumFogao(dadosModItem)
+    return dadosModItem.LKS_ConectadoAoFogaoX ~= nil
+end
+
+--- Conecta um botijão ao fogão via moddata bidirecional.
+--- Marca o fogão como conectado E registra no botijão as coordenadas do fogão.
 ---
 --- @param fogao IsoObject O fogão a conectar.
 --- @param jogador IsoPlayer O jogador realizando a ação.
-local function conectarBotijao(fogao, jogador)
+--- @param botijaoInfo table|nil Informações do botijão {item, nome, noChao}.
+local function conectarBotijao(fogao, jogador, botijaoInfo)
     if not fogao then return end
 
     local dadosModFogao = fogao:getModData()
     dadosModFogao.LKS_BotijaoConectado = true
+
+    -- Marca o botijão com as coordenadas do fogão (link bidirecional)
+    if botijaoInfo then
+        local itemReal = nil
+        if botijaoInfo.noChao and botijaoInfo.item.getItem then
+            itemReal = botijaoInfo.item:getItem()
+        elseif botijaoInfo.noChao and botijaoInfo.item.getModData then
+            -- Item já é InventoryItem (dropado do inventário via TimedAction)
+            itemReal = botijaoInfo.item
+        else
+            itemReal = botijaoInfo.item
+        end
+        if itemReal then
+            local dadosModItem = itemReal:getModData()
+            dadosModItem.LKS_ConectadoAoFogaoX = fogao:getX()
+            dadosModItem.LKS_ConectadoAoFogaoY = fogao:getY()
+            dadosModItem.LKS_ConectadoAoFogaoZ = fogao:getZ()
+        end
+    end
 
     if calcularRiscoVazamento(jogador) then
         dadosModFogao.LKS_VazamentoPropanoPendente = true
     end
 end
 
---- Desconecta o botijão do fogão.
+--- Desconecta o botijão do fogão, limpando moddata de ambos os lados.
+--- Escaneia o raio para encontrar o botijão fisicamente conectado e limpar
+--- seu moddata. Cobre cenários de pickup, destruição e multiplayer.
 ---
 --- @param fogao IsoObject O fogão a desconectar.
 local function desconectarBotijao(fogao)
     if not fogao then return end
+
+    local fogaoX = fogao:getX()
+    local fogaoY = fogao:getY()
+    local fogaoZ = fogao:getZ()
+
+    -- Escaneia raio para encontrar e limpar o moddata do botijão conectado
+    local celula = getCell()
+    if celula then
+        for deslocY = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
+            for deslocX = -DISTANCIA_MAXIMA_MANGUEIRA, DISTANCIA_MAXIMA_MANGUEIRA do
+                local quadrado = celula:getGridSquare(fogaoX + deslocX, fogaoY + deslocY, fogaoZ)
+                if quadrado then
+                    local objetosChao = quadrado:getWorldObjects()
+                    if objetosChao then
+                        for idx = 0, objetosChao:size() - 1 do
+                            local obj = objetosChao:get(idx)
+                            if obj and obj:getItem() then
+                                local tipoCompleto = obj:getItem():getFullType()
+                                if IDS_BOTIJAO[tipoCompleto] then
+                                    local dadosModItem = obj:getItem():getModData()
+                                    if botijaoConectadoAEsteFogao(dadosModItem, fogaoX, fogaoY, fogaoZ) then
+                                        dadosModItem.LKS_ConectadoAoFogaoX = nil
+                                        dadosModItem.LKS_ConectadoAoFogaoY = nil
+                                        dadosModItem.LKS_ConectadoAoFogaoZ = nil
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
 
     local dadosModFogao = fogao:getModData()
     dadosModFogao.LKS_BotijaoConectado = nil
     dadosModFogao.LKS_VazamentoPropanoPendente = nil
 end
 
+-- Registra referências para a TimedAction unificada acessar funções locais
+LKS_BotijaoAction._desconectar = desconectarBotijao
+LKS_BotijaoAction._conectar = conectarBotijao
+
 -- ============================================================================
 -- BUSCA DE OBJETOS PRÓXIMOS (mesma abordagem do ISBBQMenu vanilla)
 -- ============================================================================
 
---- Busca botijões de propano nos tiles ao redor de um fogão (inventário + chão).
---- Usa a mesma abordagem do vanilla ISBBQMenu.FindPropaneTank.
+--- Busca botijões de propano nos tiles ao redor de um fogão (chão + inventário).
+--- Botijões no chão dentro do raio de 2 tiles são elegíveis diretamente.
+--- Botijões no inventário são elegíveis via TimedAction (caminhar + largar + conectar).
+--- Filtra botijões já conectados a OUTROS fogões (exclusividade 1:1).
 ---
 --- @param fogao IsoObject O fogão de referência.
 --- @param jogador IsoPlayer O jogador (para verificar inventário).
---- @return table Lista de botijões encontrados {item, origem, descricao}.
+--- @return table Lista de botijões encontrados {item, nome, noChao, conectadoAEsteFogao}.
 local function buscarBotijoesProximos(fogao, jogador)
     local resultados = {}
     if not fogao then return resultados end
@@ -179,11 +388,19 @@ local function buscarBotijoesProximos(fogao, jogador)
                         if objetoMundo and objetoMundo:getItem() then
                             local tipoCompleto = objetoMundo:getItem():getFullType()
                             if IDS_BOTIJAO[tipoCompleto] then
-                                table.insert(resultados, {
-                                    item = objetoMundo,
-                                    nome = objetoMundo:getItem():getDisplayName() or tipoCompleto,
-                                    noChao = true,
-                                })
+                                local dadosModItem = objetoMundo:getItem():getModData()
+                                local ehConectadoAqui = botijaoConectadoAEsteFogao(dadosModItem, fogaoX, fogaoY, fogaoZ)
+                                local ehConectadoOutro = not ehConectadoAqui and botijaoConectadoAAlgumFogao(dadosModItem)
+
+                                -- Exclui botijões conectados a OUTROS fogões
+                                if not ehConectadoOutro then
+                                    table.insert(resultados, {
+                                        item = objetoMundo,
+                                        nome = objetoMundo:getItem():getDisplayName() or tipoCompleto,
+                                        noChao = true,
+                                        conectadoAEsteFogao = ehConectadoAqui,
+                                    })
+                                end
                             end
                         end
                     end
@@ -199,10 +416,18 @@ local function buscarBotijoesProximos(fogao, jogador)
             for idBotijao, _ in pairs(IDS_BOTIJAO) do
                 local item = inventario:getFirstTypeRecurse(idBotijao)
                 if item then
+                    local dadosModItem = item:getModData()
+                    -- Botijão no inventário: conexão física impossível — limpa moddata residual
+                    if botijaoConectadoAAlgumFogao(dadosModItem) then
+                        dadosModItem.LKS_ConectadoAoFogaoX = nil
+                        dadosModItem.LKS_ConectadoAoFogaoY = nil
+                        dadosModItem.LKS_ConectadoAoFogaoZ = nil
+                    end
                     table.insert(resultados, {
                         item = item,
                         nome = item:getDisplayName() or idBotijao,
                         noChao = false,
+                        conectadoAEsteFogao = false,
                     })
                 end
             end
@@ -413,21 +638,31 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
         local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
 
         if temConexao then
-            -- Trocar: precisa de pelo menos 2 botijões (1 instalado + 1 para troca)
+            -- Trocar: precisa de pelo menos 1 botijão NÃO conectado a este fogão
             local textoTrocar = getText("IGUI_LKS_Trocar") or "Trocar"
             local opcaoPai = menuContexto:addOption(textoTrocar, objetosMundo, nil)
             opcaoPai.iconTexture = getTexture("media/ui/LKS_Swap.png")
 
-            if #botijoesProximos > 1 then
-                -- Há botijões extras além do instalado
+            -- Filtra: exclui o botijão já instalado neste fogão
+            local botijoesParaTroca = {}
+            for _, botijaoInfo in ipairs(botijoesProximos) do
+                if not botijaoInfo.conectadoAEsteFogao then
+                    table.insert(botijoesParaTroca, botijaoInfo)
+                end
+            end
+
+            if #botijoesParaTroca > 0 then
                 local submenu = ISContextMenu:getNew(menuContexto)
                 menuContexto:addSubMenu(opcaoPai, submenu)
 
-                for _, botijaoInfo in ipairs(botijoesProximos) do
+                for _, botijaoInfo in ipairs(botijoesParaTroca) do
                     local temItens = verificarItensNecessarios(jogador, ITENS_TROCA)
                     local opcao = submenu:addOption(botijaoInfo.nome, objetosMundo, function()
-                        desconectarBotijao(fogaoClicado)
-                        conectarBotijao(fogaoClicado, jogador)
+                        if luautils.walkAdj(jogador, fogaoClicado:getSquare()) then
+                            ISTimedActionQueue.add(
+                                LKS_BotijaoAction:new(jogador, fogaoClicado, "trocar", botijaoInfo)
+                            )
+                        end
                     end)
                     opcao.iconTexture = obterTexturaItem(botijaoInfo)
                     if not temItens then
@@ -443,10 +678,22 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 opcaoPai.toolTip = tooltipSemTroca
             end
 
-            -- Desinstalar: opção direta com ícone (sem submenu)
-            local textoDesinstalar = getText("IGUI_LKS_Desinstalar") or "Desinstalar"
+            -- Desinstalar: caminhar + agachar + desconectar
+            -- Busca nome do botijão instalado para exibição dinâmica
+            local nomeBotijaoInstalado = ""
+            for _, botijaoInfo in ipairs(botijoesProximos) do
+                if botijaoInfo.conectadoAEsteFogao then
+                    nomeBotijaoInstalado = " " .. botijaoInfo.nome
+                    break
+                end
+            end
+            local textoDesinstalar = (getText("IGUI_LKS_Desinstalar") or "Desinstalar") .. nomeBotijaoInstalado
             local opcaoDesinstalar = menuContexto:addOption(textoDesinstalar, objetosMundo, function()
-                desconectarBotijao(fogaoClicado)
+                if luautils.walkAdj(jogador, fogaoClicado:getSquare()) then
+                    ISTimedActionQueue.add(
+                        LKS_BotijaoAction:new(jogador, fogaoClicado, "desinstalar", nil)
+                    )
+                end
             end)
             opcaoDesinstalar.iconTexture = getTexture("media/ui/LKS_Disconnect.png")
         else
@@ -461,7 +708,11 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 for _, botijaoInfo in ipairs(botijoesProximos) do
                     local temItens = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
                     local opcao = submenu:addOption(botijaoInfo.nome, objetosMundo, function()
-                        conectarBotijao(fogaoClicado, jogador)
+                        if luautils.walkAdj(jogador, fogaoClicado:getSquare()) then
+                            ISTimedActionQueue.add(
+                                LKS_BotijaoAction:new(jogador, fogaoClicado, "instalar", botijaoInfo)
+                            )
+                        end
                     end)
                     opcao.iconTexture = obterTexturaItem(botijaoInfo)
                     if not temItens then
@@ -478,6 +729,13 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
         local botijaoX = botijaoClicado:getX()
         local botijaoY = botijaoClicado:getY()
         local botijaoZ = botijaoClicado:getZ()
+
+        -- Verifica se este botijão já está conectado a algum fogão
+        local itemBotijao = botijaoClicado:getItem()
+        local dadosModBotijao = itemBotijao and itemBotijao:getModData() or nil
+        local botijaoJaConectado = dadosModBotijao and botijaoConectadoAAlgumFogao(dadosModBotijao) or false
+        local botijaoItemInfo = { item = botijaoClicado, noChao = true }
+
         local fogoesProximos = buscarFogoesProximos(botijaoX, botijaoY, botijaoZ)
 
         if #fogoesProximos > 0 then
@@ -492,32 +750,45 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 end
             end
 
-            -- Instalar: fogões que ainda não têm botijão
+            -- Instalar: fogões que ainda não têm botijão (só se este botijão estiver livre)
             if #fogoesSemBotijao > 0 then
                 local textoInstalar = getText("IGUI_LKS_Instalar") or "Instalar"
                 local opcaoPai = menuContexto:addOption(textoInstalar, objetosMundo, nil)
                 opcaoPai.iconTexture = getTexture("media/ui/LKS_Connect.png")
-                local submenu = ISContextMenu:getNew(menuContexto)
-                menuContexto:addSubMenu(opcaoPai, submenu)
 
-                for _, fogaoInfo in ipairs(fogoesSemBotijao) do
-                    local temItens = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
-                    local spriteFogao = fogaoInfo.fogao:getSprite()
-                    local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
-                    local texturaFogao = nomeSpriteFogao and getTexture(nomeSpriteFogao) or nil
-                    local opcao = submenu:addOption(fogaoInfo.nome, objetosMundo, function()
-                        conectarBotijao(fogaoInfo.fogao, jogador)
-                    end)
-                    opcao.iconTexture = texturaFogao and texturaFogao:splitIcon() or nil
-                    if not temItens then
-                        opcao.notAvailable = true
+                if botijaoJaConectado then
+                    -- Botijão já conectado a outro fogão — desabilita com tooltip
+                    opcaoPai.notAvailable = true
+                    local tooltipJaConectado = ISWorldObjectContextMenu.addToolTip()
+                    tooltipJaConectado.description = getText("IGUI_LKS_BotijaoJaConectado") or "Este botijao ja esta conectado a outro fogao. Desinstale-o primeiro."
+                    opcaoPai.toolTip = tooltipJaConectado
+                else
+                    local submenu = ISContextMenu:getNew(menuContexto)
+                    menuContexto:addSubMenu(opcaoPai, submenu)
+
+                    for _, fogaoInfo in ipairs(fogoesSemBotijao) do
+                        local temItens = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
+                        local spriteFogao = fogaoInfo.fogao:getSprite()
+                        local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
+                        local texturaFogao = nomeSpriteFogao and getTexture(nomeSpriteFogao) or nil
+                        local opcao = submenu:addOption(fogaoInfo.nome, objetosMundo, function()
+                            if luautils.walkAdj(jogador, fogaoInfo.fogao:getSquare()) then
+                                ISTimedActionQueue.add(
+                                    LKS_BotijaoAction:new(jogador, fogaoInfo.fogao, "instalar", botijaoItemInfo)
+                                )
+                            end
+                        end)
+                        opcao.iconTexture = texturaFogao and texturaFogao:splitIcon() or nil
+                        if not temItens then
+                            opcao.notAvailable = true
+                        end
+                        opcao.toolTip = montarTooltipRequisitos(jogador, ITENS_INSTALACAO, nomeSpriteFogao)
                     end
-                    opcao.toolTip = montarTooltipRequisitos(jogador, ITENS_INSTALACAO, nomeSpriteFogao)
                 end
             end
 
-            -- Trocar: fogões que já possuem botijão conectado
-            if #fogoesComBotijao > 0 then
+            -- Trocar: fogões que já possuem botijão conectado (só se este botijão estiver livre)
+            if #fogoesComBotijao > 0 and not botijaoJaConectado then
                 local textoTrocar = getText("IGUI_LKS_Trocar") or "Trocar"
                 local opcaoPai = menuContexto:addOption(textoTrocar, objetosMundo, nil)
                 opcaoPai.iconTexture = getTexture("media/ui/LKS_Swap.png")
@@ -530,8 +801,11 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                     local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
                     local texturaFogao = nomeSpriteFogao and getTexture(nomeSpriteFogao) or nil
                     local opcao = submenu:addOption(fogaoInfo.nome, objetosMundo, function()
-                        desconectarBotijao(fogaoInfo.fogao)
-                        conectarBotijao(fogaoInfo.fogao, jogador)
+                        if luautils.walkAdj(jogador, fogaoInfo.fogao:getSquare()) then
+                            ISTimedActionQueue.add(
+                                LKS_BotijaoAction:new(jogador, fogaoInfo.fogao, "trocar", botijaoItemInfo)
+                            )
+                        end
                     end)
                     opcao.iconTexture = texturaFogao and texturaFogao:splitIcon() or nil
                     if not temItens then
@@ -541,6 +815,19 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 end
             end
         end
+
+        -- Pegar: recolher botijão do chão com animação
+        local textoPegar = getText("ContextMenu_Grab") or "Pegar"
+        local botijaoInfoPegar = { item = botijaoClicado, noChao = true }
+        local opcaoPegar = menuContexto:addOption(textoPegar, objetosMundo, function()
+            if luautils.walkAdj(jogador, botijaoClicado:getSquare()) then
+                ISTimedActionQueue.add(
+                    LKS_BotijaoAction:new(jogador, nil, "pegar", botijaoInfoPegar)
+                )
+            end
+        end)
+        local texturaBotijao = itemBotijao and itemBotijao:getTex() or nil
+        opcaoPegar.iconTexture = texturaBotijao
     end
 end
 
