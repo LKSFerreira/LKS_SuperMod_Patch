@@ -422,7 +422,7 @@ function LKS_EletricidadeConstrucao.Data.Generator.ToString(dadosGerador)
         end
     end
     return string.format(
-        "Gerador[%s] em (%d,%d,%d) | Ligado:%s Combustível:%.1f Integridade:%d Esforço:%.1f Prédios:%d",
+        "Gerador[%s] em (%d,%d,%d) | Ligado:%s Combustivel:%.1f Integridade:%d Esforco:%.1f Predios:%d",
         dadosGerador.id,
         dadosGerador.x, dadosGerador.y, dadosGerador.z,
         tostring(dadosGerador.activated),

@@ -140,9 +140,25 @@ def processar_arquivo(caminho: str, aplicar: bool) -> tuple[int, list[str]]:
     substituicoes = 0
     mudancas = []
     linhas_modificadas = []
+    dentro_de_chamada_log = False
 
     for numero, linha in enumerate(linhas, 1):
-        if linha_eh_log(linha) and not linha_eh_protegida(linha) and tem_acentos(linha):
+        eh_log = linha_eh_log(linha)
+
+        if eh_log:
+            dentro_de_chamada_log = True
+        elif dentro_de_chamada_log:
+            # Linha de continuação: só mantém se ainda tem parênteses abertos
+            # (linha indentada com string ou vírgula = continuação)
+            texto_limpo = linha.strip()
+            if not texto_limpo or texto_limpo.startswith("--"):
+                dentro_de_chamada_log = False
+            elif texto_limpo.startswith(")") or texto_limpo.startswith("end"):
+                dentro_de_chamada_log = False
+
+        linha_tratavel = eh_log or dentro_de_chamada_log
+
+        if linha_tratavel and not linha_eh_protegida(linha) and tem_acentos(linha):
             linha_nova = sanitizar_strings_log(linha)
             if linha_nova != linha:
                 substituicoes += 1

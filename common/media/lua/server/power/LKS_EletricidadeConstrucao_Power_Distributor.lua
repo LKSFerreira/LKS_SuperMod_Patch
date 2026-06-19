@@ -203,7 +203,7 @@ local function removerLinksGeradoresObsoletos(dadosPredio)
             GerenciadorEstado.RemoveBuilding(dadosPredio.id)
         end
         Registrador.Info(string.format(
-            "[SyncBuildingStats] Removido prédio obsoleto %s após podar %d link(s) de gerador",
+            "[SyncBuildingStats] Removido predio obsoleto %s apos podar %d link(s) de gerador",
             dadosPredio.id, quantidadeRemovidos), "Power")
         return true
     end
@@ -212,7 +212,7 @@ local function removerLinksGeradoresObsoletos(dadosPredio)
         GerenciadorEstado.MarkDirty()
     end
     Registrador.Warn(string.format(
-        "[SyncBuildingStats] Podado(s) %d link(s) de gerador obsoleto(s) do prédio %s",
+        "[SyncBuildingStats] Podado(s) %d link(s) de gerador obsoleto(s) do predio %s",
         quantidadeRemovidos, dadosPredio.id), "Power")
     return false
 end
@@ -628,7 +628,7 @@ local function sincronizarEstatisticasPredioAoGerador(dadosPredio)
                 -- Avisa apenas no primeiro salto para não inundar os logs
                 if not dadosPredio._syncWarningLogged then
                     Registrador.Warn(string.format(
-                        "[SyncBuildingStats] Gerador em %s não encontrado (chunk não carregado?) - prédio %s tem %d consumidores aguardando",
+                        "[SyncBuildingStats] Gerador em %s nao encontrado (chunk nao carregado?) - predio %s tem %d consumidores aguardando",
                         chaveGerador, dadosPredio.id, contagemConsumidores), "Power")
                     dadosPredio._syncWarningLogged = true
                 end
@@ -639,12 +639,12 @@ local function sincronizarEstatisticasPredioAoGerador(dadosPredio)
     -- Loga apenas se geradores foram pulados (caso problemático) ou se for a primeira sincronização bem-sucedida após falhas
     if quantidadePulados > 0 then
         Registrador.Warn(string.format(
-            "[SyncBuildingStats] Prédio %s: sincronizou %d/%d geradores - %d geradores inalcançáveis (chunk não carregado)",
+            "[SyncBuildingStats] Predio %s: sincronizou %d/%d geradores - %d geradores inalcancaveis (chunk nao carregado)",
             dadosPredio.id, quantidadeSincronizados, quantidadeSincronizados + quantidadePulados, quantidadePulados), "Power")
     elseif quantidadeSincronizados > 0 and dadosPredio._syncWarningLogged then
         -- Primeira sincronização bem-sucedida após falhas anteriores - loga o sucesso
         Registrador.Info(string.format(
-            "[SyncBuildingStats] Prédio %s: TODOS os geradores agora estão acessíveis - sincronizou %d consumidores com sucesso",
+            "[SyncBuildingStats] Predio %s: TODOS os geradores agora estao acessiveis - sincronizou %d consumidores com sucesso",
             dadosPredio.id, contagemConsumidores), "Power")
         dadosPredio._syncWarningLogged = false
     end
@@ -744,7 +744,7 @@ function Distribuidor.UpdateBuildingPower(dadosPredio, atualizarConsumidores)
     -- Loga apenas transições significativas (não nil -> X)
     if estadoMudou and estadoEmCache ~= nil then
         Registrador.Info(string.format(
-            "Estado de energia do prédio %s mudou: %s -> %s",
+            "Estado de energia do predio %s mudou: %s -> %s",
             dadosPredio.id,
             tostring(estadoEmCache),
             tostring(estaEnergizado)
@@ -838,7 +838,7 @@ function Distribuidor.UpdateBuildingPower(dadosPredio, atualizarConsumidores)
                 for _ in pairs(dadosPredio.powerConsumers) do pc = pc + 1 end
             end
             Registrador.Debug(string.format(
-                "Atualizados %d/%d consumidores no prédio %s (energizado: %s)",
+                "Atualizados %d/%d consumidores no predio %s (energizado: %s)",
                 quantidadeAtualizados,
                 pc,
                 dadosPredio.id,
@@ -923,7 +923,7 @@ function Distribuidor.Update(tempoAtual)
         
         if Distribuidor.DEBUG or estatisticas.stateChanges > 0 then
             Registrador.Info(string.format(
-                "Atualização da distribuição de energia: %d prédios (%d energizados, %d sem energia), %d mudanças de estado, %d consumidores atualizados",
+                "Atualizacao da distribuicao de energia: %d predios (%d energizados, %d sem energia), %d mudancas de estado, %d consumidores atualizados",
                 estatisticas.totalBuildings,
                 estatisticas.LKS_EletricidadeConstrucao,
                 estatisticas.unLKS_EletricidadeConstrucao,
@@ -948,7 +948,7 @@ function Distribuidor.ForceUpdate()
     local estatisticas = Distribuidor.UpdateAllBuildings(true)
     
     Registrador.Info(string.format(
-        "ForceUpdate concluído: %d prédios (%d energizados, %d sem energia), %d mudanças de estado, %d consumidores atualizados",
+        "ForceUpdate concluido: %d predios (%d energizados, %d sem energia), %d mudancas de estado, %d consumidores atualizados",
         estatisticas.totalBuildings,
         estatisticas.LKS_EletricidadeConstrucao,
         estatisticas.unLKS_EletricidadeConstrucao,
@@ -1024,7 +1024,7 @@ function Distribuidor.ForceUpdateBuilding(idPredio)
     -- Prédio ainda não está no estado. Enfileira para tentar novamente em vez de descartar silenciosamente.
     if not Distribuidor._retryQueue[idPredio] then
         Registrador.Warn(string.format(
-            "ForceUpdateBuilding: Prédio não encontrado: %s - enfileirado para tentar novamente (até 3x no EveryOneMinute)",
+            "ForceUpdateBuilding: Predio nao encontrado: %s - enfileirado para tentar novamente (ate 3x no EveryOneMinute)",
             idPredio), "Power")
         Distribuidor._retryQueue[idPredio] = 3
     end
@@ -1050,17 +1050,17 @@ function Distribuidor.ProcessRetryQueue()
     for idPredio, tentativasRestantes in pairs(fila) do
         if _tentarAtualizarPredio(idPredio, true) then
             Registrador.Info(string.format(
-                "ProcessRetryQueue: Prédio %s restaurado - ForceUpdate adiado aplicado", idPredio), "Power")
+                "ProcessRetryQueue: Predio %s restaurado - ForceUpdate adiado aplicado", idPredio), "Power")
             table.insert(paraRemover, idPredio)
         else
             local restantes = tentativasRestantes - 1
             if restantes <= 0 then
                 Registrador.Warn(string.format(
-                    "ProcessRetryQueue: Prédio %s ainda não encontrado após todas as tentativas - abandonando", idPredio), "Power")
+                    "ProcessRetryQueue: Predio %s ainda nao encontrado apos todas as tentativas - abandonando", idPredio), "Power")
                 table.insert(paraRemover, idPredio)
             else
                 Registrador.Debug(string.format(
-                    "ProcessRetryQueue: Prédio %s não encontrado, %d tentativas restantes", idPredio, restantes), "Power")
+                    "ProcessRetryQueue: Predio %s nao encontrado, %d tentativas restantes", idPredio, restantes), "Power")
                 Distribuidor._retryQueue[idPredio] = restantes
             end
         end
@@ -1124,7 +1124,7 @@ function Distribuidor.PrintStatus()
         end
         
         Registrador.Info(string.format(
-            "  Prédio %s: %s (%d consumidores, %.1f de consumo)",
+            "  Predio %s: %s (%d consumidores, %.1f de consumo)",
             dadosPredio.id,
             estaEnergizado and "ENERGIZADO" or "SEM ENERGIA",
             contagemConsumidores,

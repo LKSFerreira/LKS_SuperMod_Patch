@@ -225,7 +225,7 @@ local function RestaurarConstrucaoDosDadosPool(identificadorPoolConstrucao, gere
 
     if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Logger then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-            "[ActivateGenerator] %s: Reconstrução efetuada do prédio %s a partir dos metadados elétricos%s",
+            "[ActivateGenerator] %s: Reconstrucao efetuada do predio %s a partir dos metadados eletricos%s",
             tostring(motivo or "update"),
             tostring(identificadorPoolConstrucao),
             dadosConstrucao.boundingBox and " com caixa delimitadora integrada" or ""
@@ -355,7 +355,7 @@ local function GarantirEstadoConstrucao(identificadorPoolConstrucao, gerador, mo
     if xAncora ~= nil and yAncora ~= nil and Scanner and Scanner.ScanBuilding then
         if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.Logger then
             LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-                "[ActivateGenerator] %s: Varrendo estrutura do prédio %s a partir da âncora (%d,%d,%d)",
+                "[ActivateGenerator] %s: Varrendo estrutura do predio %s a partir da ancora (%d,%d,%d)",
                 tostring(motivo or "update"), tostring(identificadorPoolConstrucao), xAncora, yAncora, zAncora or 0
             ), "Power")
         end

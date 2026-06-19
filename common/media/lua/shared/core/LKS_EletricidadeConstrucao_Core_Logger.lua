@@ -484,7 +484,7 @@ function LKS_EletricidadeConstrucao.Core.Logger.PrintConfig()
     
     LKS_EletricidadeConstrucao.Print("Categorias Habilitadas:")
     for categoria, habilitada in pairs(_categoriasHabilitadas) do
-        local nivel = _niveisCategorias[categoria] or "padrão"
+        local nivel = _niveisCategorias[categoria] or "padrao"
         LKS_EletricidadeConstrucao.Print("  " .. categoria .. ": " .. tostring(habilitada) .. " (nivel: " .. tostring(nivel) .. ")")
     end
 end

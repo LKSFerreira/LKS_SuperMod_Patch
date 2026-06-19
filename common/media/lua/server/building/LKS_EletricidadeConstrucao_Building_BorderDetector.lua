@@ -183,7 +183,7 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicio
         if construidoPeloJogador then
             local raioRecuo = raio or 30
             print(string.format(
-                "[LKS PATCH - BorderDetector] Construção criada pelo jogador %s em (%d,%d,%d) – usando raio fallback de %d",
+                "[LKS PATCH - BorderDetector] Construcao criada pelo jogador %s em (%d,%d,%d) – usando raio fallback de %d",
                 idConstrucao or "?", inicioX, inicioY, inicioZ, raioRecuo))
             local recuo = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
                 inicioX, inicioY, inicioZ, raioRecuo)

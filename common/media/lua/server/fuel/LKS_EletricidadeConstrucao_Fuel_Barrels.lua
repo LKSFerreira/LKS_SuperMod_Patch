@@ -377,7 +377,7 @@ function Barrels.AutoRefuel(dadosConstrucao)
     end
 
     Logger.Info("Fuel.Barrels", string.format(
-        "Abastecimento automático da construção %s: retirados %.1f L de %d barris para %d geradores",
+        "Abastecimento automatico da construcao %s: retirados %.1f L de %d barris para %d geradores",
         tostring(dadosConstrucao.id), combustivelRetirado, #barrels, #geradores))
 end
 

@@ -158,7 +158,7 @@ function LKS_EletricidadeConstrucao.Core.EventManager.TriggerEvent(nomeEvento, .
         
         if not sucesso then
             LKS_EletricidadeConstrucao.Core.Logger.Error(string.format(
-                "Falha técnica na execução do callback do evento %s: %s", 
+                "Falha tecnica na execucao do callback do evento %s: %s", 
                 nomeEvento, tostring(erro)), "Event")
         else
             contagemSucessos = contagemSucessos + 1
@@ -175,7 +175,7 @@ end
 function LKS_EletricidadeConstrucao.Core.EventManager.RegisterGameEvent(nomeEvento, manipulador)
     if not Events[nomeEvento] then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-            "RegisterGameEvent: O evento nativo '%s' não existe nesta VM Lua do jogo - pulando registro", 
+            "RegisterGameEvent: O evento nativo '%s' nao existe nesta VM Lua do jogo - pulando registro", 
             tostring(nomeEvento)), "Event")
         return false
     end
@@ -191,7 +191,7 @@ end
 function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterGameEvent(nomeEvento, manipulador)
     if not Events[nomeEvento] then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(string.format(
-            "UnregisterGameEvent: O evento nativo '%s' não existe - pulando desregistramento", 
+            "UnregisterGameEvent: O evento nativo '%s' nao existe - pulando desregistramento", 
             tostring(nomeEvento)), "Event")
         return false
     end

@@ -579,7 +579,7 @@ function LKS_EletricidadeConstrucao.Data.State.GetSummary(dadosEstado)
     end
     local estatisticas = dadosEstado.statistics or {}
     return string.format(
-        "Estado LKS_EletricidadeConstrucao v%s | Geradores:%d(%d ativos) Prédios:%d Consumidores:%d(%d ativos) Combustível:%.1f Funcionamento:%.1fh",
+        "Estado LKS_EletricidadeConstrucao v%s | Geradores:%d(%d ativos) Predios:%d Consumidores:%d(%d ativos) Combustivel:%.1f Funcionamento:%.1fh",
         dadosEstado.version or "unknown",
         estatisticas.totalGenerators or 0,
         estatisticas.activeGenerators or 0,

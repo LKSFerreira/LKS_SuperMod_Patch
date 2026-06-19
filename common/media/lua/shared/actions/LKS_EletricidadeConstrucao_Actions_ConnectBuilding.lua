@@ -346,7 +346,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
             identificadorConstrucao = identificadorConstrucaoExistente
             dadosConstrucao = dadosConstrucaoExistente
             LKS_EletricidadeConstrucao.Print(string.format(
-                "[ConnectBuilding] Reaproveitando construção existente %s para pegada física coincidente (consumidores: %d, consumo: %.1f)",
+                "[ConnectBuilding] Reaproveitando construcao existente %s para pegada fisica coincidente (consumidores: %d, consumo: %.1f)",
                 identificadorConstrucao, dadosConstrucao.totalConsumers or 0, dadosConstrucao.totalPowerDraw or 0))
         end
     end
@@ -380,7 +380,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
                 self.character:Say(string.format("Piscina cheia (%d/%d geradores)", tamanhoPool, maximoGeradores))
             end
             LKS_EletricidadeConstrucao.Warn(string.format(
-                "[ConnectBuilding] Limite de piscina atingido: %d/%d geradores na construção %s",
+                "[ConnectBuilding] Limite de piscina atingido: %d/%d geradores na construcao %s",
                 tamanhoPool, maximoGeradores, identificadorConstrucao))
             return true
         end

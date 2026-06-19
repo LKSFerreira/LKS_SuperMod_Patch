@@ -161,7 +161,7 @@ function Gerenciador.FindNearbyGenerators(dadosPredio, raio)
     end)
     
     Registrador.Debug("Power.Manager", string.format(
-        "FindNearbyGenerators: Encontrados %d geradores dentro de %d ladrilhos do prédio %s",
+        "FindNearbyGenerators: Encontrados %d geradores dentro de %d ladrilhos do predio %s",
         #geradoresProximos, raio, dadosPredio.id
     ))
     
@@ -256,7 +256,7 @@ function Gerenciador.ConnectGeneratorToBuilding(generator, buildingData, distanc
                             and LKS_EletricidadeConstrucao.Constants.BUILDING.MAX_GENERATORS_PER_BUILDING) or 10
     if not jaConectado and tamanhoPoolGeradores >= geradoresMaximo then
         Registrador.Warn("Power.Manager", string.format(
-            "ConnectGeneratorToBuilding: Limite de pool atingido (%d). Rejeitando gerador em (%d,%d,%d) para o prédio %s",
+            "ConnectGeneratorToBuilding: Limite de pool atingido (%d). Rejeitando gerador em (%d,%d,%d) para o predio %s",
             geradoresMaximo, gx, gy, gz, buildingData.id))
         return false
     end
@@ -313,7 +313,7 @@ function Gerenciador.ConnectGeneratorToBuilding(generator, buildingData, distanc
     end
 
     Registrador.Info("Power.Manager", string.format(
-        "Gerador conectado em (%d,%d,%d) ao prédio %s (distância: %.1f ladrilhos)",
+        "Gerador conectado em (%d,%d,%d) ao predio %s (distancia: %.1f ladrilhos)",
         gx, gy, gz, buildingData.id, distance
     ))
 
@@ -390,7 +390,7 @@ function Gerenciador.DisconnectGeneratorFromBuilding(idConexao)
     GerenciadorEstado.MarkDirty()
 
     Registrador.Info("Power.Manager", string.format(
-        "Gerador desconectado em (%d,%d,%d) do prédio %s",
+        "Gerador desconectado em (%d,%d,%d) do predio %s",
         conexao.generatorX, conexao.generatorY, conexao.generatorZ, conexao.buildingId
     ))
     
@@ -503,7 +503,7 @@ function Gerenciador.ValidateConnection(dadosConexao)
     
     if distancia > Gerenciador.MAX_POWER_RANGE then
         Registrador.Debug("Power.Manager", string.format(
-            "ValidateConnection: Distância muito grande (%.1f > %d) para conexão %s",
+            "ValidateConnection: Distancia muito grande (%.1f > %d) para conexao %s",
             distancia, Gerenciador.MAX_POWER_RANGE, dadosConexao.id
         ))
         return false
@@ -595,7 +595,7 @@ function Gerenciador.UpdateConnections()
     Gerenciador.lastUpdate = os.time()
     
     Registrador.Info("Power.Manager", string.format(
-        "UpdateConnections: Varredura concluída. Total de conexões: %d (novas: %d)",
+        "UpdateConnections: Varredura concluida. Total de conexoes: %d (novas: %d)",
         Gerenciador.GetConnectionCount(), novasConexoesContagem
     ))
 end
@@ -684,7 +684,7 @@ function Gerenciador.PrintConnections()
         local ativo = gerador and gerador:isActivated() or false
         
         Registrador.Info("Power.Manager", string.format(
-            "  %s: Gerador(%d,%d,%d) -> Prédio %s (%.1f ladrilhos) [%s]",
+            "  %s: Gerador(%d,%d,%d) -> Predio %s (%.1f ladrilhos) [%s]",
             idConexao,
             dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ,
             dadosConexao.buildingId,

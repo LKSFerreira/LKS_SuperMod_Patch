@@ -50,7 +50,7 @@ local function CMD_ListarGeradores(player, args)
     
     for _, dadosGerador in ipairs(geradores) do
         Logger.Info("Debug", string.format(
-            "  Gerador %s em (%d,%d,%d): %s, Combustível: %.1f%%, Carga: %.1f/%.1f, Eficiência: %.1f%%",
+            "  Gerador %s em (%d,%d,%d): %s, Combustivel: %.1f%%, Carga: %.1f/%.1f, Eficiencia: %.1f%%",
             dadosGerador.id,
             dadosGerador.x, dadosGerador.y, dadosGerador.z,
             dadosGerador.isActive and "LIGADO" or "DESLIGADO",
@@ -93,7 +93,7 @@ local function CMD_ListarConstrucoes(player, args)
         end
         
         Logger.Info("Debug", string.format(
-            "  Construção %s em (%d,%d,%d): %s, Consumidores: %d, Energia: %.1f, Geradores: %d",
+            "  Construcao %s em (%d,%d,%d): %s, Consumidores: %d, Energia: %.1f, Geradores: %d",
             dadosConstrucao.id,
             dadosConstrucao.centerX, dadosConstrucao.centerY, dadosConstrucao.z,
             dadosConstrucao.isPowered and "ENERGIZADA" or "SEM_ENERGIA",

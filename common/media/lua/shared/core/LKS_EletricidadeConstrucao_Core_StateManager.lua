@@ -212,7 +212,7 @@ local function HidratarGeradoresDoIndice()
     if geradoresRestaurados > 0 then
         _estaModificado = true
         LKS_EletricidadeConstrucao.Print(string.format(
-            "[StateManager] Restaurados %d gerador(es) a partir do índice de ModData", 
+            "[StateManager] Restaurados %d gerador(es) a partir do indice de ModData", 
             geradoresRestaurados))
     end
 
@@ -346,7 +346,7 @@ local function ExpurgarConstrucoesDuplicadas()
                 -- Remove a construção obsoleta do estado
                 LKS_EletricidadeConstrucao.Data.State.RemoveBuilding(_estado, identificadorObsoleto)
                 LKS_EletricidadeConstrucao.Print(string.format(
-                    "[StateManager.Purge] Removida construção duplicada obsoleta %s (duplicada de %s em %s)",
+                    "[StateManager.Purge] Removida construcao duplicada obsoleta %s (duplicada de %s em %s)",
                     identificadorObsoleto, entrada.canonical, chaveLocalizacao))
                 construcoesExpurgadas = construcoesExpurgadas + 1
             end
@@ -415,7 +415,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Load()
         LKS_EletricidadeConstrucao.Print("[StateManager.Load] Identificador de mundo indisponivel (boot inicial) - pulando validacao de isolamento")
     elseif identificadorMundoArmazenado and identificadorMundoArmazenado ~= identificadorMundoAtual then
         LKS_EletricidadeConstrucao.Warn(string.format(
-            "[StateManager.Load] Detectada inconsistência de mundo (salvo=%s, atual=%s) - limpando dados anteriores para este save",
+            "[StateManager.Load] Detectada inconsistencia de mundo (salvo=%s, atual=%s) - limpando dados anteriores para este save",
             tostring(identificadorMundoArmazenado), tostring(identificadorMundoAtual)))
         dadosMod.state = nil
         dadosMod.worldId = identificadorMundoAtual
@@ -506,7 +506,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
             local geradoresRestaurados = HidratarGeradoresDoIndice()
             if geradoresRestaurados > 0 then
                 LKS_EletricidadeConstrucao.Print(string.format(
-                    "[StateManager.ConfirmAndLoadState] Recuperados %d geradores a partir do índice ModData", 
+                    "[StateManager.ConfirmAndLoadState] Recuperados %d geradores a partir do indice ModData", 
                     geradoresRestaurados))
             end
         end
@@ -514,7 +514,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
     end
 
     LKS_EletricidadeConstrucao.Print(string.format(
-        "[StateManager.ConfirmAndLoadState] Finalizado: %d gerador(es), %d construções, estado=%s",
+        "[StateManager.ConfirmAndLoadState] Finalizado: %d gerador(es), %d construcoes, estado=%s",
         ContarGeradores(), ContarConstrucoes(), _estadoCarregamentoDados))
     LKS_EletricidadeConstrucao.Debug("[StateManager] " .. LKS_EletricidadeConstrucao.Data.State.GetSummary(_estado))
 

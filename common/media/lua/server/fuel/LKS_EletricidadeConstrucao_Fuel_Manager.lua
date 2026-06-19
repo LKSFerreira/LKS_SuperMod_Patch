@@ -863,7 +863,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(genera
                         elseif not dadosPredio then
                             -- Prédio não está no estado - BFS de pool não consegue atravessar; causará divisão de pool
                             Logger.Warn(string.format(
-                                "[PoolBFS] gen=%s: prédio %s não está no estado - travessia de pool interrompida",
+                                "[PoolBFS] gen=%s: predio %s nao esta no estado - travessia de pool interrompida",
                                 geradorAtual.id, idPredio), "Fuel")
                         end
                     end

@@ -156,7 +156,7 @@ local function LimparEstadoGeradorRemovido(gerador)
                 end
                 if LKS_EletricidadeConstrucao.Core.Logger then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                        "[ConsumerEvents] Removido link órfão do gerador %s na construção %s",
+                        "[ConsumerEvents] Removido link orfao do gerador %s na construcao %s",
                         chaveGerador, identificadorConstrucao), "Building")
                 end
             end
@@ -258,7 +258,7 @@ local function TratarGeradorPrestesASerRemovido(gerador)
                             
                             if LKS_EletricidadeConstrucao.Core.Logger then
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ConsumerEvents] Posse da malha elétrica transferida: %s -> %s para a construção %s",
+                                    "[ConsumerEvents] Posse da malha eletrica transferida: %s -> %s para a construcao %s",
                                     chavePropria, chave, identificadorPoolConstrucao), "Building")
                             end
                             break

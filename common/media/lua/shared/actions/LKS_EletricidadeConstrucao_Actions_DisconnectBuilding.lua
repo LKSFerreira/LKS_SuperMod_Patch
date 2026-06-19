@@ -190,7 +190,7 @@ function LKS_EletricidadeConstrucao_DisconnectBuilding:complete()
                                             objetoVizinho:transmitModData()
                                         end
                                         LKS_EletricidadeConstrucao.Print(string.format(
-                                            "[DisconnectBuilding] Posse da malha elétrica transferida de %s para %s",
+                                            "[DisconnectBuilding] Posse da malha eletrica transferida de %s para %s",
                                             chaveGerador, chave))
                                         break
                                     end

@@ -925,7 +925,7 @@ local function AoReceberComandoCliente(module, command, player, args)
             tostring(args and args.buildingID), tostring(args and args.linking == true)))
         if not args or not args.bx then
             RejeitarRequisicao(player, command, "coordenadas do barril ausentes", {
-                message = "Requisição de barril inválida",
+                message = "Requisicao de barril invalida",
             })
             return
         end
@@ -1018,11 +1018,11 @@ local function AoReceberComandoCliente(module, command, player, args)
                     string.format("Nenhuma construcao associada para o barril (%d,%d,%d); construcoesNoEstado=%d",
                         args.bx, args.by, args.bz, totalConstrucoes),
                     "ServerCommands")
-                RejeitarRequisicao(player, command, "construção não encontrada para o link do barril", {
+                RejeitarRequisicao(player, command, "construcao nao encontrada para o link do barril", {
                     bx = args.bx,
                     by = args.by,
                     bz = args.bz,
-                    message = "Nenhuma rede de gerador válida encontrada para este barril",
+                    message = "Nenhuma rede de gerador valida encontrada para este barril",
                 })
                 return
             end

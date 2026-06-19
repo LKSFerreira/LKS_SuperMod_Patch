@@ -297,7 +297,7 @@ local function expurgarDuplicatasPredioObsoletas(gerenciadorEstado, mapeamentoId
                 gerenciadorEstado.MarkDirty()
                 if mapeamentoIds then mapeamentoIds[idPredio] = nil; mapeamentoIds[correspondente] = true end
                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                    "[ChunkTracker] B-104: removido prédio obsoleto %s (mesclado em %s)",
+                    "[ChunkTracker] B-104: removido predio obsoleto %s (mesclado em %s)",
                     idPredio, correspondente), "Fuel")
             end
         end
@@ -499,7 +499,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
         end
         if referenciasCruzadasCorrigidas > 0 then
             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                "[StartupXref] Corrigidas %d referência(s) obsoleta(s) de prédios via referência cruzada", referenciasCruzadasCorrigidas), "Fuel")
+                "[StartupXref] Corrigidas %d referencia(s) obsoleta(s) de predios via referencia cruzada", referenciasCruzadasCorrigidas), "Fuel")
         end
 
         -- Reconstrói idsPredios a partir do estado do gerador (potencialmente corrigido)
@@ -611,7 +611,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
                         if coordX then interruptorX, interruptorY, interruptorZ = tonumber(coordX), tonumber(coordY), tonumber(coordZStr or "0") end
                         if interruptorX and interruptorY then
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] StartupRescan: prédio %s possui 0 consumidores, reescaneando a partir de (%d,%d,%d)",
+                                "[ChunkTracker] StartupRescan: predio %s possui 0 consumidores, reescaneando a partir de (%d,%d,%d)",
                                 idPredio, interruptorX, interruptorY, interruptorZ or 0), "Fuel")
                             pcall(function()
                                 Escaneador.ScanBuilding(interruptorX, interruptorY, interruptorZ or 0, idPredio)
@@ -650,7 +650,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
         end
 
         LKS_EletricidadeConstrucao.Core.Logger.Info(
-            "StartupGeneratorRefresh: ForceUpdateBuilding completo para " .. totalPredios .. " prédio(s)",
+            "StartupGeneratorRefresh: ForceUpdateBuilding completo para " .. totalPredios .. " predio(s)",
             "Fuel")
     end
     Events.OnTick.Add(funcaoTimer)
@@ -754,7 +754,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                     local switchZ = modDataObj.LKS_EletricidadeConstrucao_PoolData.z or coordZ
                     local idCanonico = LKS_EletricidadeConstrucao.Data.Building.MakeId(switchX, switchY, switchZ)
                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                        "[ChunkTracker] Migração de ID: %s → %s (construído por jogador, a partir de LKS_EletricidadeConstrucao_PoolData)",
+                        "[ChunkTracker] Migracao de ID: %s → %s (construido por jogador, a partir de LKS_EletricidadeConstrucao_PoolData)",
                         idPoolPredio, idCanonico), "Fuel")
                     -- Migra a entrada existente do GlobalModData (se houver) para a chave canônica
                     local entradaAntiga = gerenciadorEstado.GetBuilding(idPoolPredio)
@@ -803,7 +803,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                                     and gerenciadorEstado.GetBuilding(idPredioExistente) then
                                 canonicoEncontrado = idPredioExistente
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ChunkTracker] B-109 Recuperação Canônica: %s → %s (a partir de dadosGerador.connectedBuildings)",
+                                    "[ChunkTracker] B-109 Recuperacao Canonica: %s → %s (a partir de dadosGerador.connectedBuildings)",
                                     idPoolPredio, idPredioExistente), "Fuel")
                                 break
                             end
@@ -817,7 +817,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                             -- A entrada obsoleta foi renomeada para canônica por migração de ID anterior
                             canonicoEncontrado = entradaObsoleta.id
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] B-109 Recuperação Canônica: %s → %s (entrada obsoleta foi migrada)",
+                                "[ChunkTracker] B-109 Recuperacao Canonica: %s → %s (entrada obsoleta foi migrada)",
                                 idPoolPredio, canonicoEncontrado), "Fuel")
                         end
                     end
@@ -846,7 +846,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                                     if chavesGenComMesmoIdObsoleto[chaveGenC] then
                                         canonicoEncontrado = idPredioC
                                         LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                            "[ChunkTracker] B-109 Recuperação Canônica: %s → %s (correspondência entre chunks via gerador %s)",
+                                            "[ChunkTracker] B-109 Recuperacao Canonica: %s → %s (correspondencia entre chunks via gerador %s)",
                                             idPoolPredio, idPredioC, chaveGenC), "Fuel")
                                         break
                                     end
@@ -960,7 +960,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                             for _ in pairs(predioObsoleto.powerConsumers) do totalConsumidoresAntes = totalConsumidoresAntes + 1 end
                         end
                         LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                            "[ChunkTracker] B-111: Criado canônico %s com %d consumidores a partir do obsoleto %s",
+                            "[ChunkTracker] B-111: Criado canonico %s com %d consumidores a partir do obsoleto %s",
                             idPoolPredio, totalConsumidoresAntigos, idPredioOriginal), "Fuel")
                     end
                 end
@@ -981,7 +981,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                 -- disparando uma varredura completa assim que o mundo estiver estável.
                 if precisaEscanear and gerenciadorEstado.IsStateLoaded and not gerenciadorEstado.IsStateLoaded() then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                        "[ChunkTracker] Estado pendente – adiando varredura para %s (ConfirmAndLoadState fornecerá os dados completos)",
+                        "[ChunkTracker] Estado pendente – adiando varredura para %s (ConfirmAndLoadState fornecera os dados completos)",
                         idPoolPredio), "Fuel")
                     if not dadosPredio then
                         -- B-104: Decodifica a origem do prédio a partir do ID canônico em vez de
@@ -1074,7 +1074,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                             local idCanonicoDerivado = LKS_EletricidadeConstrucao.Data.Building.MakeId(switchX, switchY, switchZ)
                             if ehIdObsoleto and idCanonicoDerivado ~= idPoolPredio then
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ChunkTracker] Migração LS: gerador=%s obsoleto=%s → canônico=%s",
+                                    "[ChunkTracker] Migracao LS: gerador=%s obsoleto=%s → canonico=%s",
                                     idGerador, idPoolPredio, idCanonicoDerivado), "Fuel")
 
                                 -- Grava o ID canônico no IsoObject
@@ -1234,14 +1234,14 @@ tentarRestaurarDadosModIso = function(quadrado)
 
                         if switchX2 and Escaneador and Escaneador.ScanBuilding and not jaPossuiConsumidores then
                             LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                "[ChunkTracker] Restauração V1 (construído por jogador): escaneando %s a partir do interruptor salvo (%d,%d,%d)",
+                                "[ChunkTracker] Restauracao V1 (construido por jogador): escaneando %s a partir do interruptor salvo (%d,%d,%d)",
                                 idPoolPredio, switchX2, switchY2, switchZ2), "Fuel")
                             local sucesso2 = pcall(function()
                                 dadosPredio = Escaneador.ScanBuilding(switchX2, switchY2, switchZ2, idPoolPredio)
                             end)
                             if dadosPredio then
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(string.format(
-                                    "[ChunkTracker] Restauração V1 (construído por jogador): varredura concluída para %s (%d consumidores)",
+                                    "[ChunkTracker] Restauracao V1 (construido por jogador): varredura concluida para %s (%d consumidores)",
                                     idPoolPredio, dadosPredio.powerConsumers and #dadosPredio.powerConsumers or 0), "Fuel")
                             end
                         elseif not dadosPredio then
@@ -1850,7 +1850,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                         end
                         if tabelaPossuiEntradas(_reescaneamentosGeradorPendentes) then -- B-106
                             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                "[ChunkTracker] Repetição lote: geradores continuam pendentes após repetição (chunks distantes?)", "Fuel")
+                                "[ChunkTracker] Repeticao lote: geradores continuam pendentes apos repeticao (chunks distantes?)", "Fuel")
                         end
                     end
                     Events.OnTick.Add(funcaoRepeticao)
