@@ -20,19 +20,19 @@ O tipo **Indução** engloba tanto os sprites vanilla modernos (selecionados man
 
 ### Descrição
 
-Fogão residencial padrão encontrado na maioria das casas. Funciona com gás encanado (antes do corte de utilidades) ou botijão de gás (após o corte). Possui bocas de fogão e forno embutido. É o tipo mais versátil e comum no mapa.
+Fogão residencial padrão encontrado na maioria das casas. Funciona com propano encanado (antes do corte de utilidades) ou botijão de propano (após o corte). Possui bocas de fogão e forno embutido. É o tipo mais versátil e comum no mapa.
 
 ### Fonte de combustível
 
-#### Gás encanado (pré-corte)
+#### Propano encanado (pré-corte)
 
 - Funciona da mesma forma que a **água encanada** no vanilla: fornecimento ilimitado até o dia de corte de utilidades (padrão: 30 dias in-game, configurável por sandbox).
-- **Implementação técnica**: Reaproveitar a mesma lógica de `hasWaterPiped()` / `getFluidAmount()` que já existe para água. O gás encanado é conceitualmente idêntico — um recurso de infraestrutura com corte programado.
-- Após o corte do gás encanado, o jogador precisa de uma fonte alternativa.
+- **Implementação técnica**: Reaproveitar a mesma lógica de `hasWaterPiped()` / `getFluidAmount()` que já existe para água. O propano encanado é conceitualmente idêntico — um recurso de infraestrutura com corte programado.
+- Após o corte do propano encanado, o jogador precisa de uma fonte alternativa.
 
-#### Botijão de gás (pós-corte)
+#### Botijão de propano (pós-corte)
 
-Após o corte do gás encanado, o jogador precisa de botijões como fonte alternativa. Existem **3 tipos** com mecânicas de transporte distintas:
+Após o corte do propano encanado, o jogador precisa de botijões como fonte alternativa. Existem **3 tipos** com mecânicas de transporte distintas:
 
 ##### Botijão Vanilla (Pequeno / Portátil)
 
@@ -107,8 +107,8 @@ Após o corte do gás encanado, o jogador precisa de botijões como fonte altern
 
 - O jogo permite criação de animais (farming).
 - Um **biodigestor** é uma construção craftável que converte resíduos orgânicos (esterco de animais, restos de comida) em biogás.
-- O biogás é armazenado em um reservatório e pode ser conectado ao encanamento de gás da construção, restaurando o fornecimento de gás encanado pós-corte.
-- Funciona de forma análoga à caixa d'água no telhado: o biodigestor produz gás → o gás flui para os aparelhos conectados via tubulação.
+- O biogás é armazenado em um reservatório e pode ser conectado ao encanamento da construção, restaurando o fornecimento de propano encanado pós-corte.
+- Funciona de forma análoga à caixa d'água no telhado: o biodigestor produz biogás → o combustível flui para os aparelhos conectados via tubulação.
 - **Requisitos de craft**: Farming + Carpintaria (níveis a definir).
 - **Escopo**: Mecânica complexa que requer documentação e arquivo de design próprio. Não será implementada junto com os fogões — será um projeto separado para garantir qualidade e funcionalidade.
 
@@ -359,7 +359,7 @@ Quando o sistema de qualidade de comida for implementado:
 
 | Mecânica | Origem | Reutilização proposta |
 |---|---|---|
-| Corte de utilidades (água/luz) | Vanilla PZ | Modelo para corte de gás encanado |
+| Corte de utilidades (água/luz) | Vanilla PZ | Modelo para corte de propano encanado |
 | Encanamento via coletor de chuva | Vanilla PZ | Modelo para conexão de botijão/biodigestor |
 | Toxicidade de geradores em ambiente fechado | Vanilla PZ | Gases do forno a lenha em recinto fechado |
 | Fogueira e combustível sólido | Vanilla PZ | Mecânica de combustível do forno antigo |
@@ -453,7 +453,7 @@ A limpeza **não** causa incêndio nem afeta funcionamento — apenas impacta a 
 | Fase | Escopo | Dependências |
 |---|---|---|
 | **Fase 1** | Recategorização de sprites (mapear fogões existentes nos 3 tipos) | Pesquisa de tilesets |
-| **Fase 2** | Fogão convencional com gás encanado (pré-corte funcional) | Mecânica de utilidades |
+| **Fase 2** | Fogão convencional com propano encanado (pré-corte funcional) | Mecânica de utilidades |
 | **Fase 3** | Fogão antigo com combustível sólido | Pesquisa vanilla |
 | **Fase 4** | Fogão de indução com eletricidade obrigatória | LKS_EletricidadeConstrucao |
 | **Fase 5** | Botijão de gás pós-corte | Pesquisa de items |

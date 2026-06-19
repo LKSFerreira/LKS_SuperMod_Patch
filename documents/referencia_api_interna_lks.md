@@ -28,7 +28,7 @@
 
 ### shared/
 - [`0_LKS_EletricidadeConstrucao_Init.lua`](#shared0lkseletricidadeconstrucaoinitlua) (1 funções)
-- [`LKS_Cooking_GasSystem.lua`](#sharedlkscookinggassystemlua) (6 funções)
+- [`LKS_Cooking_PropanoSystem.lua`](#sharedlkscookingpropanosystemlua) (6 funções)
 - [`LKS_Cooking_Quality.lua`](#sharedlkscookingqualitylua) (6 funções)
 - [`LKS_Cooking_SpriteClassification.lua`](#sharedlkscookingspriteclassificationlua) (2 funções)
 - [`LKS_EletricidadeConstrucao_Config.lua`](#sharedlkseletricidadeconstrucaoconfiglua) (6 funções)
@@ -4200,11 +4200,11 @@
 
 ---
 
-## `shared/LKS_Cooking_GasSystem.lua`
+## `shared/LKS_Cooking_PropanoSystem.lua`
 
 ### 🔒 `carregarConfiguracaoSandbox()` <sub>L34</sub>
 
-> Carrega configuração de gás do sandbox options.
+> Carrega configuração de propano do sandbox options.
 
 **Retorno:**
 - `table` `Configuração` — atualizada com valores do sandbox.
@@ -4229,17 +4229,17 @@
 
 ---
 
-### 🔒 `gasEncanadoDisponivel()` <sub>L78</sub>
+### 🔒 `propanoEncanadoDisponivel()` <sub>L78</sub>
 
-> Verifica se o gás encanado está disponível no momento atual do jogo.
+> Verifica se o propano encanado está disponível no momento atual do jogo.
 > A lógica segue o mesmo princípio da água encanada:
-> - Antes do dia de corte: gás disponível (ilimitado)
-> - Após o dia de corte: gás cortado (requer botijão)
-> - Se diaCorteGas == -1: usa o mesmo dia da água
-> - Se diaCorteGas == 0: gás infinito (nunca corta)
+> - Antes do dia de corte: propano disponível (ilimitado)
+> - Após o dia de corte: propano cortado (requer botijão)
+> - Se diaCortePropano == -1: usa o mesmo dia da água
+> - Se diaCortePropano == 0: propano infinito (nunca corta)
 
 **Retorno:**
-- `boolean` `True` — se o gás encanado está disponível.
+- `boolean` `True` — se o propano encanado está disponível.
 
 ---
 
@@ -4262,8 +4262,8 @@
 
 > Verifica todas as fontes de energia possíveis para um fogão.
 > Para fogão convencional, verifica na ordem:
-> 1. Gás encanado (pré-corte) + eletricidade (acendedor automático)
-> 2. Gás encanado (pré-corte) + fonte de calor manual
+> 1. Propano encanado (pré-corte) + eletricidade (acendedor automático)
+> 2. Propano encanado (pré-corte) + fonte de calor manual
 > 3. Botijão conectado + eletricidade (acendedor automático)
 > 4. Botijão conectado + fonte de calor manual
 > Para indução, verifica apenas eletricidade (isPowered).

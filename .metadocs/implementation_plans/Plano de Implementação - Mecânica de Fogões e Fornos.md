@@ -2,7 +2,7 @@
 
 ## Summary
 
-Implementação completa da mecânica de fogões recategorizada em 3 tipos (Convencional, Antigo, Indução) com diferenciação de combustível, ignição, qualidade de comida e interação com o mundo. O fogão de indução é um item novo exclusivo do mod (craftável), colocável em cima de balcões. Sprites vanilla de fogões modernos também serão reclassificados como indução via tabela de sprites (seleção manual futura) — a **resistência elétrica é apenas uma variante visual do tipo Indução**, compartilhando exatamente a mesma mecânica (só eletricidade, só panela de metal, qualidade superior). O fogão convencional utiliza gás encanado (pré-corte) e botijões (pós-corte). O fogão antigo (`IsoFireplace`) já funciona no vanilla com combustível sólido.
+Implementação completa da mecânica de fogões recategorizada em 3 tipos (Convencional, Antigo, Indução) com diferenciação de combustível, ignição, qualidade de comida e interação com o mundo. O fogão de indução é um item novo exclusivo do mod (craftável), colocável em cima de balcões. Sprites vanilla de fogões modernos também serão reclassificados como indução via tabela de sprites (seleção manual futura) — a **resistência elétrica é apenas uma variante visual do tipo Indução**, compartilhando exatamente a mesma mecânica (só eletricidade, só panela de metal, qualidade superior). O fogão convencional utiliza propano encanado (pré-corte) e botijões (pós-corte). O fogão antigo (`IsoFireplace`) já funciona no vanilla com combustível sólido.
 
 **Referências**:
 - Design: `documents/mecanica_fogoes_fornos.md`
@@ -15,7 +15,7 @@ Implementação completa da mecânica de fogões recategorizada em 3 tipos (Conv
 
 ### Objetivo
 
-Criar a tabela que mapeia sprites vanilla de `IsoStove` para os tipos do mod. Sprites modernos selecionados manualmente serão reclassificados como **indução** — a "resistência elétrica" não é um tipo separado, é apenas uma variante visual que usa **exatamente a mesma mecânica** do tipo Indução (só eletricidade, só panela de metal, colocável em balcão). Sprites não mapeados permanecem como convencional (gás).
+Criar a tabela que mapeia sprites vanilla de `IsoStove` para os tipos do mod. Sprites modernos selecionados manualmente serão reclassificados como **indução** — a "resistência elétrica" não é um tipo separado, é apenas uma variante visual que usa **exatamente a mesma mecânica** do tipo Indução (só eletricidade, só panela de metal, colocável em balcão). Sprites não mapeados permanecem como convencional (propano).
 
 ### Proposed Changes
 
@@ -24,7 +24,7 @@ Criar a tabela que mapeia sprites vanilla de `IsoStove` para os tipos do mod. Sp
 ```lua
 --- Mapeamento de sprites vanilla para tipos de fogão do mod.
 --- Sprites listados aqui são reclassificados de "convencional" (padrão) para indução.
---- Sprites NÃO listados permanecem como Convencional (gás).
+--- Sprites NÃO listados permanecem como Convencional (propano).
 LKS_Cooking_TiposPorSprite = {
     -- Fogão de indução (sprites vanilla modernos — seleção manual futura)
     -- ["appliances_cooking_01_XX"] = "inducao",
@@ -40,15 +40,15 @@ LKS_Cooking_TipoPadrao = "convencional"
 
 - Ao processar um `IsoStove`, consultar `LKS_Cooking_TiposPorSprite` usando o nome do sprite.
 - Se sprite mapeado como `"inducao"` → aplicar mecânica de indução (só eletricidade, só metal).
-- Se não mapeado → tipo convencional (gás).
+- Se não mapeado → tipo convencional (propano).
 
 ---
 
-## Fase 2 — Fogão Convencional com Gás Encanado
+## Fase 2 — Fogão Convencional com Propano Encanado
 
 ### Objetivo
 
-Fazer os fogões `IsoStove` existentes no mapa funcionarem com **gás encanado** (pré-corte de utilidades) como fonte de combustível primária, em vez de depender exclusivamente de eletricidade. Após o corte, o fogão convencional requer botijão (Fase 5) ou fonte de calor manual.
+Fazer os fogões `IsoStove` existentes no mapa funcionarem com **propano encanado** (pré-corte de utilidades) como fonte de combustível primária, em vez de depender exclusivamente de eletricidade. Após o corte, o fogão convencional requer botijão (Fase 5) ou fonte de calor manual.
 
 ### Proposed Changes
 
@@ -56,27 +56,27 @@ Fazer os fogões `IsoStove` existentes no mapa funcionarem com **gás encanado**
 
 1. **Refatorar verificação de energia**:
    - Atualmente o driver verifica apenas `isPowered()` (eletricidade).
-   - Adicionar lógica de **fonte de combustível múltipla**: gás encanado OU eletricidade OU botijão conectado.
+   - Adicionar lógica de **fonte de combustível múltipla**: propano encanado OU eletricidade OU botijão conectado.
    - Criar função `verificarFonteEnergia(objetoEletrico)`:
      ```lua
-     -- Retorna: { tipo = "gas_encanado"|"eletricidade"|"botijao"|nil, disponivel = boolean }
+     -- Retorna: { tipo = "propano_encanado"|"eletricidade"|"botijao"|nil, disponivel = boolean }
      ```
 
-2. **Implementar check de gás encanado**:
+2. **Implementar check de propano encanado**:
    - Reaproveitar a lógica de `hasWaterPiped()` / corte de utilidades do vanilla.
-   - Verificar se o dia de jogo atual é anterior ao dia de corte de gás (sandbox option nova).
-   - Se gás encanado disponível → fogão funciona sem eletricidade.
+   - Verificar se o dia de jogo atual é anterior ao dia de corte de propano (sandbox option nova).
+   - Se propano encanado disponível → fogão funciona sem eletricidade.
 
 3. **Adaptar menu de contexto**:
-   - Se tem gás encanado: mostrar opções de Ligar/Desligar normalmente.
-   - Se não tem gás encanado E não tem eletricidade E não tem botijão: mostrar opção desabilitada com tooltip explicativo.
+   - Se tem propano encanado: mostrar opções de Ligar/Desligar normalmente.
+   - Se não tem propano encanado E não tem eletricidade E não tem botijão: mostrar opção desabilitada com tooltip explicativo.
    - Adicionar verificação de **fonte de calor manual** no inventário do jogador quando não há acendedor elétrico (pós-corte de eletricidade).
 
-#### [NEW] `common/media/lua/shared/LKS_GasEncanado_Config.lua`
+#### [NEW] `common/media/lua/shared/LKS_PropanoEncanado_Config.lua`
 
-- Definir constantes e sandbox options para o sistema de gás:
-  - `GasShutoffDay` — dia de corte do gás encanado (padrão: mesmo dia da água ou configurável separado)
-  - `GasEnabled` — flag master para ativar/desativar mecânica de gás
+- Definir constantes e sandbox options para o sistema de propano:
+  - `GasShutoffDay` — dia de corte do propano encanado (padrão: mesmo dia da água ou configurável separado)
+  - `GasEnabled` — flag master para ativar/desativar mecânica de propano
 - Manter alinhamento com o padrão de configuração existente em `LKS_EletricidadeConstrucao_Config.lua`.
 
 #### [MODIFY] `42.15/sandbox-options.txt` (ou equivalente)
@@ -87,7 +87,7 @@ Fazer os fogões `IsoStove` existentes no mapa funcionarem com **gás encanado**
 
 #### [MODIFY] `common/media/lua/shared/Translate/PTBR/IG_UI.json` e `EN/IG_UI.json`
 
-- Chaves de tradução para tooltips de gás:
+- Chaves de tradução para tooltips de propano:
   - `IGUI_LKS_GasEncanadoDisponivel`
   - `IGUI_LKS_GasEncanadoCortado`
   - `IGUI_LKS_RequerFonteCalor`
@@ -97,7 +97,7 @@ Fazer os fogões `IsoStove` existentes no mapa funcionarem com **gás encanado**
 
 ### Ignição — Verificação de Fonte de Calor
 
-Quando não há eletricidade (acendedor piezoelétrico indisponível), o jogador precisa de uma fonte de calor para acender o fogão a gás:
+Quando não há eletricidade (acendedor piezoelétrico indisponível), o jogador precisa de uma fonte de calor para acender o fogão a propano:
 
 ```lua
 --- Verifica se o jogador possui qualquer item com tag START_FIRE ou tipo Lighter/Matches.
@@ -112,10 +112,10 @@ end
 
 ### Regras de negócio
 
-- Gás encanado ativo + eletricidade ativa → acendedor automático (sem consumir item)
-- Gás encanado ativo + sem eletricidade → requer fonte de calor manual (consome 1 uso)
-- Sem gás encanado + sem botijão → fogão **não funciona** (independente de eletricidade)
-- Eletricidade sozinha (sem gás/botijão) → fogão **não funciona** (exceto se for indução)
+- Propano encanado ativo + eletricidade ativa → acendedor automático (sem consumir item)
+- Propano encanado ativo + sem eletricidade → requer fonte de calor manual (consome 1 uso)
+- Sem propano encanado + sem botijão → fogão **não funciona** (independente de eletricidade)
+- Eletricidade sozinha (sem propano/botijão) → fogão **não funciona** (exceto se for indução)
 
 ---
 
@@ -558,14 +558,14 @@ python tools/gerar_luarc.py
 
 **Fase 1B (Classificação de Sprites)**:
 - Fogão com sprite mapeado como "inducao": comporta-se como indução (só eletricidade, só panela metal)
-- Fogão com sprite NÃO mapeado: comporta-se como convencional (gás)
+- Fogão com sprite NÃO mapeado: comporta-se como convencional (propano)
 - Confirmar que resistência elétrica = indução (mesma mecânica, sprite diferente)
 
-**Fase 2 (Gás encanado)**:
-- Mundo novo, dia 1: fogão convencional funciona sem gerador (gás encanado)
-- Avançar para dia 31+: fogão para de funcionar (gás cortado)
-- Ter isqueiro no inventário + gás: fogão liga com consumo do isqueiro
-- Sem isqueiro + sem eletricidade + com gás: fogão não liga
+**Fase 2 (Propano encanado)**:
+- Mundo novo, dia 1: fogão convencional funciona sem gerador (propano encanado)
+- Avançar para dia 31+: fogão para de funcionar (propano cortado)
+- Ter isqueiro no inventário + propano: fogão liga com consumo do isqueiro
+- Sem isqueiro + sem eletricidade + com propano: fogão não liga
 
 **Fase 3 (Antigo)**:
 - Fogão a lenha com lenha + isqueiro: funciona
@@ -600,7 +600,7 @@ python tools/gerar_luarc.py
 - Sprites e assets finais serão criados manualmente pelo usuário. Placeholders usados durante implementação.
 - Sprites vanilla de fogões modernos serão reclassificados como "resistência elétrica" — seleção manual futura pelo usuário na tabela `LKS_Cooking_TiposPorSprite`.
 - Fogões de resistência elétrica e indução são colocáveis em balcão. O convencional e antigo são de chão.
-- O sistema de gás encanado reutiliza a mesma janela temporal de corte de utilidades do vanilla (água).
+- O sistema de propano encanado reutiliza a mesma janela temporal de corte de utilidades do vanilla (água).
 - `IsoFireplace` já possui mecânica funcional de combustível sólido — não reimplementamos, apenas adicionamos camada de qualidade.
 - O fogão de indução é um item novo que NÃO substitui nenhum `IsoStove` existente no mapa — é encontrado como loot ou craftado.
 - A qualidade de comida (Fase 6) é uma camada **sobre** o sistema vanilla — não substitui o ciclo Uncooked → Cooked → Burned do engine.
@@ -615,7 +615,7 @@ python tools/gerar_luarc.py
 | Passo | Fase | Dependência |
 |---|---|---|
 | 1 | Fase 1B — Tabela de classificação de sprites (Resistência Elétrica) | Nenhuma |
-| 2 | Fase 2 — Gás encanado + ignição manual | Nenhuma |
+| 2 | Fase 2 — Propano encanado + ignição manual | Nenhuma |
 | 3 | Fase 3 — IsoFireplace + chance de queimar | Fase 2 (compartilha lógica de fonte de calor) |
 | 4 | Fase 4 — Item indução + craft + colocação em balcão | Fase 1B (compartilha lógica de tipo por sprite) |
 | 5 | Fase 5 — Botijões + instalação + vazamento | Fase 2 (integra no check de combustível) |

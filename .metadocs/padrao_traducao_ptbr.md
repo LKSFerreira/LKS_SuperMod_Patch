@@ -63,3 +63,19 @@ Você é um especialista em localização de jogos eletrônicos para o Portuguê
 4. UNIDADES REAIS: Traduza variáveis lógicas de volume (como 'Units') para medidas imersivas do mundo real, como 'Litros' ou 'L'.
 5. FLUIDEZ DE HUD: Evite termos comerciais (como 'Consumidores' para aparelhos elétricos; use 'Aparelhos Conectados' ou 'Dispositivos'). Garanta que alertas e mensagens de erro possuam sintaxe natural em PT-BR, sem estruturas espelhadas do inglês.
 ```
+
+---
+
+## 4. Terminologia Técnica vs. Regionalização
+
+Alguns termos possuem significado ambíguo dependendo do contexto. A tabela abaixo define a convenção obrigatória para evitar confusão entre código e interface visível ao jogador.
+
+| Substância | No Código / Documentação | Na UI (PT-BR) | Na UI (EN) | Justificativa |
+|---|---|---|---|---|
+| Gás de cozinha (C₃H₈) | **Propano** | **Gás** | **Propane** | "Gás" em inglês pode ser confundido com Gasolina. "Propano" é cientificamente correto e inequívoco no código. Na UI PT-BR, "Gás" é natural para brasileiros (ex: "Botijão de Gás", não "Botijão de Propano"). |
+| Combustível veicular | **Petrol** / **Gasolina** | **Gasolina** | **Petrol** | Segue a convenção vanilla do PZ (`Fluid.Petrol`). |
+
+### Regra prática:
+- Variáveis, funções, comentários e documentação interna: **Propano** (`verificarPropanoDisponivel`, `nivelPropanoBotijao`)
+- Strings visíveis ao jogador em PT-BR: **Gás** (`"Botijão de Gás 15kg"`, `"Requer gás encanado"`)
+- Strings visíveis ao jogador em EN: **Propane** (`"Gas Tank 15kg"`, `"Requires piped propane"`)

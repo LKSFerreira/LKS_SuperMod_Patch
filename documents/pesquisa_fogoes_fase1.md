@@ -68,7 +68,7 @@ stove:getContainer():isPowered()
 
 ### Conclusão sobre IsoStove
 
-O `IsoStove` vanilla **requer eletricidade** (`isPowered()`). Não há mecânica nativa de gás encanado/botijão para `IsoStove`. Nossa mecânica de gás precisará **override** do check de `isPowered()` ou uma fonte alternativa de "poder".
+O `IsoStove` vanilla **requer eletricidade** (`isPowered()`). Não há mecânica nativa de propano encanado/botijão para `IsoStove`. Nossa mecânica de propano precisará **override** do check de `isPowered()` ou uma fonte alternativa de "poder".
 
 ---
 
@@ -293,7 +293,7 @@ O vanilla **não tem** sistema de qualidade progressiva (Normal/Boa/Excelente). 
 |---|---|---|
 | Botijão 15kg | Item novo (não-inventário) | Fase 5 |
 | Botijão 45kg | Item novo (arrasto) | Fase 5 |
-| Sistema de gás encanado | Lógica nova (baseada em água) | Fase 2 |
+| Sistema de propano encanado | Lógica nova (baseada em água) | Fase 2 |
 | Fogão de indução | Item craftável novo | Fase 4 |
 | Bobina | Item novo | Fase 4 |
 | Inversor de corrente | Item novo | Fase 9 |

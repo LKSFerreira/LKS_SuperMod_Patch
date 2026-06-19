@@ -126,6 +126,75 @@ Fonte vanilla: `media/lua/client/ISUI/ISDisassembleMenu.lua`
 | `square:getObjects()` | Retorna todos os `IsoObject` do tile. | Varredura estrutural do quadrado: fogão, parede, porta, interruptor, etc. | `ISBBQMenu.lua`: `local object2 = square:getObjects():get(index)` |
 | `getCell():getGridSquare(x, y, z)` | Busca um tile por coordenadas. | Scanner local 3x3, busca de vizinhos, adjacência ou varredura de construção. | `ISBBQMenu.lua`: `local square = getCell():getGridSquare(x, y, bbq:getZ())` |
 
+### ⚠️ Armadilhas conhecidas com objetos Java no Build 42
+
+| Armadilha | Sintoma | Causa | Solução |
+|---|---|---|---|
+| **Wrapper Java nulo** | `instanceof()` retorna true mas qualquer acesso a método crasha com "Object tried to call nil" | `getObjects():get(i)` pode retornar wrapper com referência interna nula (chunk descarregando, multi-tile destruído) | Validar com `pcall(function() objeto:getX() end)` ANTES de qualquer operação |
+| **Getter `isActivated()` não existe em IsoStove B42** | Crash ao chamar `objeto:isActivated()` | IsoStove expõe `Activated()` (getter) e `setActivated()` (setter). `isActivated` é nil. | Usar fallback: `if objeto.Activated then objeto:Activated() elseif objeto.isActivated then objeto:isActivated() end` |
+| **`addGeneratorPos` energiza o tile inteiro** | TV/rádio/lâmpada no mesmo tile do fogão a propano ficam "energizados" quando o fogão é aceso | `addGeneratorPos(x,y,z)` marca o tile como alimentado por gerador — afeta TODOS os objetos do tile, não só o fogão | Mitigação: na prática, fogões raramente compartilham tile com eletrônicos. Solução definitiva requer API Java para energizar por objeto (não existe em B42). Registrado como dívida técnica. |
+
+---
+
+## 4.1 Guia Definitivo: Energizar Objetos sem Rede Elétrica (B42)
+
+Este guia documenta TODA a investigação realizada para manter IsoStove aceso com propano sem rede elétrica. Aplicável a qualquer mecânica futura que precise energizar objetos individuais.
+
+### O Problema
+
+O motor Java do PZ verifica `ItemContainer:isPowered()` a cada frame para objetos com container (fogão, geladeira, micro-ondas). Se retorna `false`, o motor **desativa o objeto imediatamente**. Não existe forma Lua de prevenir isso.
+
+### APIs Investigadas e Resultado
+
+| API | Existe em IsoStove? | Funciona? | Notas |
+|-----|-------|----------|-------|
+| `setActivated(true)` | ✅ Sim | ❌ Motor desativa no frame seguinte | Setter existe mas engine sobreescreve |
+| `Toggle()` | ✅ Sim | ❌ Só funciona via `ISToggleStoveAction` (TimedAction) | Chamada direta é ignorada |
+| `setPropaneTank(item)` | ❌ Não existe | — | Exclusivo de `IsoFireplace` (BBQ) |
+| `setFuelAmount(n)` | ❌ Não existe | — | Exclusivo de `IsoFireplace` |
+| `addFuel(n)` | ❌ Não existe | — | Exclusivo de `IsoFireplace` |
+| `hasPropaneTank()` | ✅ Getter existe | Retorna `false` | Sem setter, inútil para fogões |
+| `isPropaneBBQ()` | ✅ Getter existe | Retorna `false` | Fogão normal não é classificado como BBQ |
+| `chunk:addGeneratorPos(x,y,z)` | ✅ | ✅ **FUNCIONA** | Marca tile como energizado → `isPowered()` retorna true |
+
+### Solução: `chunk:addGeneratorPos(x, y, z)`
+
+```lua
+-- ACENDER: marca tile como energizado, depois usa TimedAction vanilla
+local quadrado = fogao:getSquare()
+local chunk = quadrado:getChunk()
+chunk:addGeneratorPos(fogao:getX(), fogao:getY(), fogao:getZ())
+quadrado:RecalcAllWithNeighbours(false)
+ISTimedActionQueue.add(ISToggleStoveAction:new(jogador, fogao))
+
+-- APAGAR: remove marca e desativa
+chunk:removeGeneratorPos(fogao:getX(), fogao:getY(), fogao:getZ())
+quadrado:RecalcAllWithNeighbours(false)
+fogao:setActivated(false)
+```
+
+### Por que funciona
+
+1. `addGeneratorPos` registra a posição no chunk como "alimentada por gerador"
+2. `ItemContainer:isPowered()` verifica internamente se o tile tem gerador → retorna `true`
+3. Motor Java vê `isPowered() = true` → mantém fogão ativado sem resistência
+4. `ISToggleStoveAction` executa `Toggle()` com sucesso porque agora há "energia"
+5. Sem OnTick, sem loop, sem piscar — estado mantido nativamente pelo motor
+
+### Por que a churrasqueira (BBQ) é diferente
+
+A churrasqueira é `IsoFireplace` (não `IsoStove`), marcada como `isFireInteractionObject() = true`. Tem APIs exclusivas (`setPropaneTank`, `addFuel`, `setFuelAmount`) que o motor Java reconhece como fontes de combustível independentes de eletricidade. **IsoStove regular não herda essas APIs.**
+
+### Efeito Colateral
+
+`addGeneratorPos` energiza o TILE, não o objeto. Qualquer outro objeto com container no mesmo tile (geladeira, etc.) também ficará "energizado". Na prática é raro pois fogões ocupam tile próprio.
+
+### Quando usar este padrão
+
+- Manter IsoStove aceso com combustível alternativo (propano, biogás futuro)
+- Qualquer mecânica que precise fazer `isPowered() = true` sem rede elétrica
+- NÃO usar para IsoFireplace — esse já tem APIs nativas de combustível
+
 ### Padrão canônico: procurar item no chão ao redor
 
 ```lua
@@ -167,8 +236,8 @@ Fonte vanilla: `media/lua/client/ISUI/ISBBQMenu.lua`
 | Padrão | O que faz | Quando usar | Exemplo vanilla |
 |---|---|---|---|
 | `getText(key, ...)` | Resolve texto traduzido com placeholders opcionais. | Labels de menu, tooltip, mensagens de erro e UI dinâmica. | `ISBBQMenu.lua`: `getText("IGUI_BBQ_FuelAmount", ISCampingMenu.timeString(...))` |
-| `ItemName_Module.ItemName` | Convenção prática de chave de nome de item usada em mods/UI lookup. | Ao criar nome traduzido de item custom e validar compatibilidade com LKS. | **Vanilla B42 atual:** em `Translate/*/ItemName.json`, o equivalente observado é a chave `"Base.PropaneTank"`; **LKS:** usa `ItemName_LKS_Gas.LKS_Botijao15kg` em `IG_UI.json`. |
-| `DisplayName` no script é legado para nome visível; preferir translation entries | Evita espalhar nome traduzido em script/item definition. | Em item novo do mod, centralize o nome em arquivo de tradução, não no script do item. | Vanilla centraliza nomes em `media/lua/shared/Translate/EN/ItemName.json` e `PTBR/ItemName.json` — ex.: `"Base.PropaneTank": "Propane Tank" / "Botijão de Gás"`. |
+| `ItemName_Module.ItemName` | Convenção prática de chave de nome de item usada em mods/UI lookup. | Ao criar nome traduzido de item custom e validar compatibilidade com LKS. | **Vanilla B42 atual:** em `Translate/*/ItemName.json`, o equivalente observado é a chave `"Base.PropaneTank"`; **LKS:** usa `ItemName_LKS_Propano.LKS_Botijao15kg` em `IG_UI.json`. |
+| `DisplayName` no script é necessário para `getDisplayName()` funcionar | Apesar de deprecated (warning 42.13), o jogo **requer** `DisplayName` no item script para resolver nomes. Translation keys `ItemName_Module.Item` sozinhas NÃO resolvem sem ele. | Em TODOS os itens novos do mod, sempre incluir `DisplayName = NomeBase,` no script. A tradução em `IG_UI.json` sobrescreve para cada idioma. | Vanilla PropaneTank: `DisplayName = Propane Tank,` + tradução `"Botijão de Gás"` no JSON PT-BR. Sem DisplayName, `getDisplayName()` retorna ID cru. |
 | `Translator.getMoveableDisplayName(name)` | Traduz nomes de objetos movíveis do mundo. | Fogão, pia, freezer, máquina de lavar, móveis movíveis. | `ISWorldObjectContextMenu.lua`: `return Translator.getMoveableDisplayName(name)` |
 
 ### Observação importante para Build 42
