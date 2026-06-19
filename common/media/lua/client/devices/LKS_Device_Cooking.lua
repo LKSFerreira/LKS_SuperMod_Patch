@@ -47,32 +47,6 @@ local LKS_Device_Cooking = {
 local function acenderFogaoPropano(fogao, jogador)
     if not fogao or not jogador then return end
 
-    -- Diagnóstico: verifica se o fogão suporta API nativa de propane
-    local temSetPropane = fogao.setPropaneTank ~= nil
-    local temHasPropane = fogao.hasPropaneTank ~= nil
-    local temIsPropaneBBQ = fogao.isPropaneBBQ ~= nil
-    local temIsFireInteraction = fogao.isFireInteractionObject and fogao:isFireInteractionObject() or false
-    print("[LKS_PROPANO_DIAG] setPropaneTank=" .. tostring(temSetPropane)
-        .. " hasPropaneTank=" .. tostring(temHasPropane)
-        .. " isPropaneBBQ=" .. tostring(temIsPropaneBBQ)
-        .. " isFireInteractionObject=" .. tostring(temIsFireInteraction)
-        .. " classe=" .. tostring(fogao:getClass()))
-
-    -- Testa valores reais dos métodos que existem
-    if temHasPropane then
-        print("[LKS_PROPANO_DIAG] hasPropaneTank() = " .. tostring(fogao:hasPropaneTank()))
-    end
-    if temIsPropaneBBQ then
-        print("[LKS_PROPANO_DIAG] isPropaneBBQ() = " .. tostring(fogao:isPropaneBBQ()))
-    end
-
-    -- Verifica setters alternativos
-    print("[LKS_PROPANO_DIAG] setAttachedPropaneTank=" .. tostring(fogao.setAttachedPropaneTank ~= nil)
-        .. " addFuel=" .. tostring(fogao.addFuel ~= nil)
-        .. " setFuelAmount=" .. tostring(fogao.setFuelAmount ~= nil)
-        .. " hasFuel=" .. tostring(fogao.hasFuel ~= nil)
-        .. " getFuelAmount=" .. tostring(fogao.getFuelAmount ~= nil))
-
     local quadrado = fogao:getSquare()
     if not quadrado then return end
 
@@ -447,7 +421,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     if tipoFogao == "convencional" then
         verboAcender = getText("IGUI_LKS_Acender") or "Acender"
         verboApagar = getText("IGUI_LKS_Apagar") or "Apagar"
-        iconeDesligado = "media/ui/LKS_Menu_Gas_Off.png"
+        iconeDesligado = "media/ui/LKS_Menu_Propano_Off.png"
     elseif tipoFogao == "antigo" then
         verboAcender = getText("IGUI_LKS_Acender") or "Acender"
         verboApagar = getText("IGUI_LKS_Apagar") or "Apagar"
@@ -470,16 +444,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
             end
         end)
         opcaoApagar.iconTexture = getTexture("media/ui/LKS_Button_Power_Off.png")
-
-        if ehFogao then
-            local tooltipInfo = ISWorldObjectContextMenu.addToolTip()
-            tooltipInfo:setName(nomeObjetoTraduzido)
-            local temperaturaAtual = objetoEletrico:getCurrentTemperature()
-            local textoTemperatura = string.format(getText("IGUI_LKS_TemperaturaAtual") or "Temperatura Atual: %.1f°C", temperaturaAtual)
-            local textoAlerta = " <RGB:1,0,0> " .. (getText("IGUI_LKS_AlertaEquipamentoAquecido") or "⚠️ CUIDADO: Equipamento aquecido!")
-            tooltipInfo.description = textoTemperatura .. " <LINE> " .. textoAlerta
-            opcaoApagar.toolTip = tooltipInfo
-        end
     else
         if temEnergia then
             if (tipoFogao == "convencional" or tipoFogao == "antigo") then
@@ -588,6 +552,41 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
 
             opcaoSemEnergia.toolTip = tooltipErro
         end
+    end
+
+    -- =========================================================================
+    -- PASSO 5: GARANTIR OPÇÃO "CONFIGURAÇÕES" E APLICAR ÍCONE
+    -- =========================================================================
+    -- O vanilla só adiciona "Configurações" quando isPowered() é true.
+    -- Para fogões a propano desligados (sem addGeneratorPos ativo), isPowered()
+    -- é false e o vanilla não cria a opção. Injetamos manualmente para que o
+    -- jogador sempre possa ajustar temperatura e timer independente do estado.
+    -- Também aplicamos o ícone LKS_Menu_Settings em qualquer opção sem ícone.
+    -- =========================================================================
+    local textoConfiguracoes = getText("ContextMenu_StoveSetting") or "Configuracoes"
+    local jaTemConfiguracoes = false
+
+    if submenu and submenu.options then
+        for _, opcao in ipairs(submenu.options) do
+            if opcao.name == textoConfiguracoes then
+                jaTemConfiguracoes = true
+                if not opcao.iconTexture then
+                    opcao.iconTexture = getTexture("media/ui/LKS_Menu_Settings.png")
+                end
+            end
+        end
+    end
+
+    if not jaTemConfiguracoes and ehFogao and submenu then
+        local opcaoConfig = submenu:addOption(textoConfiguracoes, objetosMundo, function()
+            ISWorldObjectContextMenu.onStoveSetting(objetosMundo, objetoEletrico, jogadorNumero)
+        end)
+        opcaoConfig.iconTexture = getTexture("media/ui/LKS_Menu_Settings.png")
+    elseif not jaTemConfiguracoes and ehMicroondas and submenu then
+        local opcaoConfig = submenu:addOption(textoConfiguracoes, objetosMundo, function()
+            ISWorldObjectContextMenu.onMicrowaveSetting(objetosMundo, objetoEletrico, jogadorNumero)
+        end)
+        opcaoConfig.iconTexture = getTexture("media/ui/LKS_Menu_Settings.png")
     end
 
     -- ============================================================================
