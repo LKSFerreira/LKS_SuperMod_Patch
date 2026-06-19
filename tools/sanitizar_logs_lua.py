@@ -53,6 +53,8 @@ MAPA_ACENTOS = str.maketrans({
 # Padrões que identificam linhas de LOG (onde sanitizar)
 PADROES_LOG = [
     re.compile(r'Registrador\.(Info|Warn|Error|Debug)\s*\('),
+    re.compile(r'Logger\.(Info|Warn|Error|Debug)\s*\('),
+    re.compile(r'\.Print\s*\('),
     re.compile(r'print\s*\(\s*["\'].*\[LKS'),
     re.compile(r'print\s*\(\s*["\']\[LKS'),
 ]

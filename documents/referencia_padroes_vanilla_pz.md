@@ -270,6 +270,167 @@ Fonte vanilla: `media/lua/client/ISUI/ISBBQMenu.lua`
 
 ---
 
+## 9. ISOvenUI — Janela de Configuração do Fogão (Vanilla)
+
+A janela com knobs de Temperatura e Temporizador é **100% vanilla**, definida em `media/lua/client/ISUI/Fireplace/ISOvenUI.lua`.
+
+| Componente | Classe | Função |
+|---|---|---|
+| `ISOvenUI` | `ISPanelJoypad:derive` | Janela principal com knobs e botões |
+| `ISKnob` | Widget vanilla | Knob rotativo para temperatura (0-300) e timer (0-120min) |
+| `StoveSettings.lua` | `ISLootWindowObjectControlHandler` | Botão "Configurações" na sidebar do inventário |
+| `StoveToggle.lua` | `ISLootWindowObjectControlHandler` | Botão "Ligar/Desligar" na sidebar do inventário |
+
+### Arquivo: `ISOvenUI.lua`
+
+```lua
+-- Criação dos knobs
+self.tempKnob = ISKnob:new(x, y, knobTex, bgTex, getText("IGUI_Temperature"), character)
+self.timerKnob = ISKnob:new(x, y, knobTex, bgTex, getText("IGUI_Timer"), character)
+
+-- Toggle C/F via tradução: chaves IGUI_Oven_Celsius e IGUI_Oven_Fahrenheit
+-- Override no mod: trocar "Celsius"/"Fahrenheit" por "°C"/"°F" no IG_UI.json
+
+-- Botão Ligar/Desligar: self.ok (internal = "OK")
+-- Botão Fechar: self.close (internal = "CLOSE")
+
+-- updateButtons() roda a cada frame — controla estado do botão:
+self.ok:setEnable(self.oven:getContainer() and self.oven:getContainer():isPowered())
+-- Para propano: monkey-patch via Events.OnGameStart.Add() (ISOvenUI não existe no load-time)
+
+-- onClick com internal "OK" envia comando server-side:
+sendClientCommand(self.character, 'stove', 'setOvenParamsAndToggle', args)
+```
+
+### Handlers da Loot Window
+
+```lua
+-- StoveSettings.lua e StoveToggle.lua usam o mesmo guard:
+function Handler:shouldBeVisible()
+    return instanceof(self.object, "IsoStove")
+        and (self.container ~= nil) and self.container:isPowered()
+end
+```
+
+### Opção "Configurações" no menu de contexto
+
+Criada por `ISInventoryPaneContextMenu.lua` (linha ~988), **NÃO** pelo world context menu:
+
+```lua
+-- Vanilla só mostra quando isPowered():
+if instanceof(stove, "IsoStove") and stove:getContainer() and stove:getContainer():isPowered() then
+    context:addOption(getText("ContextMenu_StoveSetting"), nil,
+        ISWorldObjectContextMenu.onStoveSetting, stove, playerNum)
+end
+
+-- Para exibir sem energia: injetar manualmente no submenu sequestrado
+-- verificando getText("ContextMenu_StoveSetting") e adicionando se ausente
+```
+
+### ⚠️ Armadilha: Monkey-patch no load-time
+
+`ISOvenUI` **não existe** quando os arquivos de mod carregam. Um `if ISOvenUI then` no corpo do arquivo sempre avalia `false`. Usar `Events.OnGameStart.Add()` para garantir que a classe já foi carregada antes de sobrescrever métodos.
+
+---
+
+## 10. TimedActions — Animações e Interações Físicas
+
+### Padrão canônico para ação com animação
+
+```lua
+require "TimedActions/ISBaseTimedAction"
+
+MinhaAction = ISBaseTimedAction:derive("MinhaAction")
+
+function MinhaAction:new(jogador, ...)
+    local o = ISBaseTimedAction.new(self, jogador)
+    o.maxTime = 250           -- ~2.5 segundos
+    o.stopOnWalk = true       -- Cancela se jogador andar
+    o.stopOnRun = true        -- Cancela se jogador correr
+    return o
+end
+
+function MinhaAction:start()
+    self:setActionAnim("Loot")                    -- Animação de agachar
+    self:setAnimVariable("LootPosition", "Low")   -- Posição baixa (chão)
+    self:setOverrideHandModels(nil, nil)           -- Esconde itens das mãos
+    self.character:faceThisObject(self.alvo)       -- Vira para o objeto
+end
+
+function MinhaAction:perform()
+    -- Lógica executada ao completar a barra de ação
+    ISBaseTimedAction.perform(self)  -- OBRIGATÓRIO no final
+end
+
+function MinhaAction:isValid()
+    return self.alvo ~= nil  -- Validação contínua durante a ação
+end
+```
+
+### Caminhada até o objeto + ação enfileirada
+
+```lua
+-- walkAdj faz o jogador caminhar até ficar adjacente ao quadrado
+-- A TimedAction é enfileirada e só executa após chegar
+if luautils.walkAdj(jogador, objeto:getSquare()) then
+    ISTimedActionQueue.add(MinhaAction:new(jogador, objeto))
+end
+```
+
+### Dropar item no chão com offset direcional
+
+```lua
+-- AddWorldInventoryItem(item, offsetX, offsetY, offsetZ)
+-- Offsets 0.0-1.0 controlam posição dentro do tile
+-- Offset 0.2/0.4 dá bom resultado visual (ao lado do jogador)
+local direcaoX = alvo:getX() - jogador:getX()
+local direcaoY = alvo:getY() - jogador:getY()
+local offsetX = 0.5 + (direcaoX * 0.3)
+local offsetY = 0.5 + (direcaoY * 0.3)
+quadrado:AddWorldInventoryItem(item, offsetX, offsetY, 0)
+```
+
+---
+
+## 11. Moddata Bidirecional — Padrão de Vínculo entre Objetos
+
+Quando dois objetos do mundo precisam de referência mútua (ex: botijão ↔ fogão), usar moddata em AMBOS os lados com coordenadas como chave de vínculo.
+
+### Padrão
+
+```lua
+-- CONECTAR: marca ambos
+local dadosFogao = fogao:getModData()
+dadosFogao.LKS_BotijaoConectado = true
+
+local dadosBotijao = botijao:getModData()
+dadosBotijao.LKS_ConectadoAoFogaoX = fogao:getX()
+dadosBotijao.LKS_ConectadoAoFogaoY = fogao:getY()
+dadosBotijao.LKS_ConectadoAoFogaoZ = fogao:getZ()
+
+-- DESCONECTAR: limpa ambos (escaneia raio para encontrar o par)
+dadosFogao.LKS_BotijaoConectado = nil
+dadosBotijao.LKS_ConectadoAoFogaoX = nil
+-- ...
+
+-- VALIDAÇÃO DEFENSIVA: no acesso ao menu, confirma que o par físico existe
+-- Se moddata diz conectado mas o objeto sumiu → auto-limpa
+```
+
+### Vantagens sobre referência unidirecional
+
+- Exclusividade 1:1 garantida (botijão só serve 1 fogão)
+- Limpeza automática quando qualquer lado é removido (pickup, destruição, despawn)
+- Funciona em multiplayer (moddata é sincronizado pelo engine)
+- Botijão no inventário com moddata residual → limpar automaticamente (impossível estar conectado se está no inventário)
+
+### Quando usar
+
+- Qualquer mecânica de conexão física entre objetos do mundo (botijão↔fogão, mangueira↔barril, etc.)
+- NÃO usar para relações transitórias (apenas para estado persistente)
+
+---
+
 ## Checklist rápido antes de implementar UI/menu no LKS
 
 1. **Existe menu vanilla parecido?** Procure primeiro por domínio: churrasqueira, farming, disassemble, inventory pane, world object.
