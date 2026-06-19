@@ -1,0 +1,175 @@
+# ===========================================================================
+# Índice de Documentação Interna — .metadocs/
+# ===========================================================================
+#
+# PROPÓSITO:
+#   Índice para recuperação eficiente de contexto por agentes LLM.
+#   Documenta o NOSSO desenvolvimento: como fizemos, por que fizemos,
+#   problemas encontrados, soluções adotadas, design docs, planos e entregas.
+#
+# ESCOPO:
+#   Documentação interna do LKS SuperMod Patch. Para referência de mecânicas
+#   do engine PZ, mods externos e APIs, consulte documents/_indice.yaml.
+#
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-19
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# CONTROLE DE PROJETO
+# ---------------------------------------------------------------------------
+
+controle:
+  - arquivo: roadmap.md
+    titulo: Roadmap do Projeto
+    descricao: >
+      Fonte de verdade do andamento. Estado atual, próximos passos,
+      dívidas técnicas e entregas concluídas com datas.
+    tags: [roadmap, estado, pendencias, divida-tecnica]
+
+  - arquivo: historico.md
+    titulo: Histórico de Entregas
+    descricao: >
+      Registro cronológico de todas as entregas concluídas com
+      links para walkthroughs quando aplicável.
+    tags: [historico, entregas, cronologia]
+
+  - arquivo: CHANGELOG.md
+    titulo: Histórico de Engenharia e Refatoração
+    descricao: >
+      Registro detalhado de decisões de engenharia, auditorias,
+      refatorações e padrões descobertos durante o desenvolvimento.
+    tags: [changelog, engenharia, refatoracao, decisoes]
+
+# ---------------------------------------------------------------------------
+# PADRÕES E DIRETRIZES INTERNAS
+# ---------------------------------------------------------------------------
+
+padroes:
+  - arquivo: padrao_traducao_ptbr.md
+    titulo: Diretrizes de Localização e Tradução PT-BR
+    descricao: >
+      5 regras fundamentais: sem abreviações com ponto, contextualização
+      pós-apocalíptica, terminologia sistêmica imersiva, unidades reais,
+      sintaxe natural sem termos corporativos.
+    tags: [traducao, ptbr, localizacao, padrao, regras]
+
+  - arquivo: prompt_criar_editar_imagens_assets.md
+    titulo: Prompt para Edição de Imagens via IA
+    descricao: >
+      Template de prompt para modificar pixel art (cor, limpeza, perspectiva).
+      Regras de preservação de estilo, transparência e canal alpha.
+    tags: [assets, imagem, pixel-art, prompt, IA]
+
+  - arquivo: persona_prompt.md
+    titulo: Prompt de Persona (Legado)
+    descricao: >
+      Prompt original de persona usado antes do AGENTS.md.
+      Mantido como referência histórica. Substituído por .agents/rules/.
+    tags: [legado, prompt, persona, historico]
+
+# ---------------------------------------------------------------------------
+# FERRAMENTAS
+# ---------------------------------------------------------------------------
+
+ferramentas:
+  - arquivo: tools_desenvolvimento.md
+    titulo: Catálogo de Ferramentas Python
+    descricao: >
+      Documentação dos 7 scripts em tools/: gerar_luarc.py, auditoria_mod.py,
+      LKS_Tools.py, sanitizar_logs_lua.py, sanitiza_log.py,
+      atualizar_dicionario_tilesets.py, configurar_terminal.py.
+    tags: [ferramentas, python, auditoria, tools, uv]
+
+# ---------------------------------------------------------------------------
+# REFERÊNCIA INTERNA DO MOD
+# ---------------------------------------------------------------------------
+
+referencia_interna:
+  - arquivo: referencia_api_interna_lks.md
+    titulo: Referência da API Interna (785 funções, 54 módulos)
+    descricao: >
+      Gerada automaticamente por auditoria_mod.py documentar-api.
+      78% de cobertura EmmyLua. Índice por módulo (client, shared, server).
+    tags: [api, funcoes, EmmyLua, modulos, referencia-interna]
+
+# ---------------------------------------------------------------------------
+# DESIGN DOCS (features em desenvolvimento)
+# ---------------------------------------------------------------------------
+
+design:
+  - diretorio: feat/
+    conteudo:
+      - arquivo: feat/mecanica_fogoes_fornos.md
+        titulo: Design — Mecânica de Fogões e Fornos
+        descricao: >
+          Proposta de 3 tipos (Convencional/Antigo/Indução), combustíveis,
+          ignição, qualidade de comida, botijões 15kg/45kg, modo bateria.
+          Em progresso — itens e propano implementados, qualidade pendente.
+        tags: [fogao, forno, propano, botijao, inducao, design, culinaria]
+
+# ---------------------------------------------------------------------------
+# PLANOS DE IMPLEMENTAÇÃO
+# ---------------------------------------------------------------------------
+
+planos:
+  - diretorio: implementation_plans/
+    descricao: >
+      Planos de implementação históricos de features concluídas.
+      Úteis como referência de abordagem e decisões tomadas.
+    arquivos:
+      - "Plano de Implementação - Correção da Renderização de Fluidos e Dívida Técnica.md"
+      - "Plano de Implementação - Desacoplamento Nativo do Generator Powered Buildings.md"
+      - "Plano de Implementação - Desacoplamento e Generalização de Abas Elétricas.md"
+      - "Plano de Implementação - Integração Nativa e Correção do Fridges Off!.md"
+      - "Plano de Implementação - Mecânica de Fogões e Fornos.md"
+      - "Plano de Implementação - Melhorias Visuais na Janela de Informações Elétricas da Construção e Correção de Tradução.md"
+      - "Plano de Implementação - Melhorias de Eletricidade e Visuais para Secadora e Lavadora de Roupas.md"
+      - "Plano de Implementação - Refatoração do Fridges Off para Driver de Dispositivo (LKS_Device_Refrigeration).md"
+      - "Plano de Implementação - Suporte Completo de Ícones de Inventário para Lavanderia.md"
+    tags: [plano, implementacao, historico]
+
+# ---------------------------------------------------------------------------
+# CONFLITOS RESOLVIDOS
+# ---------------------------------------------------------------------------
+
+conflitos:
+  - diretorio: conflitos_resolvidos/
+    conteudo:
+      - arquivo: conflitos_resolvidos/funcionamento_encanamento_e_modos_combo.md
+        titulo: Encanamento e Modos do Combo Washer Dryer
+        descricao: >
+          Diagnóstico de timed actions distintas (ISToggleComboWasherDryer),
+          menu de sub-opções de modo, validação hidráulica e ícones acumulativos.
+        tags: [combo, lavadora, encanamento, conflito, timed-action]
+
+      - arquivo: conflitos_resolvidos/relatorio_compatibilidades_16062026.md
+        titulo: Relatório de Compatibilidades (16/06/2026)
+        descricao: >
+          Diagnóstico de crash por espaço em disco, conflito de fagocitação
+          do PoweredBuildings V2, problemas de compatibilidade com mods.
+        tags: [compatibilidade, crash, conflito, relatorio]
+
+# ---------------------------------------------------------------------------
+# WALKTHROUGHS (entregas documentadas)
+# ---------------------------------------------------------------------------
+
+walkthroughs:
+  - diretorio: walkthrough/
+    descricao: >
+      Documentação pós-entrega de features concluídas. Cada arquivo
+      detalha o problema, solução técnica, decisões e lições aprendidas.
+    arquivos:
+      - walkthrough/auditoria_unificada.md
+      - walkthrough/correcao_auditoria.md
+      - walkthrough/desacoplamento_generator_powered_buildings.md
+      - walkthrough/fagocitacao_fridges_off.md
+      - walkthrough/gerenciador_dispositivos.md
+      - walkthrough/lavadora_e_secadora.md
+      - walkthrough/ocultacao_conexao_vanilla.md
+      - walkthrough/padronizacao_refrigeracao.md
+      - walkthrough/patch_lks_eletricidade_construcao.md
+      - walkthrough/readequacao_assets_auditoria.md
+      - walkthrough/renderizacao_fluidos.md
+      - walkthrough/traducao_recipientes.md
+      - walkthrough/visual_termostato.md
+    tags: [walkthrough, entrega, feature, documentacao-pos-entrega]

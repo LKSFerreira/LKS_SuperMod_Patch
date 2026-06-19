@@ -1,0 +1,172 @@
+# ===========================================================================
+# Índice de Documentação Técnica — documents/
+# ===========================================================================
+#
+# PROPÓSITO:
+#   Índice para recuperação eficiente de contexto por agentes LLM.
+#   Consulte ANTES de investigar um tema — evita ler arquivos desnecessários.
+#
+# ESCOPO:
+#   Documentação do ENGINE do Project Zomboid, mods externos, APIs do motor,
+#   mecânicas do jogo, descobertas sobre Kahlua/Lua/Java.
+#   NÃO inclui documentação do nosso desenvolvimento (ver .metadocs/_indice.yaml).
+#
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-19
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# MECÂNICAS DO JOGO (como o PZ funciona internamente)
+# ---------------------------------------------------------------------------
+
+mecanicas:
+  - arquivo: eletricidade_realista.md
+    titulo: Mecânica de Eletricidade Realista (Powered Buildings)
+    descricao: >
+      Rede elétrica por construção (Power Pool), compartilhamento de carga
+      entre geradores, consumo de aparelhos, sobrecarga e UI de energia.
+    tags: [eletricidade, gerador, construcao, power-pool, strain, sobrecarga]
+
+  - arquivo: encanamento_agua.md
+    titulo: Mecânica de Encanamento e Água (B42)
+    descricao: >
+      Regras de gravidade para coletores de chuva, posicionamento relativo,
+      validação de fluidos em lavadoras, link físico do encanamento.
+    tags: [agua, encanamento, plumbing, lavadora, fluidos, rain-collector]
+
+  - arquivo: ligar_desligar_geladeiras.md
+    titulo: Mecânica de Ligar/Desligar Geladeiras e Freezers
+    descricao: >
+      Transição de tipo de contêiner (fridge↔geladeira_desligada),
+      texturas de inventário, sincronização multiplayer, preservação de alimentos.
+    tags: [geladeira, freezer, refrigeracao, container-type, multiplayer]
+
+# ---------------------------------------------------------------------------
+# APIs E PADRÕES DO ENGINE (referência para implementação)
+# ---------------------------------------------------------------------------
+
+api_engine:
+  - arquivo: pz_menu_contexto_e_tooltip.md
+    titulo: Menu de Contexto e Tooltip (ISContextMenu + ISToolTip)
+    descricao: >
+      Padrões vanilla para menus de contexto, submenus, tooltips com pool,
+      colunas alinhadas com SETX/INDENT, regras obrigatórias, checklist.
+      Inclui armadilha de updateTooltip() em ISButton com prerender custom.
+    tags: [menu, contexto, tooltip, ISContextMenu, ISToolTip, splitIcon, submenu]
+
+  - arquivo: pz_objetos_mundo.md
+    titulo: Objetos do Mundo (IsoObject) + Texturas/Sprites
+    descricao: >
+      APIs para IsoObject, ISMoveableSpriteProps, getModData, instanceof,
+      getWorldObjects, getObjects, getGridSquare. Tabela de texturas/sprites.
+      Armadilhas com wrappers Java nulos e isActivated() vs Activated().
+    tags: [IsoObject, sprite, textura, getModData, instanceof, tile, quadrado]
+
+  - arquivo: pz_energizacao_sem_rede.md
+    titulo: Energização sem Rede Elétrica (addGeneratorPos)
+    descricao: >
+      Guia definitivo para manter IsoStove aceso com propano via
+      chunk:addGeneratorPos(). Todas as APIs investigadas, solução canônica,
+      efeito colateral de energizar tile inteiro, diferença com BBQ/IsoFireplace.
+    tags: [addGeneratorPos, isPowered, IsoStove, propano, energizacao, chunk]
+
+  - arquivo: pz_jogador_inventario_eventos.md
+    titulo: Jogador, Inventário, Tradução e Eventos
+    descricao: >
+      APIs de jogador (getInventory, getPerkLevel), tradução (getText,
+      DisplayName, getMoveableDisplayName), utilitários (ZombRand, MeasureStringX)
+      e sistema de eventos (OnGameStart, EveryOneMinute, OnFillWorldObjectContextMenu).
+    tags: [jogador, inventario, traducao, getText, eventos, DisplayName, pericia]
+
+  - arquivo: pz_isoven_ui.md
+    titulo: ISOvenUI — Janela Vanilla do Fogão
+    descricao: >
+      Componentes da janela (ISKnob, botões OK/CLOSE), handlers da Loot Window
+      (StoveSettings, StoveToggle), opção Configurações no menu de contexto,
+      armadilha de monkey-patch no load-time.
+    tags: [ISOvenUI, fogao, knob, temperatura, timer, StoveSettings, StoveToggle]
+
+  - arquivo: pz_timed_actions.md
+    titulo: TimedActions — Animações e Interações Físicas
+    descricao: >
+      Padrão canônico de ISBaseTimedAction, animação de agachar (Loot),
+      walkAdj + enfileiramento, dropar item com offset direcional,
+      ações específicas do Combo Washer Dryer.
+    tags: [TimedAction, ISBaseTimedAction, animacao, walkAdj, combo-washer]
+
+  - arquivo: pz_moddata_bidirecional.md
+    titulo: Moddata Bidirecional — Vínculo entre Objetos
+    descricao: >
+      Padrão de referência mútua via getModData() para conexão física
+      entre objetos (botijão↔fogão). Validação defensiva, exclusividade 1:1,
+      limpeza automática, suporte multiplayer.
+    tags: [moddata, vinculo, bidirecional, botijao, fogao, conexao, persistencia]
+
+  - arquivo: pz_assets_renderizacao_icones.md
+    titulo: Assets, Renderização de Ícones e Motor Gráfico do PZ
+    descricao: >
+      Como o PZ renderiza ícones de recipientes (pré-desenhados vs 3D),
+      texturepacks (UI.pack/UI2.pack), ContainerButtonIcons.lua,
+      override de texturas por mods, gerenciador de assets LKS.
+    tags: [assets, icone, texturepack, ContainerButtonIcons, renderizacao, UI-pack]
+
+# ---------------------------------------------------------------------------
+# DADOS ESTRUTURADOS (YAML de referência)
+# ---------------------------------------------------------------------------
+
+dados_estruturados:
+  - arquivo: propriedades_sprite_objetos_pz.yaml
+    titulo: Propriedades de Sprite/Tile do PZ (303 propriedades)
+    descricao: >
+      Mapeamento completo de todas as propriedades do PropertyContainer
+      dos sprites: identidade, posicionamento, containers, materiais, flags.
+      Tipo de dado, valores permitidos, TilePropertyKey Java.
+    tags: [sprite, tile, propriedade, PropertyContainer, TilePropertyKey, yaml]
+
+  - arquivo: referencia_ferramentas_materiais_pz.yaml
+    titulo: Ferramentas e Materiais do Sistema Moveables (PZ B42)
+    descricao: >
+      Definições de PickUpTool/PlaceTool, itens aceitos, habilidades,
+      tempos de ação, sons. Extraído de ISMoveableDefinitions.lua.
+    tags: [ferramenta, material, moveable, PickUpTool, desmonte, yaml]
+
+# ---------------------------------------------------------------------------
+# PESQUISA TÉCNICA (investigações sobre o engine)
+# ---------------------------------------------------------------------------
+
+pesquisa:
+  - arquivo: pesquisa_fogoes_fase1.md
+    titulo: Pesquisa Fase 1 — Fogões e Fornos (Levantamento Técnico)
+    descricao: >
+      Classes Java (IsoStove vs IsoFireplace), sprites/tilesets,
+      ISKnob, ISOvenUI, BBQ, StoveToggle, fluxo de dados vanilla.
+      Pesquisa concluída em 18/06/2026.
+    tags: [fogao, IsoStove, IsoFireplace, ISKnob, pesquisa, culinaria]
+
+# ---------------------------------------------------------------------------
+# MODS EXTERNOS (referência de mods de outros autores)
+# ---------------------------------------------------------------------------
+
+mods_externos:
+  - arquivo: mod_fridges_off.md
+    titulo: Referência — Fridges Off! (Mod Original por 4422)
+    descricao: >
+      Funcionamento, bugs na B42 (refrigeração infinita, perda de identidade
+      do freezer), limitações e base teórica para fagocitação nativa.
+      Workshop ID: 2853974107.
+    tags: [fridges-off, geladeira, mod-externo, fagocitacao, 4422]
+
+  - arquivo: mod_powered_buildings.md
+    titulo: Referência — Generator Powered Buildings (Mod Original por Beathoven)
+    descricao: >
+      Mecânica de rede elétrica por construção, gerenciamento de pool,
+      barris de combustível, aquecimento. Base para LKS_EletricidadeConstrucao.
+      Workshop ID: 3597471949.
+    tags: [powered-buildings, gerador, mod-externo, fagocitacao, beathoven]
+
+  - arquivo: neat_rocco_oven_ui.md
+    titulo: Neat Rocco UI — NR_OvenPanel (Janela de Fogão)
+    descricao: >
+      Hierarquia de classes (NR_BasePanel, NR_Header, NR_OvenPanel),
+      powerButton com prerender customizado, bug de updateTooltip(),
+      NI_SquareButton vs ISButton, knobs, fluxo de dados, constantes NR_Config.
+    tags: [neat-rocco, NR_OvenPanel, NR_Header, powerButton, tooltip, NeatUI]
