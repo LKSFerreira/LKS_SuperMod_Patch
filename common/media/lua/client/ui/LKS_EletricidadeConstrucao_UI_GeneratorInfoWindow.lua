@@ -1582,7 +1582,7 @@ function LKS_EletricidadeConstrucao_GeneratorInfoWindow:requestFreshStats()
                 Dist.ForceUpdate()
             end
         else
-            LKS_EletricidadeConstrucao.Core.Logger.Warn("requestFreshStats: Distributor indisponível", "UI")
+            LKS_EletricidadeConstrucao.Core.Logger.Warn("requestFreshStats: Distributor indisponivel", "UI")
         end
 
         local FuelMgr = LKS_EletricidadeConstrucao and LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager

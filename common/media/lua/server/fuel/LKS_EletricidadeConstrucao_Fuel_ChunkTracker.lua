@@ -91,7 +91,7 @@ end
 --- Inicializa o rastreador de chunks
 function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize()
     if _inicializado then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Rastreador de Chunks já inicializado", "Fuel")
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Rastreador de Chunks ja inicializado", "Fuel")
         return
     end
     
@@ -119,10 +119,10 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize()
         end
     end
     if not carregamentoRegistrado then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: evento LoadGridsquare não encontrado - rastreamento de combustível baseado em chunk desativado", "Fuel")
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: evento LoadGridsquare nao encontrado - rastreamento de combustivel baseado em chunk desativado", "Fuel")
     end
     if not descarregamentoRegistrado then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: evento ReuseGridsquare não encontrado - rastreamento de combustível baseado em chunk desativado", "Fuel")
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("ChunkTracker: evento ReuseGridsquare nao encontrado - rastreamento de combustivel baseado em chunk desativado", "Fuel")
     end
     
     _inicializado = true
@@ -1166,7 +1166,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                             end
                             
                             if not jaPossuiConsumidores then
-                                LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("[ChunkTracker] Restauração V1: escaneando prédio %s a partir do interruptor de luz (%d,%d,%d)",
+                                LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("[ChunkTracker] Restauracao V1: escaneando predio %s a partir do interruptor de luz (%d,%d,%d)",
                                     idPoolPredio, switchX, switchY, switchZ), "Fuel")
                                 local sucessoEscaneamento = pcall(function()
                                     dadosPredio = Escaneador.ScanBuilding(switchX, switchY, switchZ, idPoolPredio)

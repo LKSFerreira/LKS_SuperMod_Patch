@@ -212,7 +212,7 @@ function LKS_EletricidadeConstrucao.Config.LoadFromSandbox()
 
     ApplySandboxBackedConstants()
     
-    LKS_EletricidadeConstrucao.Print("Opções de configuração sincronizadas com o SandboxVars")
+    LKS_EletricidadeConstrucao.Print("Opcoes de configuracao sincronizadas com o SandboxVars")
 end
 
 --- Salva as configurações locais no ModData global do mundo (Apenas no Servidor/Host).
@@ -247,7 +247,7 @@ function LKS_EletricidadeConstrucao.Config.LoadFromModData()
                 LKS_EletricidadeConstrucao.Config[key] = value
             end
         end
-        LKS_EletricidadeConstrucao.Print("Opções de configuração mescladas a partir do ModData")
+        LKS_EletricidadeConstrucao.Print("Opcoes de configuracao mescladas a partir do ModData")
     end
 end
 
@@ -317,6 +317,6 @@ LKS_EletricidadeConstrucao.RegisterModule("Config", "2.0.0")
 
 LKS_EletricidadeConstrucao.Config.Validate()
 
-LKS_EletricidadeConstrucao.Print("Módulo de Configuração inicializado")
+LKS_EletricidadeConstrucao.Print("Modulo de Configuracao inicializado")
 
 return LKS_EletricidadeConstrucao.Config

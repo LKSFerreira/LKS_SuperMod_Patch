@@ -591,8 +591,8 @@ end
 --- @param z number Posição Z.
 --- @param raio number Raio.
 function LKS_EletricidadeConstrucao.Building.BorderDetector.DebugBorders(x, y, z, raio)
-    LKS_EletricidadeConstrucao.Print("=== Depuração de Detecção de Bordas ===")
-    LKS_EletricidadeConstrucao.Print(string.format("Posição: (%d,%d,%d)", x, y, z))
+    LKS_EletricidadeConstrucao.Print("=== Depuracao de Deteccao de Bordas ===")
+    LKS_EletricidadeConstrucao.Print(string.format("Posicao: (%d,%d,%d)", x, y, z))
     LKS_EletricidadeConstrucao.Print("Raio: " .. raio)
     
     local bordas = LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(x, y, z, raio)

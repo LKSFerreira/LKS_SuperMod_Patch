@@ -163,13 +163,13 @@ end
 --- Imprime o relatório detalhado do ambiente atual formatado no console do jogo.
 function LKS_EletricidadeConstrucao.Core.Runtime.PrintContext()
     local info = LKS_EletricidadeConstrucao.Core.Runtime.GetContextInfo()
-    LKS_EletricidadeConstrucao.Print("=== Relatório de Ambiente ===")
+    LKS_EletricidadeConstrucao.Print("=== Relatorio de Ambiente ===")
     LKS_EletricidadeConstrucao.Print(string.format("  Modo de Jogo: %s", info.gameMode))
     LKS_EletricidadeConstrucao.Print(string.format("  Servidor (isServer): %s", tostring(info.isServer)))
     LKS_EletricidadeConstrucao.Print(string.format("  Cliente (isClient): %s", tostring(info.isClient)))
     LKS_EletricidadeConstrucao.Print(string.format("  Partida Solo (SP): %s", tostring(info.isSingleplayer)))
     LKS_EletricidadeConstrucao.Print(string.format("  Partida em Rede (MP): %s", tostring(info.isMultiplayer)))
-    LKS_EletricidadeConstrucao.Print(string.format("  Sincronização de Rede: %s", tostring(info.requiresNetworkSync)))
+    LKS_EletricidadeConstrucao.Print(string.format("  Sincronizacao de Rede: %s", tostring(info.requiresNetworkSync)))
     LKS_EletricidadeConstrucao.Print("=============================")
 end
 

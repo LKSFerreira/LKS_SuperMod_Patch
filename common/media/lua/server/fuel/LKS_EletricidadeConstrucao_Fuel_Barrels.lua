@@ -205,7 +205,7 @@ function Barrels.Link(barril, idConstrucao)
     bancoDados.linkedBarrels[idConstrucao][chave] = true
     SalvarBancoDadosBarris(bancoDados)
 
-    Logger.Info(string.format("Barril %s acoplado à construção %s", chave, idConstrucao), "Fuel.Barrels")
+    Logger.Info(string.format("Barril %s acoplado a construcao %s", chave, idConstrucao), "Fuel.Barrels")
     return true
 end
 
@@ -237,7 +237,7 @@ function Barrels.Unlink(barril, idConstrucao)
     end
     SalvarBancoDadosBarris(bancoDados)
 
-    Logger.Info(string.format("Barril %s desacoplado da construção %s", chave, bid), "Fuel.Barrels")
+    Logger.Info(string.format("Barril %s desacoplado da construcao %s", chave, bid), "Fuel.Barrels")
 end
 
 --- Verifica se o barril está vinculado à construção específica.

@@ -249,7 +249,7 @@ end
 --- Inicializa o gerenciador de combustível
 function LKS_EletricidadeConstrucao.Fuel.Manager.Initialize()
     if _inicializado then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Gerenciador de Combustível já inicializado", "Fuel")
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Gerenciador de Combustivel ja inicializado", "Fuel")
         return
     end
     
@@ -262,7 +262,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.Initialize()
     -- NOTE: O registro do EveryOneMinute é manipulado em LKS_EletricidadeConstrucao_ServerInit.lua
     -- O registro duplicado aqui poderia causar conflitos ou processamento duplo
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Gerenciador de Combustível inicializado (intervalo: " .. _intervaloAtualizacao .. "ms)", "Fuel")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Gerenciador de Combustivel inicializado (intervalo: " .. _intervaloAtualizacao .. "ms)", "Fuel")
 end
 
 --- Verifica se o gerenciador de combustível está inicializado
@@ -279,7 +279,6 @@ end
 --- Chamado periodicamente para processar o consumo de combustível
 function LKS_EletricidadeConstrucao.Fuel.Manager.Update()
     if not _inicializado then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Update do Gerenciador de Combustível chamado antes da inicialização", "Fuel")
         return
     end
     
@@ -338,7 +337,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.Update()
                         if not existe then
                             table.insert(predio.connectedGenerators, chaveGerador)
                             LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-                            LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Vinculado gerador %s de volta ao prédio %s", chaveGerador, idPool), "Fuel")
+                            LKS_EletricidadeConstrucao.Core.Logger.Info(string.format("Vinculado gerador %s de volta ao predio %s", chaveGerador, idPool), "Fuel")
                         end
                     end
                 end
@@ -521,7 +520,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(generatorData, 
     local Logger = LKS_EletricidadeConstrucao.Core.Logger
     
     if not generatorData then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("Dados do gerador são nulos", "Fuel")
+        LKS_EletricidadeConstrucao.Core.Logger.Error("Dados do gerador sao nulos", "Fuel")
         return
     end
     
@@ -599,10 +598,10 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(generatorData, 
             end
             local totalPredios = 0
             for _ in pairs(generatorData.connectedBuildings) do totalPredios = totalPredios + 1 end
-            Logger.Debug(string.format("Atualizados %d prédio(s) após o gerador %s ficar sem combustível",
+            Logger.Debug(string.format("Atualizados %d predio(s) apos o gerador %s ficar sem combustivel",
                 totalPredios, generatorData.id), "Fuel")
         end
-        Logger.Info(string.format("Gerador %s ficou sem combustível (chunk carregado: %s)", generatorData.id, tostring(chunkCarregado)), "Fuel")
+        Logger.Info(string.format("Gerador %s ficou sem combustivel (chunk carregado: %s)", generatorData.id, tostring(chunkCarregado)), "Fuel")
     end
     
     -- Registra estatísticas
@@ -610,7 +609,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(generatorData, 
     generatorData.lastUpdateTime = getTimestampMs()
     
     local lph = deltaSeconds > 0 and (combustivelConsumido * 3600 / deltaSeconds) or 0
-    Logger.Debug(string.format("Gerador %s consumiu %.4f de combustível (%.3f L/h) (restante: %.3f -> %.3f) [chunk: %s]",
+    Logger.Debug(string.format("Gerador %s consumiu %.4f de combustivel (%.3f L/h) (restante: %.3f -> %.3f) [chunk: %s]",
         generatorData.id, combustivelConsumido, lph, combustivelAtual, novoCombustivel, tostring(chunkCarregado)), "Fuel")
 end
 
@@ -1353,7 +1352,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.ConsumeFuel(generatorData, amou
                 LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdateBuilding(idPredio)
                 totalAtualizados = totalAtualizados + 1
             end
-            LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("Atualizados %d prédio(s) após remoção de combustível do gerador %s",
+            LKS_EletricidadeConstrucao.Core.Logger.Debug(string.format("Atualizados %d predio(s) apos remocao de combustivel do gerador %s",
                 totalAtualizados, generatorData.id), "Fuel")
         end
     end
@@ -1456,16 +1455,16 @@ end
 
 --- Exibe o status do gerenciador de combustível no console
 function LKS_EletricidadeConstrucao.Fuel.Manager.PrintStatus()
-    LKS_EletricidadeConstrucao.Print("=== Status do Gerenciador de Combustível ===")
+    LKS_EletricidadeConstrucao.Print("=== Status do Gerenciador de Combustivel ===")
     LKS_EletricidadeConstrucao.Print("Inicializado: " .. tostring(_inicializado))
-    LKS_EletricidadeConstrucao.Print("Intervalo de Atualização: " .. _intervaloAtualizacao .. "ms")
+    LKS_EletricidadeConstrucao.Print("Intervalo de Atualizacao: " .. _intervaloAtualizacao .. "ms")
     
     local geradoresAtivos = LKS_EletricidadeConstrucao.Core.StateManager.GetActiveGenerators()
     LKS_EletricidadeConstrucao.Print("Geradores Ativos: " .. #geradoresAtivos)
     
     for _, dadosGerador in ipairs(geradoresAtivos) do
         local horasRestantes = LKS_EletricidadeConstrucao.Fuel.Manager.GetRemainingHours(dadosGerador)
-        LKS_EletricidadeConstrucao.Print(string.format("  %s: %.2f combustível, %.1fh restantes, %.1f%% sobrecarga",
+        LKS_EletricidadeConstrucao.Print(string.format("  %s: %.2f combustivel, %.1fh restantes, %.1f%% sobrecarga",
             dadosGerador.id, dadosGerador.fuelAmount, horasRestantes, dadosGerador.strain))
     end
 end

@@ -193,7 +193,7 @@ if not LKS_EletricidadeConstrucao.RegisterModule then
             version = version or "unknown",
             loadedAt = os.time()
         }
-        LKS_EletricidadeConstrucao.Print(string.format("Módulo carregado: %s (v%s)", moduleName, version or "unknown"))
+        LKS_EletricidadeConstrucao.Print(string.format("Modulo carregado: %s (v%s)", moduleName, version or "unknown"))
     end
 end
 
@@ -311,10 +311,10 @@ LKS_EletricidadeConstrucao._InitStatus.CoreInitialized = true
 
 -- Resumo dos módulos carregados com sucesso
 local modulosCarregados = LKS_EletricidadeConstrucao.GetLoadedModules()
-LKS_EletricidadeConstrucao.Print(string.format("Inicialização concluída - %d módulos registrados", #modulosCarregados))
+LKS_EletricidadeConstrucao.Print(string.format("Inicializacao concluida - %d modulos registrados", #modulosCarregados))
 
 if LKS_EletricidadeConstrucao.Config.DebugMode then
-    LKS_EletricidadeConstrucao.Print("Módulos carregados em ordem:")
+    LKS_EletricidadeConstrucao.Print("Modulos carregados em ordem:")
     for _, nomeModulo in ipairs(modulosCarregados) do
         LKS_EletricidadeConstrucao.Print("  - " .. nomeModulo)
     end

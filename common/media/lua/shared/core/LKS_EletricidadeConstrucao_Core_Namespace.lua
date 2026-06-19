@@ -191,7 +191,7 @@ end
 -- ============================================================================
 
 LKS_EletricidadeConstrucao.RegisterModule("Core.Namespace", LKS_EletricidadeConstrucao.VERSION)
-LKS_EletricidadeConstrucao.Print(string.format("Namespace inicializado - Versão %s (%s)", 
+LKS_EletricidadeConstrucao.Print(string.format("Namespace inicializado - Versao %s (%s)", 
     LKS_EletricidadeConstrucao.VERSION, LKS_EletricidadeConstrucao.BUILD_DATE))
 
 return LKS_EletricidadeConstrucao

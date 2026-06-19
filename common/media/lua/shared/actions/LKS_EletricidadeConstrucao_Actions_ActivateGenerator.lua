@@ -633,4 +633,4 @@ end
 LKS_EletricidadeConstrucao_ActivateGenerator.Execute = ExecutarAtivacaoGerador
 LKS_EletricidadeConstrucao.Actions.ActivateGenerator = LKS_EletricidadeConstrucao_ActivateGenerator
 
-LKS_EletricidadeConstrucao.Print("Ação ActivateGenerator carregada no namespace")
+LKS_EletricidadeConstrucao.Print("Acao ActivateGenerator carregada no namespace")

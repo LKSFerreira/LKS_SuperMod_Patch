@@ -31,7 +31,7 @@ LKS_EletricidadeConstrucao.Building.ConsumerScanner = LKS_EletricidadeConstrucao
 --- @param quadradosBorda table A lista de quadrados pertencentes à construção.
 function LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(dadosConstrucao, quadradosBorda)
     if not dadosConstrucao then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("Dados da construção vazios (nil)", "Building")
+        LKS_EletricidadeConstrucao.Core.Logger.Error("Dados da construcao vazios (nil)", "Building")
         return
     end
     
@@ -226,7 +226,7 @@ end
 --- @param dadosConstrucao table Os dados da construção no StateManager.
 function LKS_EletricidadeConstrucao.Building.ConsumerScanner.RescanConsumers(dadosConstrucao)
     if not dadosConstrucao then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("ReescanearConsumidores: dadosConstrucao é nulo (nil)", "Building")
+        LKS_EletricidadeConstrucao.Core.Logger.Error("ReescanearConsumidores: dadosConstrucao e nulo (nil)", "Building")
         return
     end
 
@@ -709,7 +709,7 @@ end
 --- @param dadosConstrucao table Os dados da construção.
 function LKS_EletricidadeConstrucao.Building.ConsumerScanner.PrintConsumers(dadosConstrucao)
     if not dadosConstrucao then
-        LKS_EletricidadeConstrucao.Print("Sem dados de construção")
+        LKS_EletricidadeConstrucao.Print("Sem dados de construcao")
         return
     end
     
@@ -731,11 +731,11 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.PrintConsumers(dado
         end
     end
 
-    LKS_EletricidadeConstrucao.Print("=== Consumidores da Construção " .. dadosConstrucao.id .. " ===")
+    LKS_EletricidadeConstrucao.Print("=== Consumidores da Construcao " .. dadosConstrucao.id .. " ===")
     LKS_EletricidadeConstrucao.Print("Total de Consumidores: " .. totalContagem)
     LKS_EletricidadeConstrucao.Print("Consumo Total de Energia: " .. (dadosConstrucao.totalPowerDraw or 0))
     LKS_EletricidadeConstrucao.Print("Luzes: " .. luzes)
-    LKS_EletricidadeConstrucao.Print("Luminárias: " .. luminarias)
+    LKS_EletricidadeConstrucao.Print("Luminarias: " .. luminarias)
     LKS_EletricidadeConstrucao.Print("Aparelhos: " .. dispositivos)
 
     LKS_EletricidadeConstrucao.Print("\nPrimeiros 10 consumidores:")

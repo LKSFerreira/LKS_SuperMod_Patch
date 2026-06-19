@@ -37,7 +37,7 @@ require "actions/LKS_EletricidadeConstrucao_Actions_OpenInfoWindow"
 require "actions/LKS_EletricidadeConstrucao_Actions_LinkBarrel"
 
 if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.DebugMode then
-    LKS_EletricidadeConstrucao.Print("Ações temporizadas (TimedActions) carregadas com sucesso:")
+    LKS_EletricidadeConstrucao.Print("Acoes temporizadas (TimedActions) carregadas com sucesso:")
     LKS_EletricidadeConstrucao.Print("  - ActivateGenerator")
     LKS_EletricidadeConstrucao.Print("  - ConnectBuilding")
     LKS_EletricidadeConstrucao.Print("  - DisconnectBuilding")

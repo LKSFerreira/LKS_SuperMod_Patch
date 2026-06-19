@@ -131,7 +131,7 @@ function LKS_EletricidadeConstrucao_DisconnectBuilding:complete()
         return true
     end
     
-    LKS_EletricidadeConstrucao.Print("[DisconnectBuilding] Desconectando gerador elétrico da construção: " .. identificadorPoolConstrucao)
+    LKS_EletricidadeConstrucao.Print("[DisconnectBuilding] Desconectando gerador eletrico da construcao: " .. identificadorPoolConstrucao)
     
     -- Desliga o gerador preventivamente antes de soltar a fiação elétrica
     if self.generator:isActivated() then
@@ -348,4 +348,4 @@ end
 
 LKS_EletricidadeConstrucao.Actions.DisconnectBuilding = LKS_EletricidadeConstrucao_DisconnectBuilding
 
-LKS_EletricidadeConstrucao.Print("Ação DisconnectBuilding carregada no namespace")
+LKS_EletricidadeConstrucao.Print("Acao DisconnectBuilding carregada no namespace")

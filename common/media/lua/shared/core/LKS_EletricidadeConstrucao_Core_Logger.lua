@@ -381,7 +381,7 @@ function LKS_EletricidadeConstrucao.Core.Logger.EndTimer(nomeTimer, limiteMiliss
     
     local tempoInicio = _cronometrosPerformance[nomeTimer]
     if not tempoInicio then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("O cronômetro '" .. nomeTimer .. "' não foi iniciado", LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("O cronometro '" .. nomeTimer .. "' nao foi iniciado", LKS_EletricidadeConstrucao.Core.Logger.Categories.PERFORMANCE)
         return
     end
     
@@ -477,15 +477,15 @@ end
 
 --- Print logger configuration
 function LKS_EletricidadeConstrucao.Core.Logger.PrintConfig()
-    LKS_EletricidadeConstrucao.Print("=== Configurações do Logger ===")
-    LKS_EletricidadeConstrucao.Print("Nível Global: " .. _nivelGlobal)
+    LKS_EletricidadeConstrucao.Print("=== Configuracoes do Logger ===")
+    LKS_EletricidadeConstrucao.Print("Nivel Global: " .. _nivelGlobal)
     LKS_EletricidadeConstrucao.Print("Exibir Carimbo de Tempo: " .. tostring(_exibirCarimboTempo))
     LKS_EletricidadeConstrucao.Print("Exibir Categorias: " .. tostring(_exibirCategoria))
     
     LKS_EletricidadeConstrucao.Print("Categorias Habilitadas:")
     for categoria, habilitada in pairs(_categoriasHabilitadas) do
         local nivel = _niveisCategorias[categoria] or "padrão"
-        LKS_EletricidadeConstrucao.Print("  " .. categoria .. ": " .. tostring(habilitada) .. " (nível: " .. tostring(nivel) .. ")")
+        LKS_EletricidadeConstrucao.Print("  " .. categoria .. ": " .. tostring(habilitada) .. " (nivel: " .. tostring(nivel) .. ")")
     end
 end
 

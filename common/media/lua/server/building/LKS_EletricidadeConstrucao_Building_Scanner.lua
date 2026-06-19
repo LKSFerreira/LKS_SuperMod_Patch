@@ -37,7 +37,7 @@ local _escaneamentoAtivo = nil
 --- Inicializa o escaneador de construções.
 function LKS_EletricidadeConstrucao.Building.Scanner.Initialize()
     if _inicializado then
-        LKS_EletricidadeConstrucao.Core.Logger.Warn("Escaneador de Construção já inicializado", "Building")
+        LKS_EletricidadeConstrucao.Core.Logger.Warn("Escaneador de Construcao ja inicializado", "Building")
         return
     end
     
@@ -45,7 +45,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.Initialize()
     
     _inicializado = true
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Escaneador de Construção inicializado com sucesso", "Building")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Escaneador de Construcao inicializado com sucesso", "Building")
 end
 
 --- Verifica se o escaneador de construções está inicializado.
@@ -432,7 +432,7 @@ end
 
 --- Imprime estatísticas de estado do escaneador no console de depuração.
 function LKS_EletricidadeConstrucao.Building.Scanner.PrintStatus()
-    LKS_EletricidadeConstrucao.Print("=== Estado do Escaneador de Construção ===")
+    LKS_EletricidadeConstrucao.Print("=== Estado do Escaneador de Construcao ===")
     LKS_EletricidadeConstrucao.Print("Inicializado: " .. tostring(_inicializado))
     LKS_EletricidadeConstrucao.Print("Escaneamentos na Fila: " .. #_filaEscaneamento)
     LKS_EletricidadeConstrucao.Print("Escaneamento Ativo: " .. tostring(_escaneamentoAtivo ~= nil))
@@ -445,7 +445,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.PrintStatus()
         total = total + 1
     end
     
-    LKS_EletricidadeConstrucao.Print("Total de Construções: " .. total)
+    LKS_EletricidadeConstrucao.Print("Total de Construcoes: " .. total)
 end
 
 -- ============================================================================

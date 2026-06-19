@@ -68,19 +68,19 @@ end
 --- @param player any O jogador executando.
 --- @param args table Argumentos adicionais.
 local function CMD_ListarConstrucoes(player, args)
-    Logger.Info("Debug", "=== LISTA DE CONSTRUÇÕES ===")
+    Logger.Info("Debug", "=== LISTA DE CONSTRUCOES ===")
     
     local construcoes = StateManager.GetAllBuildings()
     local _qualquerConstrucao = false
     for _ in pairs(construcoes or {}) do _qualquerConstrucao = true; break end
     if not construcoes or not _qualquerConstrucao then
-        Logger.Info("Debug", "Nenhuma construção registrada")
+        Logger.Info("Debug", "Nenhuma construcao registrada")
         return
     end
     
     local _totalConstrucoes = 0
     for _ in pairs(construcoes) do _totalConstrucoes = _totalConstrucoes + 1 end
-    Logger.Info("Debug", string.format("Total de construções: %d", _totalConstrucoes))
+    Logger.Info("Debug", string.format("Total de construcoes: %d", _totalConstrucoes))
     
     for _, dadosConstrucao in pairs(construcoes) do
         local totalConsumidores = 0
@@ -110,9 +110,9 @@ end
 --- @param player any O jogador executando.
 --- @param args table Argumentos adicionais.
 local function CMD_ListarConexoes(player, args)
-    Logger.Info("Debug", "=== CONEXÕES DE ENERGIA ===")
+    Logger.Info("Debug", "=== CONEXOES DE ENERGIA ===")
     if not LKS_EletricidadeConstrucao.Power or not LKS_EletricidadeConstrucao.Power.Manager then
-        Logger.Warn("Debug", "Gerenciador de Energia não carregado")
+        Logger.Warn("Debug", "Gerenciador de Energia nao carregado")
         return
     end
     LKS_EletricidadeConstrucao.Power.Manager.PrintConnections()
@@ -131,13 +131,13 @@ local function CMD_InformacoesConstrucao(player, args)
     
     local dadosConstrucao = StateManager.GetBuilding(idConstrucao)
     if not dadosConstrucao then
-        Logger.Warn("Debug", "Construção não encontrada: " .. idConstrucao)
+        Logger.Warn("Debug", "Construcao nao encontrada: " .. idConstrucao)
         return
     end
     
-    Logger.Info("Debug", "=== INFORMAÇÕES DA CONSTRUÇÃO ===")
+    Logger.Info("Debug", "=== INFORMACOES DA CONSTRUCAO ===")
     Logger.Info("Debug", "ID: " .. dadosConstrucao.id)
-    Logger.Info("Debug", string.format("Posição: (%d,%d,%d)", dadosConstrucao.centerX, dadosConstrucao.centerY, dadosConstrucao.z))
+    Logger.Info("Debug", string.format("Posicao: (%d,%d,%d)", dadosConstrucao.centerX, dadosConstrucao.centerY, dadosConstrucao.z))
     Logger.Info("Debug", string.format("Caixa Delimitadora: (%d,%d) a (%d,%d)", 
         dadosConstrucao.minX, dadosConstrucao.minY, dadosConstrucao.maxX, dadosConstrucao.maxY))
     Logger.Info("Debug", "Energizada: " .. tostring(dadosConstrucao.isPowered))
@@ -175,43 +175,43 @@ end
 local function CMD_EscanearConstrucoes(player, args)
     Logger.Info("Debug", "Escaneando por interruptores de luz...")
     if not LKS_EletricidadeConstrucao.Building or not LKS_EletricidadeConstrucao.Building.Scanner then
-        Logger.Warn("Debug", "Escaneador de Construção não carregado")
+        Logger.Warn("Debug", "Escaneador de Construcao nao carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Building.Scanner.ScanAllLightSwitches then
         LKS_EletricidadeConstrucao.Building.Scanner.ScanAllLightSwitches()
     end
-    Logger.Info("Debug", "Escaneamento concluído.")
+    Logger.Info("Debug", "Escaneamento concluido.")
 end
 
 --- Força a atualização imediata das conexões de energia.
 --- @param player any O jogador executando.
 --- @param args table Argumentos adicionais.
 local function CMD_AtualizarConexoes(player, args)
-    Logger.Info("Debug", "Forçando atualização de conexão de energia...")
+    Logger.Info("Debug", "Forcando atualizacao de conexao de energia...")
     if not LKS_EletricidadeConstrucao.Power or not LKS_EletricidadeConstrucao.Power.Manager then
-        Logger.Warn("Debug", "Gerenciador de Energia não carregado")
+        Logger.Warn("Debug", "Gerenciador de Energia nao carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Power.Manager.UpdateConnections then
         LKS_EletricidadeConstrucao.Power.Manager.UpdateConnections()
     end
-    Logger.Info("Debug", "Atualização de conexão concluída.")
+    Logger.Info("Debug", "Atualizacao de conexao concluida.")
 end
 
 --- Força a atualização da distribuição de carga elétrica nas redes.
 --- @param player any O jogador executando.
 --- @param args table Argumentos adicionais.
 local function CMD_AtualizarEnergia(player, args)
-    Logger.Info("Debug", "Forçando atualização da distribuição de energia...")
+    Logger.Info("Debug", "Forcando atualizacao da distribuicao de energia...")
     if not LKS_EletricidadeConstrucao.Power or not LKS_EletricidadeConstrucao.Power.Distributor then
-        Logger.Warn("Debug", "Distribuidor de Energia não carregado")
+        Logger.Warn("Debug", "Distribuidor de Energia nao carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
         LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
     end
-    Logger.Info("Debug", "Atualização da distribuição de energia concluída.")
+    Logger.Info("Debug", "Atualizacao da distribuicao de energia concluida.")
 end
 
 --- Escaneia a construção ao redor da posição atual do jogador.
@@ -226,24 +226,24 @@ local function CMD_EscanearAqui(player, args)
     if LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding then
         LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(coordenadaX, coordenadaY, coordenadaZ)
     else
-        Logger.Warn("Debug", "Escaneador de Construção não carregado")
+        Logger.Warn("Debug", "Escaneador de Construcao nao carregado")
     end
-    Logger.Info("Debug", "Escaneamento concluído.")
+    Logger.Info("Debug", "Escaneamento concluido.")
 end
 
 --- Rescaneia completamente todas as construções registradas em memória.
 --- @param player any O jogador executando.
 --- @param args table Argumentos adicionais.
 local function CMD_ReescanearTudo(player, args)
-    Logger.Info("Debug", "Reescaneando todas as construções registradas...")
+    Logger.Info("Debug", "Reescaneando todas as construcoes registradas...")
     if not LKS_EletricidadeConstrucao.Building or not LKS_EletricidadeConstrucao.Building.Scanner then
-        Logger.Warn("Debug", "Escaneador de Construção não carregado")
+        Logger.Warn("Debug", "Escaneador de Construcao nao carregado")
         return
     end
     if LKS_EletricidadeConstrucao.Building.Scanner.RescanAllBuildings then
         LKS_EletricidadeConstrucao.Building.Scanner.RescanAllBuildings()
     end
-    Logger.Info("Debug", "Reescaneamento concluído.")
+    Logger.Info("Debug", "Reescaneamento concluido.")
 end
 
 --- Exibe estatísticas consolidadas do estado elétrico do servidor.
@@ -275,7 +275,7 @@ local function CMD_Estado(player, args)
             totalConsumidores = totalConsumidores + _contagemConsumidores
         end
     end
-    Logger.Info("Debug", string.format("Construções: %d no total, %d energizadas, %d consumidores", 
+    Logger.Info("Debug", string.format("Construcoes: %d no total, %d energizadas, %d consumidores", 
         totalConstrucoes, construcoesEnergizadas, totalConsumidores))
     
     -- Conexões
@@ -283,10 +283,10 @@ local function CMD_Estado(player, args)
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and LKS_EletricidadeConstrucao.Power.Manager.GetConnectionCount then
         totalConexoes = LKS_EletricidadeConstrucao.Power.Manager.GetConnectionCount()
     end
-    Logger.Info("Debug", string.format("Conexões de Energia: %d", totalConexoes))
-    Logger.Info("Debug", "Gerenciador de Combustível: " .. (LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and "Ativo" or "Não carregado"))
-    Logger.Info("Debug", "Escaneador de Construção: " .. (LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and "Ativo" or "Não carregado"))
-    Logger.Info("Debug", "Distribuição de Energia: " .. (LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and "Ativa" or "Não carregada"))
+    Logger.Info("Debug", string.format("Conexoes de Energia: %d", totalConexoes))
+    Logger.Info("Debug", "Gerenciador de Combustivel: " .. (LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and "Ativo" or "Nao carregado"))
+    Logger.Info("Debug", "Escaneador de Construcao: " .. (LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and "Ativo" or "Nao carregado"))
+    Logger.Info("Debug", "Distribuicao de Energia: " .. (LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and "Ativa" or "Nao carregada"))
     
     Logger.Info("Debug", "==============================")
 end
@@ -295,7 +295,7 @@ end
 --- @param player any O jogador executando.
 --- @param args table Argumentos adicionais.
 local function CMD_SalvarEstado(player, args)
-    Logger.Info("Debug", "Forçando salvamento do estado...")
+    Logger.Info("Debug", "Forcando salvamento do estado...")
     StateManager.Save(true)
     Logger.Info("Debug", "Estado salvo com sucesso.")
 end
@@ -306,13 +306,13 @@ end
 local function CMD_LimparEstado(player, args)
     local confirmacao = args and args[1]
     if confirmacao ~= "CONFIRM" then
-        Logger.Warn("Debug", "Uso: /pbclear CONFIRM - Limpa TODO o GlobalModData e o estado em memória")
-        Logger.Warn("Debug", "Isso excluirá: LKS_EletricidadeConstrucaoV2, LKS_EletricidadeConstrucaoV2_GeneratorIndex, LKS_EletricidadeConstrucaoV2_Backup")
+        Logger.Warn("Debug", "Uso: /pbclear CONFIRM - Limpa TODO o GlobalModData e o estado em memoria")
+        Logger.Warn("Debug", "Isso excluira: LKS_EletricidadeConstrucaoV2, LKS_EletricidadeConstrucaoV2_GeneratorIndex, LKS_EletricidadeConstrucaoV2_Backup")
         return
     end
 
     LKS_EletricidadeConstrucao.DebugCommands.WipeAllData()
-    Logger.Info("Debug", "/pbclear CONFIRM concluído — consulte a saída do console para detalhes.")
+    Logger.Info("Debug", "/pbclear CONFIRM concluido — consulte a saida do console para detalhes.")
 end
 
 --- Exibe o painel de ajuda dos comandos de depuração admin.
@@ -322,15 +322,15 @@ local function CMD_Ajuda(player, args)
     Logger.Info("Debug", "=== LKS_EletricidadeConstrucao DEBUG COMMANDS ===")
     Logger.Info("Debug", "/pbstatus - Exibe o status consolidado do sistema")
     Logger.Info("Debug", "/pbgenerators - Lista todos os geradores registrados")
-    Logger.Info("Debug", "/pbbuildings - Lista todas as construções registradas")
-    Logger.Info("Debug", "/pbconnections - Lista as conexões ativas de rede de fiação")
-    Logger.Info("Debug", "/pbbuilding <id> - Detalha uma construção específica")
+    Logger.Info("Debug", "/pbbuildings - Lista todas as construcoes registradas")
+    Logger.Info("Debug", "/pbconnections - Lista as conexoes ativas de rede de fiacao")
+    Logger.Info("Debug", "/pbbuilding <id> - Detalha uma construcao especifica")
     Logger.Info("Debug", "/pbscan - Escaneia interruptores carregados no mapa")
-    Logger.Info("Debug", "/pbscanhere - Escaneia a construção ao redor do jogador")
-    Logger.Info("Debug", "/pbrescan - Recarrega e reavalia todas as construções")
-    Logger.Info("Debug", "/pbupdatecon - Força a atualização do acoplamento elétrico")
-    Logger.Info("Debug", "/pbupdatepower - Força o recálculo do consumo de energia")
-    Logger.Info("Debug", "/pbsave - Salva o estado elétrico atual em disco")
+    Logger.Info("Debug", "/pbscanhere - Escaneia a construcao ao redor do jogador")
+    Logger.Info("Debug", "/pbrescan - Recarrega e reavalia todas as construcoes")
+    Logger.Info("Debug", "/pbupdatecon - Forca a atualizacao do acoplamento eletrico")
+    Logger.Info("Debug", "/pbupdatepower - Forca o recalculo do consumo de energia")
+    Logger.Info("Debug", "/pbsave - Salva o estado eletrico atual em disco")
     Logger.Info("Debug", "/pbclear CONFIRM - Wipa completamente todos os dados salvos do mod")
     Logger.Info("Debug", "/pbhelp - Exibe este guia de ajuda")
     Logger.Info("Debug", "=======================================")
@@ -347,7 +347,7 @@ function LKS_EletricidadeConstrucao.DebugCommands.RegisterCommands()
         return 
     end
     
-    Logger.Info("Debug", "Registrando comandos de depuração elétricos...")
+    Logger.Info("Debug", "Registrando comandos de depuracao eletricos...")
     
     Events.OnClientCommand.Add(function(modulo, comando, player, args)
         if modulo ~= "LKS_EletricidadeConstrucao" then return end
@@ -368,7 +368,7 @@ function LKS_EletricidadeConstrucao.DebugCommands.RegisterCommands()
         end
     end)
     
-    Logger.Info("Debug", "Comandos de depuração registrados com sucesso.")
+    Logger.Info("Debug", "Comandos de depuracao registrados com sucesso.")
 end
 
 function LKS_EletricidadeConstrucao.DebugCommands.Initialize()

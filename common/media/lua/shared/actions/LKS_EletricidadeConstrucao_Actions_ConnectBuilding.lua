@@ -317,10 +317,10 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
     local identificadorConstrucao
     if interruptorX0 then
         identificadorConstrucao = string.format("bld_%d_%d_%d", interruptorX0, interruptorY0, interruptorZ0)
-        LKS_EletricidadeConstrucao.Print("[ConnectBuilding] ID canônico obtido do interruptor: " .. identificadorConstrucao)
+        LKS_EletricidadeConstrucao.Print("[ConnectBuilding] ID canonico obtido do interruptor: " .. identificadorConstrucao)
     elseif definicaoConstrucao and definicaoConstrucao.getX and definicaoConstrucao.getY then
         identificadorConstrucao = string.format("bld_%d_%d_%d", definicaoConstrucao:getX(), definicaoConstrucao:getY(), quadradoConstrucao:getZ())
-        LKS_EletricidadeConstrucao.Print("[ConnectBuilding] ID de reserva obtido da origem da construção: " .. identificadorConstrucao)
+        LKS_EletricidadeConstrucao.Print("[ConnectBuilding] ID de reserva obtido da origem da construcao: " .. identificadorConstrucao)
     else
         identificadorConstrucao = string.format("bld_%d_%d_%d", quadradoConstrucao:getX(), quadradoConstrucao:getY(), quadradoConstrucao:getZ())
         LKS_EletricidadeConstrucao.Warn("[ConnectBuilding] ID de emergência obtido de buildingSquare: " .. identificadorConstrucao)
@@ -581,4 +581,4 @@ end
 
 LKS_EletricidadeConstrucao.Actions.ConnectBuilding = LKS_EletricidadeConstrucao_ConnectBuilding
 
-LKS_EletricidadeConstrucao.Print("Ação ConnectBuilding carregada no namespace")
+LKS_EletricidadeConstrucao.Print("Acao ConnectBuilding carregada no namespace")

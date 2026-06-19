@@ -57,12 +57,12 @@ function LKS_EletricidadeConstrucao.Core.EventManager.RegisterHandler(nomeEvento
     
     -- Validação de sanidade de parâmetros
     if Validacao.IsEmptyString(nomeEvento) then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("O nome do evento não pode ser vazio", "Event")
+        LKS_EletricidadeConstrucao.Core.Logger.Error("O nome do evento nao pode ser vazio", "Event")
         return false
     end
     
     if not Validacao.IsFunction(manipulador) then
-        LKS_EletricidadeConstrucao.Core.Logger.Error("O manipulador do evento deve ser uma função válida", "Event")
+        LKS_EletricidadeConstrucao.Core.Logger.Error("O manipulador do evento deve ser uma funcao valida", "Event")
         return false
     end
     
@@ -180,7 +180,7 @@ function LKS_EletricidadeConstrucao.Core.EventManager.RegisterGameEvent(nomeEven
         return false
     end
     Events[nomeEvento].Add(manipulador)
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Registrado vínculo com evento nativo: " .. nomeEvento, "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Registrado vinculo com evento nativo: " .. nomeEvento, "Event")
     return true
 end
 
@@ -196,7 +196,7 @@ function LKS_EletricidadeConstrucao.Core.EventManager.UnregisterGameEvent(nomeEv
         return false
     end
     Events[nomeEvento].Remove(manipulador)
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Removido vínculo com evento nativo: " .. nomeEvento, "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Removido vinculo com evento nativo: " .. nomeEvento, "Event")
     return true
 end
 
@@ -222,7 +222,7 @@ function LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents()
         end
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Eventos personalizados do sistema elétrico inicializados", "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Eventos personalizados do sistema eletrico inicializados", "Event")
 end
 
 -- ============================================================================
@@ -357,7 +357,7 @@ end
 
 --- Imprime estatísticas históricas de disparo e ouvintes cadastrados no console.
 function LKS_EletricidadeConstrucao.Core.EventManager.PrintStats()
-    LKS_EletricidadeConstrucao.Print("=== Estatísticas do Gerenciador de Eventos ===")
+    LKS_EletricidadeConstrucao.Print("=== Estatisticas do Gerenciador de Eventos ===")
     
     local totalDisparados = 0
     local totalManipuladores = 0
@@ -391,7 +391,7 @@ function LKS_EletricidadeConstrucao.Core.EventManager.ClearStats()
     for _, estatisticas in pairs(_estatisticasEventos) do
         estatisticas.disparados = 0
     end
-    LKS_EletricidadeConstrucao.Core.Logger.Debug("Estatísticas de disparos de eventos zeradas", "Event")
+    LKS_EletricidadeConstrucao.Core.Logger.Debug("Estatisticas de disparos de eventos zeradas", "Event")
 end
 
 -- ============================================================================

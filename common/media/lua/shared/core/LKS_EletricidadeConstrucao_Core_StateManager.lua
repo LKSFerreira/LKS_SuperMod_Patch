@@ -377,7 +377,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
     _inicializado = true
     _estadoCarregamentoDados = "pending"
 
-    LKS_EletricidadeConstrucao.Print("[StateManager.Initialize] Gerenciador pronto (aguardando confirmação do mundo)")
+    LKS_EletricidadeConstrucao.Print("[StateManager.Initialize] Gerenciador pronto (aguardando confirmacao do mundo)")
     return true
 end
 
@@ -412,7 +412,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Load()
     
     if identificadorMundoAtual == "unknown" then
         _carregadoComIdentificadorMundoDesconhecido = true
-        LKS_EletricidadeConstrucao.Print("[StateManager.Load] Identificador de mundo indisponível (boot inicial) - pulando validação de isolamento")
+        LKS_EletricidadeConstrucao.Print("[StateManager.Load] Identificador de mundo indisponivel (boot inicial) - pulando validacao de isolamento")
     elseif identificadorMundoArmazenado and identificadorMundoArmazenado ~= identificadorMundoAtual then
         LKS_EletricidadeConstrucao.Warn(string.format(
             "[StateManager.Load] Detectada inconsistência de mundo (salvo=%s, atual=%s) - limpando dados anteriores para este save",
@@ -875,7 +875,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.ClearBuildings()
     if not _estado then return end
     LKS_EletricidadeConstrucao.Data.State.ClearBuildings(_estado)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-    LKS_EletricidadeConstrucao.Print("[StateManager] Registros de construções limpos permanentemente")
+    LKS_EletricidadeConstrucao.Print("[StateManager] Registros de construcoes limpos permanentemente")
 end
 
 --- Limpa todos os dados de rede cadastrados (Geradores e Construções).
@@ -883,7 +883,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.ClearAll()
     if not _estado then return end
     LKS_EletricidadeConstrucao.Data.State.ClearAll(_estado)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-    LKS_EletricidadeConstrucao.Print("[StateManager] Todos os registros elétricos foram removidos")
+    LKS_EletricidadeConstrucao.Print("[StateManager] Todos os registros eletricos foram removidos")
 end
 
 --- Reseta o contêiner de dados em execução de volta aos padrões originais.
@@ -909,7 +909,7 @@ end
 --- Consolida e imprime um log descritivo no console contendo as informações do gerenciador.
 function LKS_EletricidadeConstrucao.Core.StateManager.PrintDebugInfo()
     if not _estado then
-        LKS_EletricidadeConstrucao.Print("StateManager: Módulo não inicializado")
+        LKS_EletricidadeConstrucao.Print("StateManager: Modulo nao inicializado")
         return
     end
     
@@ -920,9 +920,9 @@ function LKS_EletricidadeConstrucao.Core.StateManager.PrintDebugInfo()
     
     local estatisticas = _estado.statistics
     LKS_EletricidadeConstrucao.Print("  Geradores: " .. estatisticas.totalGenerators .. " (" .. estatisticas.activeGenerators .. " ativos)")
-    LKS_EletricidadeConstrucao.Print("  Construções: " .. estatisticas.totalBuildings)
+    LKS_EletricidadeConstrucao.Print("  Construcoes: " .. estatisticas.totalBuildings)
     LKS_EletricidadeConstrucao.Print("  Consumidores: " .. estatisticas.totalConsumers .. " (" .. estatisticas.activeConsumers .. " ativos)")
-    LKS_EletricidadeConstrucao.Print("  Combustível Consumido: " .. estatisticas.totalFuelConsumed)
+    LKS_EletricidadeConstrucao.Print("  Combustivel Consumido: " .. estatisticas.totalFuelConsumed)
     LKS_EletricidadeConstrucao.Print("  Tempo Ativo (Uptime): " .. string.format("%.1f", estatisticas.uptime / 3600) .. " horas")
 end
 

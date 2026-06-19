@@ -132,7 +132,7 @@ local function AoIniciarJogo()
         LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Inicialização do servidor concluída", "Core")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Inicializacao do servidor concluida", "Core")
 end
 
 --- Manipula o evento EveryOneMinute (atualizações de loop periódico).
@@ -220,7 +220,7 @@ local function AoDesligarServidor()
         LKS_EletricidadeConstrucao.Core.StateManager.Save(true, true)
     end
     
-    LKS_EletricidadeConstrucao.Core.Logger.Info("Desligamento do servidor concluído", "Core")
+    LKS_EletricidadeConstrucao.Core.Logger.Info("Desligamento do servidor concluido", "Core")
 end
 
 --- Manipula o evento OnSave regular (salvamento com proteção de backup a cada ~5 minutos).
@@ -271,14 +271,14 @@ if Events.OnGameStart then
                 _etapa1Concluida = true
                 if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                     LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
-                    LKS_EletricidadeConstrucao.Core.Logger.Info("Atualização inicial do estado dos consumidores (etapa 1) concluída", "Core")
+                    LKS_EletricidadeConstrucao.Core.Logger.Info("Atualizacao inicial do estado dos consumidores (etapa 1) concluida", "Core")
                 end
             end
             if _etapa1Concluida and agora >= _tempoLimite2 then
                 Events.OnTick.Remove(_atualizacaoInicial)
                 if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate then
                     LKS_EletricidadeConstrucao.Power.Distributor.ForceUpdate()
-                    LKS_EletricidadeConstrucao.Core.Logger.Info("Atualização inicial do estado dos consumidores (etapa 2) concluída", "Core")
+                    LKS_EletricidadeConstrucao.Core.Logger.Info("Atualizacao inicial do estado dos consumidores (etapa 2) concluida", "Core")
                 end
             end
         end

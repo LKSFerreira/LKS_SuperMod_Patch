@@ -155,7 +155,7 @@ function LKS_EletricidadeConstrucao_OpenInfoWindow:complete()
         return true
     end
     
-    LKS_EletricidadeConstrucao.Print("[OpenInfoWindow] Abrindo janela de estatísticas elétricas")
+    LKS_EletricidadeConstrucao.Print("[OpenInfoWindow] Abrindo janela de estatisticas eletricas")
     
     if LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open then
         LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open(
@@ -197,4 +197,4 @@ end
 
 LKS_EletricidadeConstrucao.Actions.OpenInfoWindow = LKS_EletricidadeConstrucao_OpenInfoWindow
 
-LKS_EletricidadeConstrucao.Print("Ação OpenInfoWindow carregada no namespace")
+LKS_EletricidadeConstrucao.Print("Acao OpenInfoWindow carregada no namespace")
