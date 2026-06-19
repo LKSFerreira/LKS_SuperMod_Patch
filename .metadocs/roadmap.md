@@ -40,6 +40,8 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 - [x] **`README.MD` com Extensão Maiúscula**: O arquivo na raiz usa `.MD` ao invés da convenção padrão `.md`. Renomear para `README.md`.
 
+- [ ] **Driver de Culinária Não Trata IsoFireplace Corretamente**: `LKS_Device_Cooking.lua` registra `IsoFireplace` em `classesJava` mas `construirMenuContexto()` só verifica `instanceof(..., "IsoStove")`. IsoFireplace entra no fluxo mas cai no branch de micro-ondas (só eletricidade). Problemas decorrentes: (1) `acenderFogaoPropano()` é chamado para fogão antigo — executa `addGeneratorPos` + `ISToggleStoveAction` desnecessariamente, pois IsoFireplace tem APIs próprias de combustível sólido; (2) `apagarFogaoPropano()` executa `removeGeneratorPos` + `setActivated(false)` em vez da lógica vanilla de extinguir; (3) `verificarFonteEnergia()` retorna `disponivel = true` incondicionalmente para tipo "antigo" sem verificar se há combustível no IsoFireplace. Resolver ao implementar a mecânica dedicada do fogão antigo (Fase 3 do design).
+
 ## Concluído
 
 - [x] **Melhorias Visuais do Termostato (12/06/2026)**: Ampliação das setas para 24px, alinhamento vertical matemático, resolução de crashes por valor nulo, espaçamento de respiro vertical para evitar cortes e tradução adaptativa para PT-BR.

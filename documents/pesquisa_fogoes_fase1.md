@@ -68,7 +68,7 @@ stove:getContainer():isPowered()
 
 ### Conclusão sobre IsoStove
 
-O `IsoStove` vanilla **requer eletricidade** (`isPowered()`). Não há mecânica nativa de propano encanado/botijão para `IsoStove`. Nossa mecânica de propano precisará **override** do check de `isPowered()` ou uma fonte alternativa de "poder".
+O `IsoStove` vanilla **requer eletricidade** (`isPowered()`). Não há mecânica nativa de propano encanado/botijão para `IsoStove`. **Solução implementada:** `chunk:addGeneratorPos(x,y,z)` marca o tile como energizado → `isPowered()` retorna `true` nativamente → motor Java mantém fogão aceso sem resistência. Ver `documents/referencia_padroes_vanilla_pz.md` seção 4.1.
 
 ---
 
@@ -133,22 +133,34 @@ item PropaneTank {
 
 ### Mecânica existente
 
-- **Usado em**: Churrasqueira a gás (`ISBBQMenu.lua`)
-- **API disponível**:
+- **Usado em**: Churrasqueira a gás (`ISBBQMenu.lua`) — **exclusivamente `IsoFireplace`**
+- **API disponível na churrasqueira (IsoFireplace)**:
   - `hasPropaneTank()` — verifica se aparelho tem tanque
   - `getAttachedPropaneTank()` — obtém o tanque
-  - `setAttachedPropaneTank(tank)` — conecta tanque
+  - `setPropaneTank(item)` — conecta tanque (**exclusivo de IsoFireplace**)
   - `FindPropaneTank` — busca no inventário
   - `onInsertPropaneTank` / `onRemovePropaneTank` — ações de inserir/remover
+- **⚠️ API NÃO disponível em IsoStove (fogão comum)**:
+  - `setPropaneTank()` — **NÃO EXISTE** em IsoStove
+  - `setAttachedPropaneTank()` — **NÃO EXISTE** em IsoStove
+  - `addFuel()` / `setFuelAmount()` — **NÃO EXISTEM** em IsoStove
+  - `hasPropaneTank()` — existe como getter mas retorna `false` (sem setter)
+  - `isPropaneBBQ()` — existe como getter mas retorna `false` para fogão comum
 - **Tipo**: `Drainable` com `UseDelta = 0.0002` (drena muito lentamente)
 - **Peso**: 10kg cheio, 5kg vazio
 - **Cabe no inventário**: ✅ Sim (peso 10 é carregável)
 
 ### Conclusão sobre PropaneTank
 
-O **botijão vanilla É o nosso "Botijão Vanilla (Pequeno)"** — já existe, pesa 10kg, cabe no inventário. A API `hasPropaneTank()` / `setAttachedPropaneTank()` pode ser reutilizada para conectar botijões aos fogões. Precisamos criar:
-- Botijão de 15kg (não cabe no inventário — `UseWorldItem = true` com peso impeditivo ou flag)
-- Botijão de 45kg (mesma abordagem com mecânica de arrasto)
+O **botijão vanilla É o nosso "Botijão Vanilla (Pequeno)"** — já existe, pesa 10kg, cabe no inventário.
+
+**⚠️ CORREÇÃO IMPORTANTE (validado in-game em 18/06/2026):** A API de propano (`setPropaneTank`, `addFuel`, `setFuelAmount`) é **exclusiva de `IsoFireplace`** (churrasqueira/BBQ). O `IsoStove` (fogão comum) **NÃO possui** nenhum setter de propano. O motor Java do PZ simplesmente não suporta propano nativo em fogões regulares.
+
+**Solução implementada:** `chunk:addGeneratorPos(x,y,z)` marca o tile do fogão como energizado por gerador → `isPowered()` retorna `true` nativamente → motor Java mantém fogão aceso. Remoção com `removeGeneratorPos()` ao apagar. Documentação completa em `documents/referencia_padroes_vanilla_pz.md` seção 4.1.
+
+Botijões criados pelo mod:
+- Botijão de 15kg (não cabe no inventário — mecânica de carregar como gerador)
+- Botijão de 45kg (mecânica de arrasto como corpo de zumbi)
 
 ---
 
@@ -282,7 +294,8 @@ O vanilla **não tem** sistema de qualidade progressiva (Normal/Boa/Excelente). 
 | Mecânica | Status | Como usar |
 |---|---|---|
 | `IsoFireplace` + combustível sólido | ✅ Pronto no vanilla | Fogão Antigo = `IsoFireplace` nativo |
-| `PropaneTank` + API `hasPropaneTank()` | ✅ Pronto no vanilla | Base para botijões |
+| `PropaneTank` como item Drainable | ✅ Pronto no vanilla | Base para botijões (item portátil) |
+| `chunk:addGeneratorPos()` | ✅ API do engine | Energizar tile do fogão para `isPowered()` retornar true |
 | `ItemTag.START_FIRE` | ✅ Pronto no vanilla | Validação de fontes de calor |
 | `isPowered()` para IsoStove | ✅ Pronto no vanilla | Check de eletricidade |
 | Baterias com `UsedDelta` | ✅ Pronto no vanilla | Modo emergência indução |

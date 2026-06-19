@@ -46,7 +46,11 @@ python tools/gerar_luarc.py --help   # Exibe ajuda detalhada
 python tools/auditoria_mod.py validar-sintaxe [<caminho>]
 python tools/auditoria_mod.py auditar-traducoes [--idioma <idioma>] [--ignorar-nativas]
 python tools/auditoria_mod.py auditar-caminhos
+python tools/auditoria_mod.py auditar-assets
+python tools/auditoria_mod.py documentar-api
 ```
+
+O comando `documentar-api` extrai automaticamente funções com anotações EmmyLua de todos os módulos Lua do mod e gera `documents/referencia_api_interna_lks.md`.
 
 ---
 
@@ -113,6 +117,21 @@ python tools/configurar_terminal.py
 
 ---
 
+## 7. `sanitizar_logs_lua.py` — Sanitizador de acentos em logs Lua
+
+**Propósito:** Substitui caracteres acentuados PT-BR por equivalentes ASCII **apenas** em strings de log/debug (chamadas ao `Registrador` e `print` com prefixo `[LKS`). Preserva integralmente fallbacks de `getText()`, strings de UI e traduções.
+
+**Quando usar:**
+- Após adicionar novos logs com acentos PT-BR
+- Quando o console do PZ exibir caracteres quebrados (`constru  o`, `lumin rias`)
+
+```bash
+python tools/sanitizar_logs_lua.py                # Dry-run (mostra substituições sem aplicar)
+python tools/sanitizar_logs_lua.py --aplicar      # Aplica as substituições nos arquivos
+```
+
+---
+
 ## Resumo rápido
 
 | Ferramenta | Comando curto | Frequência de uso |
@@ -123,3 +142,4 @@ python tools/configurar_terminal.py
 | `sanitiza_log.py` | `python tools/sanitiza_log.py` | Ao depurar erros |
 | `atualizar_dicionario_tilesets.py` | `python tools/atualizar_dicionario_tilesets.py` | Raro (update do PZ) |
 | `configurar_terminal.py` | `python tools/configurar_terminal.py` | Uma vez por máquina |
+| `sanitizar_logs_lua.py` | `python tools/sanitizar_logs_lua.py --aplicar` | Após adicionar logs com acentos |

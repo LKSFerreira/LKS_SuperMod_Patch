@@ -467,6 +467,9 @@ A limpeza **não** causa incêndio nem afeta funcionamento — apenas impacta a 
 ## 8. Status
 
 - **Documento criado em**: 17/06/2026
-- **Status**: Proposta inicial — em discussão
-- **Driver existente**: `LKS_Device_Cooking.lua` (cobre fogões e micro-ondas como tipo único)
-- **Próximo passo**: Mapear sprites de fogões do jogo base para categorização nos 3 tipos
+- **Última atualização**: 18/06/2026
+- **Status**: Em implementação — Fases 1, 2, 5 parcialmente concluídas
+- **Driver existente**: `LKS_Device_Cooking.lua` (3 tipos: convencional, antigo, indução com submenu de ignição diferenciado)
+- **Itens criados**: Fogão de Indução, Botijões 15kg/45kg, Acendedor Improvisado, Bobina, Inversor, Transformador, Revista, Manual
+- **Sistema de propano**: Encanado com corte por dia + botijão via `addGeneratorPos`
+- **Próximo passo**: Preencher tabela de classificação de sprites (bloqueador para indução), consumo de propano do botijão, teste funcional de cozimento
