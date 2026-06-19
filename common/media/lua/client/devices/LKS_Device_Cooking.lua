@@ -3,7 +3,7 @@
 -- EXTENSÃO: LKS SuperMod Patch (Módulo de Comportamento de Culinária)
 -- OBJETIVO: Driver de comportamento e texturas para fogões (Stoves) e
 --           micro-ondas (Microwaves) no gerenciador LKS_ApplianceManager.
---           Suporta 3 tipos de fogão: Convencional (gás), Antigo (lenha)
+--           Suporta 3 tipos de fogão: Convencional (propano), Antigo (lenha)
 --           e Indução (eletricidade). A classificação é feita por sprite
 --           via LKS_Cooking_SpriteClassification.
 -- AUTOR: LKS FERREIRA
@@ -18,18 +18,96 @@ LKS_ApplianceManager.containerTypeMap = LKS_ApplianceManager.containerTypeMap or
 LKS_ApplianceManager.javaClassMap = LKS_ApplianceManager.javaClassMap or {}
 
 if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("CookingEnabled", true) then
-    print("[LKS PATCH - LKS_Device_Cooking.lua] Culinária desativada no sandbox.")
+    print("[LKS PATCH - LKS_Device_Cooking.lua] Culinaria desativada no sandbox.")
     return
 end
 
 local ClassificacaoSprites = require("LKS_Cooking_SpriteClassification")
-local SistemaGas = require("LKS_Cooking_GasSystem")
+local SistemaPropano = require("LKS_Cooking_PropanoSystem")
 
 local LKS_Device_Cooking = {
     recipientesAceitos = {"stove", "microwave", "woodstove", "fireplace"},
     classesJava = {"IsoStove", "IsoMicrowave", "IsoFireplace"},
     brilhoInativo = "escurece25"
 }
+
+-- ============================================================================
+-- GERENCIAMENTO DE ESTADO DE FOGÕES A PROPANO
+-- ============================================================================
+-- Solução: marcar o tile do fogão como "energizado por gerador" via
+-- chunk:addGeneratorPos(). Isso faz isPowered() retornar true nativamente,
+-- e o motor Java mantém o fogão aceso sem resistência.
+-- Mesmo mecanismo usado pelo LKS_EletricidadeConstrucao para prédios.
+-- ============================================================================
+
+--- Marca o tile do fogão como energizado e acende via TimedAction vanilla.
+---
+--- @param fogao IsoStove O fogão a acender.
+--- @param jogador IsoPlayer O jogador que está acendendo.
+local function acenderFogaoPropano(fogao, jogador)
+    if not fogao or not jogador then return end
+
+    -- Diagnóstico: verifica se o fogão suporta API nativa de propane
+    local temSetPropane = fogao.setPropaneTank ~= nil
+    local temHasPropane = fogao.hasPropaneTank ~= nil
+    local temIsPropaneBBQ = fogao.isPropaneBBQ ~= nil
+    local temIsFireInteraction = fogao.isFireInteractionObject and fogao:isFireInteractionObject() or false
+    print("[LKS_PROPANO_DIAG] setPropaneTank=" .. tostring(temSetPropane)
+        .. " hasPropaneTank=" .. tostring(temHasPropane)
+        .. " isPropaneBBQ=" .. tostring(temIsPropaneBBQ)
+        .. " isFireInteractionObject=" .. tostring(temIsFireInteraction)
+        .. " classe=" .. tostring(fogao:getClass()))
+
+    -- Testa valores reais dos métodos que existem
+    if temHasPropane then
+        print("[LKS_PROPANO_DIAG] hasPropaneTank() = " .. tostring(fogao:hasPropaneTank()))
+    end
+    if temIsPropaneBBQ then
+        print("[LKS_PROPANO_DIAG] isPropaneBBQ() = " .. tostring(fogao:isPropaneBBQ()))
+    end
+
+    -- Verifica setters alternativos
+    print("[LKS_PROPANO_DIAG] setAttachedPropaneTank=" .. tostring(fogao.setAttachedPropaneTank ~= nil)
+        .. " addFuel=" .. tostring(fogao.addFuel ~= nil)
+        .. " setFuelAmount=" .. tostring(fogao.setFuelAmount ~= nil)
+        .. " hasFuel=" .. tostring(fogao.hasFuel ~= nil)
+        .. " getFuelAmount=" .. tostring(fogao.getFuelAmount ~= nil))
+
+    local quadrado = fogao:getSquare()
+    if not quadrado then return end
+
+    local chunk = quadrado:getChunk()
+    if not chunk then return end
+
+    chunk:addGeneratorPos(fogao:getX(), fogao:getY(), fogao:getZ())
+    if quadrado.RecalcAllWithNeighbours then
+        quadrado:RecalcAllWithNeighbours(false)
+    end
+
+    fogao:getModData().LKS_FogaoAcesoPropano = true
+    ISTimedActionQueue.add(ISToggleStoveAction:new(jogador, fogao))
+end
+
+--- Remove a marca de energia do tile e apaga o fogão.
+---
+--- @param fogao IsoStove O fogão a apagar.
+local function apagarFogaoPropano(fogao)
+    if not fogao then return end
+
+    local quadrado = fogao:getSquare()
+    if quadrado then
+        local chunk = quadrado:getChunk()
+        if chunk then
+            chunk:removeGeneratorPos(fogao:getX(), fogao:getY(), fogao:getZ())
+            if quadrado.RecalcAllWithNeighbours then
+                quadrado:RecalcAllWithNeighbours(false)
+            end
+        end
+    end
+
+    fogao:getModData().LKS_FogaoAcesoPropano = nil
+    fogao:setActivated(false)
+end
 
 local LKS_ConfiguracaoIconesCulinaria = {
     stove = {
@@ -99,6 +177,75 @@ function LKS_Device_Cooking.obterTexturaInventario(recipiente, recipienteTipo, o
 
     if not chaveConfiguracao then return nil end
     return obterTexturaEstado(chaveConfiguracao, temEnergia)
+end
+
+-- ============================================================================
+-- BUSCA DE FONTES DE CALOR E MATERIAIS INFLAMÁVEIS (reutiliza lógica vanilla)
+-- ============================================================================
+
+--- Busca fontes de calor no inventário do jogador.
+--- Reutiliza a mesma detecção do vanilla ISCampingMenu:
+--- ItemTag.START_FIRE + Lighter + Matches.
+---
+--- @param jogador IsoPlayer O jogador.
+--- @return table Lista de itens (InventoryItem) que podem iniciar fogo.
+local function buscarFontesCalorInventario(jogador)
+    local resultados = {}
+    if not jogador then return resultados end
+
+    local containers = ISInventoryPaneContextMenu.getContainers(jogador)
+    local tiposJaAdicionados = {}
+
+    for indice = 1, containers:size() do
+        local container = containers:get(indice - 1)
+        local itens = container:getItems()
+        for indiceItem = 0, itens:size() - 1 do
+            local item = itens:get(indiceItem)
+            if item then
+                local tipo = item:getType()
+                local ehFonteCalor = item:hasTag(ItemTag.START_FIRE)
+                    or tipo == "Lighter"
+                    or tipo == "Matches"
+
+                if ehFonteCalor and item:getCurrentUses() > 0 and not tiposJaAdicionados[tipo] then
+                    table.insert(resultados, item)
+                    tiposJaAdicionados[tipo] = true
+                end
+            end
+        end
+    end
+
+    return resultados
+end
+
+--- Busca materiais inflamáveis (tinder) no inventário do jogador.
+--- Reutiliza ISCampingMenu.isValidTinder() do vanilla para validação.
+---
+--- @param jogador IsoPlayer O jogador.
+--- @return table Lista de itens (InventoryItem) válidos como material de combustão.
+local function buscarMateriaisCombustao(jogador)
+    local resultados = {}
+    if not jogador then return resultados end
+
+    local containers = ISInventoryPaneContextMenu.getContainers(jogador)
+    local nomesJaAdicionados = {}
+
+    for indice = 1, containers:size() do
+        local container = containers:get(indice - 1)
+        local itens = container:getItems()
+        for indiceItem = 0, itens:size() - 1 do
+            local item = itens:get(indiceItem)
+            if item and ISCampingMenu.isValidTinder(item) then
+                local nomeItem = item:getName()
+                if not nomesJaAdicionados[nomeItem] then
+                    table.insert(resultados, item)
+                    nomesJaAdicionados[nomeItem] = true
+                end
+            end
+        end
+    end
+
+    return resultados
 end
 
 --- Constrói o submenu LKS para fogões e micro-ondas no mundo.
@@ -185,7 +332,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     local containerInventario = objetoEletrico:getContainer()
 
     if ehFogao and tipoFogao then
-        fonteEnergia = SistemaGas.verificarFonteEnergia(objetoEletrico, jogador, tipoFogao)
+        fonteEnergia = SistemaPropano.verificarFonteEnergia(objetoEletrico, jogador, tipoFogao)
         temEnergia = fonteEnergia.disponivel
     else
         -- Micro-ondas: mantém lógica original (só eletricidade)
@@ -286,65 +433,160 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     -- Estas opções são inseridas NO TOPO do submenu via `addOptionOnTop` para
     -- que apareçam antes de "Configurações" (hierarquia: energia > ajustes).
     -- =========================================================================
-    local chaveTextoLigar = getText("ContextMenu_TurnOn") or "Ligar"
-    local chaveTextoDesligar = getText("ContextMenu_TurnOff") or "Desligar"
+    -- =========================================================================
+    -- PASSO 4: CONSTRUIR OPÇÃO DE ACENDER/LIGAR COM SUBMENU DE IGNIÇÃO
+    -- =========================================================================
+    -- Comportamento diferenciado por tipo:
+    --   Convencional (propano): "Acender" > [fontes de calor] (sem tinder)
+    --   Antigo (lenha):     "Acender" > [fontes de calor] > [material inflamável]
+    --   Indução/Micro:      "Ligar" direto (sem submenu de ignição)
+    -- =========================================================================
+
+    -- Determina verbo e ícone baseado no tipo
+    local verboAcender, verboApagar, iconeDesligado
+    if tipoFogao == "convencional" then
+        verboAcender = getText("IGUI_LKS_Acender") or "Acender"
+        verboApagar = getText("IGUI_LKS_Apagar") or "Apagar"
+        iconeDesligado = "media/ui/LKS_Menu_Gas_Off.png"
+    elseif tipoFogao == "antigo" then
+        verboAcender = getText("IGUI_LKS_Acender") or "Acender"
+        verboApagar = getText("IGUI_LKS_Apagar") or "Apagar"
+        iconeDesligado = "media/ui/LKS_Menu_Fuel_Off.png"
+    else
+        verboAcender = getText("ContextMenu_TurnOn") or "Ligar"
+        verboApagar = getText("ContextMenu_TurnOff") or "Desligar"
+        iconeDesligado = "media/ui/LKS_Menu_Electricity_Off.png"
+    end
 
     if estaAtivo then
-        local opcaoDesligar = submenu:addOptionOnTop(chaveTextoDesligar, objetosMundo, function()
-            if ehFogao then
+        -- Apagar/Desligar: comportamento diferenciado
+        local opcaoApagar = submenu:addOptionOnTop(verboApagar, objetosMundo, function()
+            if ehFogao and (tipoFogao == "convencional" or tipoFogao == "antigo") then
+                apagarFogaoPropano(objetoEletrico)
+            elseif ehFogao then
                 ISWorldObjectContextMenu.onToggleStove(objetosMundo, objetoEletrico, jogadorNumero)
             elseif ehMicroondas then
                 ISWorldObjectContextMenu.onToggleMicrowave(objetosMundo, objetoEletrico, jogadorNumero)
             end
         end)
-        opcaoDesligar.iconTexture = getTexture("media/ui/LKS_Button_Power_Off.png")
+        opcaoApagar.iconTexture = getTexture("media/ui/LKS_Button_Power_Off.png")
 
         if ehFogao then
             local tooltipInfo = ISWorldObjectContextMenu.addToolTip()
             tooltipInfo:setName(nomeObjetoTraduzido)
             local temperaturaAtual = objetoEletrico:getCurrentTemperature()
             local textoTemperatura = string.format(getText("IGUI_LKS_TemperaturaAtual") or "Temperatura Atual: %.1f°C", temperaturaAtual)
-            local textoAlerta = " <RGB:1,0,0> " .. (getText("IGUI_LKS_AlertaEquipamentoAquecido") or "⚠️ CUIDADO: Equipamento aquecido! Risco de incêndio se deixado sem supervisão.")
-            tooltipInfo.description = textoTemperatura .. "\n" .. textoAlerta
-            opcaoDesligar.toolTip = tooltipInfo
+            local textoAlerta = " <RGB:1,0,0> " .. (getText("IGUI_LKS_AlertaEquipamentoAquecido") or "⚠️ CUIDADO: Equipamento aquecido!")
+            tooltipInfo.description = textoTemperatura .. " <LINE> " .. textoAlerta
+            opcaoApagar.toolTip = tooltipInfo
         end
     else
         if temEnergia then
-            local opcaoLigar = submenu:addOptionOnTop(chaveTextoLigar, objetosMundo, function()
-                if ehFogao then
-                    ISWorldObjectContextMenu.onToggleStove(objetosMundo, objetoEletrico, jogadorNumero)
-                elseif ehMicroondas then
-                    ISWorldObjectContextMenu.onToggleMicrowave(objetosMundo, objetoEletrico, jogadorNumero)
-                end
-            end)
-            opcaoLigar.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
+            if (tipoFogao == "convencional" or tipoFogao == "antigo") then
+                -- Fogão a combustão: submenu com fontes de calor do inventário
+                local fontesCalor = buscarFontesCalorInventario(jogador)
 
-            if ehMicroondas and verificarPresencaMetal(containerInventario) then
-                local tooltipAviso = ISWorldObjectContextMenu.addToolTip()
-                tooltipAviso:setName(nomeObjetoTraduzido)
-                tooltipAviso.description = " <RGB:1,1,0> " .. (getText("IGUI_LKS_AvisoMetalMicroondas") or "⚠️ AVISO: Contém objetos metálicos no interior! Risco de faíscas e incêndio.")
-                opcaoLigar.toolTip = tooltipAviso
+                if #fontesCalor > 0 then
+                    local opcaoAcender = submenu:addOptionOnTop(verboAcender, objetosMundo, nil)
+                    opcaoAcender.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
+                    local submenuIgnicao = ISContextMenu:getNew(submenu)
+                    submenu:addSubMenu(opcaoAcender, submenuIgnicao)
+
+                    -- Para fogão antigo, busca tinder uma vez (evita repetição no loop)
+                    local materiaisCombustao = nil
+                    if tipoFogao == "antigo" then
+                        materiaisCombustao = buscarMateriaisCombustao(jogador)
+                        -- Tooltip no parent quando não há material inflamável
+                        if #materiaisCombustao == 0 then
+                            local tooltipPaiSemTinder = ISWorldObjectContextMenu.addToolTip()
+                            tooltipPaiSemTinder.description = getText("IGUI_LKS_RequerMaterialInflamavel") or "Requer material inflamável (papel, pano, álcool) para iniciar a combustão."
+                            opcaoAcender.toolTip = tooltipPaiSemTinder
+                        end
+                    end
+
+                    for _, fonteCalorItem in ipairs(fontesCalor) do
+                        if tipoFogao == "antigo" then
+                            -- Fogão antigo: fonte de calor > submenu de materiais inflamáveis
+                            if #materiaisCombustao > 0 then
+                                local opcaoFonte = submenuIgnicao:addOption(
+                                    fonteCalorItem:getDisplayName(), objetosMundo, nil)
+                                opcaoFonte.iconTexture = fonteCalorItem:getTex()
+                                local submenuTinder = ISContextMenu:getNew(submenuIgnicao)
+                                submenuIgnicao:addSubMenu(opcaoFonte, submenuTinder)
+
+                                for _, materialItem in ipairs(materiaisCombustao) do
+                                    local opcaoMaterial = submenuTinder:addOption(
+                                        materialItem:getDisplayName(), objetosMundo, function()
+                                            acenderFogaoPropano(objetoEletrico, jogador)
+                                        end)
+                                    opcaoMaterial.iconTexture = materialItem:getTex()
+                                end
+                            else
+                                -- Tem fonte de calor mas sem material inflamável
+                                local opcaoFonte = submenuIgnicao:addOption(
+                                    fonteCalorItem:getDisplayName(), objetosMundo, nil)
+                                opcaoFonte.iconTexture = fonteCalorItem:getTex()
+                                opcaoFonte.notAvailable = true
+                                local tooltipSemTinder = ISWorldObjectContextMenu.addToolTip()
+                                tooltipSemTinder.description = getText("IGUI_LKS_RequerMaterialInflamavel") or "Requer material inflamável (papel, pano, álcool) para iniciar a combustão."
+                                opcaoFonte.toolTip = tooltipSemTinder
+                            end
+                        else
+                            -- Fogão convencional: fonte de calor acende direto (propano é volátil)
+                            local opcaoFonte = submenuIgnicao:addOption(
+                                fonteCalorItem:getDisplayName(), objetosMundo, function()
+                                    acenderFogaoPropano(objetoEletrico, jogador)
+                                end)
+                            opcaoFonte.iconTexture = fonteCalorItem:getTex()
+                        end
+                    end
+                else
+                    -- Sem fontes de calor no inventário
+                    local opcaoAcender = submenu:addOptionOnTop(verboAcender, objetosMundo, nil)
+                    opcaoAcender.notAvailable = true
+                    opcaoAcender.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
+                    local tooltipSemFonte = ISWorldObjectContextMenu.addToolTip()
+                    tooltipSemFonte.description = getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor (isqueiro, fósforos, etc.) para acender."
+                    opcaoAcender.toolTip = tooltipSemFonte
+                end
+            else
+                -- Indução/Micro-ondas: "Ligar" direto (eletricidade faz tudo)
+                local opcaoLigar = submenu:addOptionOnTop(verboAcender, objetosMundo, function()
+                    if ehFogao then
+                        ISWorldObjectContextMenu.onToggleStove(objetosMundo, objetoEletrico, jogadorNumero)
+                    elseif ehMicroondas then
+                        ISWorldObjectContextMenu.onToggleMicrowave(objetosMundo, objetoEletrico, jogadorNumero)
+                    end
+                end)
+                opcaoLigar.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
+
+                if ehMicroondas and verificarPresencaMetal(containerInventario) then
+                    local tooltipAviso = ISWorldObjectContextMenu.addToolTip()
+                    tooltipAviso:setName(nomeObjetoTraduzido)
+                    tooltipAviso.description = " <RGB:1,1,0> " .. (getText("IGUI_LKS_AvisoMetalMicroondas") or "⚠️ AVISO: Contém objetos metálicos no interior!")
+                    opcaoLigar.toolTip = tooltipAviso
+                end
             end
         else
-            -- Opção desabilitada: mostra visualmente que falta energia/gás/fonte de calor
-            local opcaoLigarSemRequisitos = submenu:addOptionOnTop(chaveTextoLigar, objetosMundo, nil)
-            opcaoLigarSemRequisitos.notAvailable = true
-            opcaoLigarSemRequisitos.iconTexture = getTexture("media/ui/LKS_Menu_Electricity_Off.png")
+            -- Sem combustível/energia: opção desabilitada com tooltip explicativo
+            local opcaoSemEnergia = submenu:addOptionOnTop(verboAcender, objetosMundo, nil)
+            opcaoSemEnergia.notAvailable = true
+            opcaoSemEnergia.iconTexture = getTexture(iconeDesligado)
 
             local tooltipErro = ISWorldObjectContextMenu.addToolTip()
             tooltipErro:setName(nomeObjetoTraduzido)
 
-            if fonteEnergia and fonteEnergia.requerIgnicaoManual and not fonteEnergia.temIgnicaoManual then
-                tooltipErro.description = getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor (isqueiro, fósforos, etc.) para acender."
-            elseif tipoFogao == "convencional" then
-                tooltipErro.description = getText("IGUI_LKS_RequerGasOuEletricidade") or "Requer gás encanado, botijão de gás conectado ou eletricidade."
+            if tipoFogao == "convencional" then
+                tooltipErro.description = getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gás encanado ou botijão de gás conectado."
+            elseif tipoFogao == "antigo" then
+                tooltipErro.description = getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustível sólido (lenha, tábuas) no interior."
             elseif tipoFogao == "inducao" then
-                tooltipErro.description = getText("IGUI_LKS_RequerEletricidade") or "Requer uma fonte de eletricidade (rede ou gerador)."
+                tooltipErro.description = getText("IGUI_LKS_RequerEletricidade") or "Requer eletricidade (rede elétrica ou gerador)."
             else
                 tooltipErro.description = getText("IGUI_LKS_RequerEnergiaProxima") or "Requer uma fonte de energia próxima."
             end
 
-            opcaoLigarSemRequisitos.toolTip = tooltipErro
+            opcaoSemEnergia.toolTip = tooltipErro
         end
     end
 

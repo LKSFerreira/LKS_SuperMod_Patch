@@ -153,8 +153,8 @@
     "ItemName_LKS_Electrical.LKS_Bobina": "Electric Coil",
     "ItemName_LKS_Electrical.LKS_InversorCorrente": "Power Inverter",
     "ItemName_LKS_Electrical.LKS_MiniTransformador": "Mini Transformer",
-    "ItemName_LKS_Gas.LKS_Botijao15kg": "Gas Tank 15kg",
-    "ItemName_LKS_Gas.LKS_Botijao45kg": "Gas Tank 45kg",
+    "ItemName_LKS_Propano.LKS_Botijao15kg": "Gas Tank 15kg",
+    "ItemName_LKS_Propano.LKS_Botijao45kg": "Gas Tank 45kg",
     "IGUI_LKS_Fogao": "Stove",
     "IGUI_LKS_InstalarBotijao": "Install Gas Tank",
     "IGUI_LKS_TrocarBotijao": "Replace Gas Tank",
@@ -167,5 +167,12 @@
     "IGUI_LKS_Conectar": "Connect",
     "IGUI_LKS_MateriaisNecessarios": "Required materials:",
     "IGUI_LKS_Material": "Material:",
-    "IGUI_LKS_Ferramenta": "Tool:"
+    "IGUI_LKS_Ferramenta": "Tool:",
+    "IGUI_LKS_Acender": "Light",
+    "IGUI_LKS_Apagar": "Extinguish",
+    "IGUI_LKS_RequerGasOuBotijao": "Requires piped gas or connected gas tank.",
+    "IGUI_LKS_RequerCombustivelSolido": "Requires solid fuel (logs, planks) inside.",
+    "IGUI_LKS_RequerMaterialInflamavel": "Requires flammable material (paper, cloth, alcohol) to start combustion.",
+    "IGUI_LKS_RequerOutroBotijao": "Requires another gas tank nearby to perform the swap.",
+    "IGUI_LKS_SemFonteCalor": "No heat source available"
 }

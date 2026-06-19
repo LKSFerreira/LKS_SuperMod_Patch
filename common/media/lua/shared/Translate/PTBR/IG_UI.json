@@ -171,8 +171,8 @@
   "ItemName_LKS_Electrical.LKS_Bobina": "Bobina Elétrica",
   "ItemName_LKS_Electrical.LKS_InversorCorrente": "Inversor de Corrente",
   "ItemName_LKS_Electrical.LKS_MiniTransformador": "Mini Transformador",
-  "ItemName_LKS_Gas.LKS_Botijao15kg": "Botijão de Gás 15kg",
-  "ItemName_LKS_Gas.LKS_Botijao45kg": "Botijão de Gás 45kg",
+  "ItemName_LKS_Propano.LKS_Botijao15kg": "Botijão de Gás 15kg",
+  "ItemName_LKS_Propano.LKS_Botijao45kg": "Botijão de Gás 45kg",
   "IGUI_LKS_Fogao": "Fogão",
   "IGUI_LKS_InstalarBotijao": "Instalar Botijão",
   "IGUI_LKS_TrocarBotijao": "Trocar Botijão",
@@ -185,6 +185,12 @@
   "IGUI_LKS_Conectar": "Conectar",
   "IGUI_LKS_MateriaisNecessarios": "Materiais necessários:",
   "IGUI_LKS_Material": "Material:",
-  "IGUI_LKS_Ferramenta": "Ferramenta:"
+  "IGUI_LKS_Ferramenta": "Ferramenta:",
+  "IGUI_LKS_Acender": "Acender",
+  "IGUI_LKS_Apagar": "Apagar",
+  "IGUI_LKS_RequerGasOuBotijao": "Requer gás encanado ou botijão de gás conectado.",
+  "IGUI_LKS_RequerCombustivelSolido": "Requer combustível sólido (lenha, tábuas) no interior.",
+  "IGUI_LKS_RequerMaterialInflamavel": "Requer material inflamável (papel, pano, álcool) para iniciar a combustão.",
+  "IGUI_LKS_RequerOutroBotijao": "Necessário outro botijão de gás próximo para realizar a troca.",
+  "IGUI_LKS_SemFonteCalor": "Nenhuma fonte de calor disponível"
 }
-

@@ -1,8 +1,8 @@
 -- ============================================================================
 -- ARQUIVO: LKS_Botijao_ContextMenu.lua
--- EXTENSÃO: LKS SuperMod Patch (Menu de Contexto de Botijões de Gás)
+-- EXTENSÃO: LKS SuperMod Patch (Menu de Contexto de Botijões de Propano)
 -- OBJETIVO: Gerencia interações de instalar, trocar e desinstalar botijões
---           de gás em fogões convencionais via menu de contexto do mundo.
+--           de propano em fogões convencionais via menu de contexto do mundo.
 --           Relacionamento 1:1 com dupla validação:
 --           - Clicou no fogão → lista botijões próximos para conectar
 --           - Clicou no botijão → lista fogões próximos para conectar
@@ -15,11 +15,11 @@ require "LKS_Cooking_SpriteClassification"
 
 local DISTANCIA_MAXIMA_MANGUEIRA = 2
 
---- IDs de itens aceitos como botijão de gás (vanilla + mod).
+--- IDs de itens aceitos como botijão de propano (vanilla + mod).
 local IDS_BOTIJAO = {
     ["Base.PropaneTank"] = true,
-    ["LKS_Gas.LKS_Botijao15kg"] = true,
-    ["LKS_Gas.LKS_Botijao45kg"] = true,
+    ["LKS_Propano.LKS_Botijao15kg"] = true,
+    ["LKS_Propano.LKS_Botijao45kg"] = true,
 }
 
 --- Itens necessários para instalação completa de um botijão.
@@ -98,7 +98,7 @@ local function fogaoTemBotijaoConectado(fogao)
     return dadosMod and dadosMod.LKS_BotijaoConectado == true or false
 end
 
---- Calcula a chance de vazamento de gás com base nas skills do jogador.
+--- Calcula a chance de vazamento de propano com base nas skills do jogador.
 ---
 --- Condições: soma de Elétrica + Mecânica + Cooking < 6 E pelo menos uma ≤ 1.
 --- Chance: 1% quando condições atendidas, 0% caso contrário.
@@ -133,7 +133,7 @@ local function conectarBotijao(fogao, jogador)
     dadosModFogao.LKS_BotijaoConectado = true
 
     if calcularRiscoVazamento(jogador) then
-        dadosModFogao.LKS_VazamentoGasPendente = true
+        dadosModFogao.LKS_VazamentoPropanoPendente = true
     end
 end
 
@@ -145,14 +145,14 @@ local function desconectarBotijao(fogao)
 
     local dadosModFogao = fogao:getModData()
     dadosModFogao.LKS_BotijaoConectado = nil
-    dadosModFogao.LKS_VazamentoGasPendente = nil
+    dadosModFogao.LKS_VazamentoPropanoPendente = nil
 end
 
 -- ============================================================================
 -- BUSCA DE OBJETOS PRÓXIMOS (mesma abordagem do ISBBQMenu vanilla)
 -- ============================================================================
 
---- Busca botijões de gás nos tiles ao redor de um fogão (inventário + chão).
+--- Busca botijões de propano nos tiles ao redor de um fogão (inventário + chão).
 --- Usa a mesma abordagem do vanilla ISBBQMenu.FindPropaneTank.
 ---
 --- @param fogao IsoObject O fogão de referência.
@@ -413,11 +413,13 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
         local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
 
         if temConexao then
-            -- Trocar: submenu listando cada botijão próximo com ícone
-            if #botijoesProximos > 0 then
-                local textoTrocar = getText("IGUI_LKS_Trocar") or "Trocar"
-                local opcaoPai = menuContexto:addOption(textoTrocar, objetosMundo, nil)
-                opcaoPai.iconTexture = getTexture("media/ui/LKS_Connect.png")
+            -- Trocar: precisa de pelo menos 2 botijões (1 instalado + 1 para troca)
+            local textoTrocar = getText("IGUI_LKS_Trocar") or "Trocar"
+            local opcaoPai = menuContexto:addOption(textoTrocar, objetosMundo, nil)
+            opcaoPai.iconTexture = getTexture("media/ui/LKS_Swap.png")
+
+            if #botijoesProximos > 1 then
+                -- Há botijões extras além do instalado
                 local submenu = ISContextMenu:getNew(menuContexto)
                 menuContexto:addSubMenu(opcaoPai, submenu)
 
@@ -433,6 +435,12 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                     end
                     opcao.toolTip = montarTooltipRequisitos(jogador, ITENS_TROCA, nomeSpriteFogao)
                 end
+            else
+                -- Só há 1 botijão (o próprio instalado) — não há candidato para troca
+                opcaoPai.notAvailable = true
+                local tooltipSemTroca = ISWorldObjectContextMenu.addToolTip()
+                tooltipSemTroca.description = getText("IGUI_LKS_RequerOutroBotijao") or "Necessário outro botijão de gás próximo para realizar a troca."
+                opcaoPai.toolTip = tooltipSemTroca
             end
 
             -- Desinstalar: opção direta com ícone (sem submenu)
@@ -512,7 +520,7 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
             if #fogoesComBotijao > 0 then
                 local textoTrocar = getText("IGUI_LKS_Trocar") or "Trocar"
                 local opcaoPai = menuContexto:addOption(textoTrocar, objetosMundo, nil)
-                opcaoPai.iconTexture = getTexture("media/ui/LKS_Connect.png")
+                opcaoPai.iconTexture = getTexture("media/ui/LKS_Swap.png")
                 local submenu = ISContextMenu:getNew(menuContexto)
                 menuContexto:addSubMenu(opcaoPai, submenu)
 

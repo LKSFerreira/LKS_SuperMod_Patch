@@ -1,9 +1,9 @@
 -- ============================================================================
--- ARQUIVO: LKS_Cooking_GasSystem.lua
--- EXTENSÃO: LKS SuperMod Patch (Sistema de Gás Encanado)
--- OBJETIVO: Gerencia o fornecimento de gás encanado como utilidade urbana
+-- ARQUIVO: LKS_Cooking_PropanoSystem.lua
+-- EXTENSÃO: LKS SuperMod Patch (Sistema de Propano Encanado)
+-- OBJETIVO: Gerencia o fornecimento de propano encanado como utilidade urbana
 --           com corte programado (análogo à água encanada do vanilla).
---           Fornece funções de verificação de gás e fontes de calor para
+--           Fornece funções de verificação de propano e fontes de calor para
 --           ignição manual dos fogões convencionais.
 -- AUTOR: LKS FERREIRA
 -- VERSÃO: 1.0 (Project Zomboid Build 42)
@@ -16,32 +16,32 @@ require "LKS_Cooking_SpriteClassification"
 -- CONFIGURAÇÃO
 -- ============================================================================
 
-local CONFIGURACAO_GAS = {
-    --- Dia de corte do gás encanado. -1 = mesmo dia da água.
-    diaCorteGas = -1,
+local CONFIGURACAO_PROPANO = {
+    --- Dia de corte do propano encanado. -1 = mesmo dia da água.
+    diaCortePropano = -1,
 
-    --- Se o sistema de gás está habilitado globalmente.
-    gasHabilitado = true,
+    --- Se o sistema de propano está habilitado globalmente.
+    propanoHabilitado = true,
 }
 
 -- ============================================================================
--- VERIFICAÇÃO DE GÁS ENCANADO
+-- VERIFICAÇÃO DE PROPANO ENCANADO
 -- ============================================================================
 
---- Carrega configuração de gás do sandbox options.
+--- Carrega configuração de propano do sandbox options.
 ---
 --- @return table Configuração atualizada com valores do sandbox.
 local function carregarConfiguracaoSandbox()
     local opcoesSandbox = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao or nil
     if opcoesSandbox then
         if opcoesSandbox.GasShutoffDay ~= nil then
-            CONFIGURACAO_GAS.diaCorteGas = opcoesSandbox.GasShutoffDay
+            CONFIGURACAO_PROPANO.diaCortePropano = opcoesSandbox.GasShutoffDay
         end
         if opcoesSandbox.GasEnabled ~= nil then
-            CONFIGURACAO_GAS.gasHabilitado = opcoesSandbox.GasEnabled
+            CONFIGURACAO_PROPANO.propanoHabilitado = opcoesSandbox.GasEnabled
         end
     end
-    return CONFIGURACAO_GAS
+    return CONFIGURACAO_PROPANO
 end
 
 --- Obtém o dia atual do mundo em jogo.
@@ -66,23 +66,23 @@ local function obterDiaCorteAgua()
     return 30
 end
 
---- Verifica se o gás encanado está disponível no momento atual do jogo.
+--- Verifica se o propano encanado está disponível no momento atual do jogo.
 ---
 --- A lógica segue o mesmo princípio da água encanada:
---- - Antes do dia de corte: gás disponível (ilimitado)
---- - Após o dia de corte: gás cortado (requer botijão)
---- - Se diaCorteGas == -1: usa o mesmo dia da água
---- - Se diaCorteGas == 0: gás infinito (nunca corta)
+--- - Antes do dia de corte: propano disponível (ilimitado)
+--- - Após o dia de corte: propano cortado (requer botijão)
+--- - Se diaCortePropano == -1: usa o mesmo dia da água
+--- - Se diaCortePropano == 0: propano infinito (nunca corta)
 ---
---- @return boolean True se o gás encanado está disponível.
-local function gasEncanadoDisponivel()
+--- @return boolean True se o propano encanado está disponível.
+local function propanoEncanadoDisponivel()
     local configuracao = carregarConfiguracaoSandbox()
 
-    if not configuracao.gasHabilitado then
+    if not configuracao.propanoHabilitado then
         return false
     end
 
-    local diaCorte = configuracao.diaCorteGas
+    local diaCorte = configuracao.diaCortePropano
     if diaCorte == -1 then
         diaCorte = obterDiaCorteAgua()
     end
@@ -141,7 +141,7 @@ end
 --- Resultado da verificação de fonte de energia de um fogão.
 ---
 --- @class LKS_FonteEnergiaResultado
---- @field tipo string "eletricidade"|"gas_encanado"|"botijao"|"nenhuma"
+--- @field tipo string "eletricidade"|"propano_encanado"|"botijao"|"nenhuma"
 --- @field disponivel boolean Se a fonte está ativa e funcional.
 --- @field requerIgnicaoManual boolean Se precisa de fonte de calor manual.
 --- @field temIgnicaoManual boolean Se o jogador possui fonte de calor.
@@ -150,8 +150,8 @@ end
 --- Verifica todas as fontes de energia possíveis para um fogão.
 ---
 --- Para fogão convencional, verifica na ordem:
---- 1. Gás encanado (pré-corte) + eletricidade (acendedor automático)
---- 2. Gás encanado (pré-corte) + fonte de calor manual
+--- 1. Propano encanado (pré-corte) + eletricidade (acendedor automático)
+--- 2. Propano encanado (pré-corte) + fonte de calor manual
 --- 3. Botijão conectado + eletricidade (acendedor automático)
 --- 4. Botijão conectado + fonte de calor manual
 ---
@@ -202,51 +202,77 @@ local function verificarFonteEnergia(objetoFogao, jogador, tipoFogao)
         return resultado
     end
 
-    -- Convencional (gás): verifica múltiplas fontes
+    -- Convencional (propano): verifica múltiplas fontes
     local containerFogao = objetoFogao:getContainer()
     local temEletricidade = containerFogao and containerFogao:isPowered() or false
-    local temGasEncanado = gasEncanadoDisponivel()
+    local temPropanoEncanado = propanoEncanadoDisponivel()
 
-    -- Verificar botijão conectado via moddata
+    -- Verificar botijão conectado via moddata + validação defensiva
     local dadosMod = objetoFogao:getModData()
     local temBotijao = dadosMod and dadosMod.LKS_BotijaoConectado == true or false
+
+    -- Validação defensiva: confirma que existe botijão físico perto do fogão.
+    -- Se moddata diz conectado mas não há botijão no raio, limpa automaticamente.
+    -- Cobre: jogador pegou, item destruído, despawn, multiplayer.
+    if temBotijao then
+        local botijaoFisicoEncontrado = false
+        local fogaoX = objetoFogao:getX()
+        local fogaoY = objetoFogao:getY()
+        local fogaoZ = objetoFogao:getZ()
+        local celula = getCell()
+        if celula then
+            local RAIO_MANGUEIRA = 2
+            for deslocY = -RAIO_MANGUEIRA, RAIO_MANGUEIRA do
+                for deslocX = -RAIO_MANGUEIRA, RAIO_MANGUEIRA do
+                    local quadrado = celula:getGridSquare(fogaoX + deslocX, fogaoY + deslocY, fogaoZ)
+                    if quadrado then
+                        local objetosChao = quadrado:getWorldObjects()
+                        if objetosChao then
+                            for idx = 0, objetosChao:size() - 1 do
+                                local obj = objetosChao:get(idx)
+                                if obj and obj:getItem() then
+                                    local tipo = obj:getItem():getFullType()
+                                    if tipo == "Base.PropaneTank"
+                                        or tipo == "LKS_Propano.LKS_Botijao15kg"
+                                        or tipo == "LKS_Propano.LKS_Botijao45kg" then
+                                        botijaoFisicoEncontrado = true
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    if botijaoFisicoEncontrado then break end
+                end
+                if botijaoFisicoEncontrado then break end
+            end
+        end
+
+        if not botijaoFisicoEncontrado then
+            dadosMod.LKS_BotijaoConectado = nil
+            dadosMod.LKS_VazamentoPropanoPendente = nil
+            temBotijao = false
+        end
+    end
 
     -- Verificar fonte de calor manual do jogador
     local temCalorManual, nomeCalor = verificarFonteCalorInventario(jogador)
 
-    if temGasEncanado then
-        resultado.tipo = "gas_encanado"
-        if temEletricidade then
-            resultado.disponivel = true
-            resultado.requerIgnicaoManual = false
-        elseif temCalorManual then
-            resultado.disponivel = true
-            resultado.requerIgnicaoManual = true
-            resultado.temIgnicaoManual = true
-            resultado.nomeFonteCalor = nomeCalor
-        else
-            resultado.disponivel = false
-            resultado.requerIgnicaoManual = true
-            resultado.temIgnicaoManual = false
-        end
+    if temPropanoEncanado then
+        resultado.tipo = "propano_encanado"
+        resultado.disponivel = true
+        resultado.requerIgnicaoManual = not temEletricidade
+        resultado.temIgnicaoManual = temCalorManual
+        resultado.nomeFonteCalor = nomeCalor
         return resultado
     end
 
     if temBotijao then
         resultado.tipo = "botijao"
-        if temEletricidade then
-            resultado.disponivel = true
-            resultado.requerIgnicaoManual = false
-        elseif temCalorManual then
-            resultado.disponivel = true
-            resultado.requerIgnicaoManual = true
-            resultado.temIgnicaoManual = true
-            resultado.nomeFonteCalor = nomeCalor
-        else
-            resultado.disponivel = false
-            resultado.requerIgnicaoManual = true
-            resultado.temIgnicaoManual = false
-        end
+        resultado.disponivel = true
+        resultado.requerIgnicaoManual = not temEletricidade
+        resultado.temIgnicaoManual = temCalorManual
+        resultado.nomeFonteCalor = nomeCalor
         return resultado
     end
 
@@ -258,7 +284,7 @@ end
 -- ============================================================================
 
 return {
-    gasEncanadoDisponivel = gasEncanadoDisponivel,
+    propanoEncanadoDisponivel = propanoEncanadoDisponivel,
     verificarFonteCalorInventario = verificarFonteCalorInventario,
     verificarFonteEnergia = verificarFonteEnergia,
     carregarConfiguracaoSandbox = carregarConfiguracaoSandbox,
