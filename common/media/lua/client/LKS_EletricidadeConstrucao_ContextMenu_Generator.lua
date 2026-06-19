@@ -26,17 +26,19 @@ LKS_EletricidadeConstrucao.RegisterModule("LKS_EletricidadeConstrucao_ContextMen
 LKS_EletricidadeConstrucao.ContextMenu           = LKS_EletricidadeConstrucao.ContextMenu or {}
 LKS_EletricidadeConstrucao.ContextMenu.Generator = {}
 
+local LKS_Icons = require("LKS_Icons")
+
 local ContextMenu = LKS_EletricidadeConstrucao.ContextMenu.Generator
 
 -- ============================================================================
 -- CONFIGURAÇÕES DE ASSETS E TEXTURAS
 -- ============================================================================
 local TEX_ITEM_GEN      = "Item_Generator"
-local TEX_PWR_ON        = "media/ui/LKS_Button_Power_On.png"
-local TEX_PWR_OFF       = "media/ui/LKS_Button_Power_Off.png"
-local TEX_TAKE_GEN      = "media/ui/LKS_Take_Generator.png"
-local TEX_CONNECT       = "media/ui/LKS_Connect.png"
-local TEX_DISCONNECT    = "media/ui/LKS_Disconnect.png"
+local TEX_PWR_ON        = LKS_Icons.LIGAR
+local TEX_PWR_OFF       = LKS_Icons.DESLIGAR
+local TEX_TAKE_GEN      = LKS_Icons.PEGAR
+local TEX_CONNECT       = LKS_Icons.CONECTAR
+local TEX_DISCONNECT    = LKS_Icons.DESCONECTAR
 local TEX_GEN_INFO      = "media/ui/LKS_Generator_Info.png"
 local TEX_HOUSE_ELE     = "media/ui/LKS_House_Electricity_On.png"
 local TEX_HOUSE_ELE_OFF = "media/ui/LKS_House_Electricity_Off.png"

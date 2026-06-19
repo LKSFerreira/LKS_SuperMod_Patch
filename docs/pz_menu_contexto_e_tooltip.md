@@ -128,6 +128,53 @@ end
 
 ---
 
+## Pós-processamento: injetar ícones em opções vanilla
+
+O evento `OnFillWorldObjectContextMenu` dispara APÓS o vanilla (incluindo código Java de `ISWorldObjectContextMenuLogic.createMenuEntries`) construir o menu. É possível registrar um handler que varre o menu pronto e injeta ícones em opções existentes.
+
+**Armadilha:** Opções criadas pelo Java (como "Pegar" para itens no chão) não são acessíveis via `ipairs(context.options)` de forma confiável. Usar o método vanilla `context:getOptionFromName(texto)` que funciona independente de como a opção foi criada.
+
+```lua
+-- Padrão correto para injeção pós-processamento:
+local function injetarIcones(jogador, contexto, objetosMundo, teste)
+    if teste then return end
+    local opcao = contexto:getOptionFromName(getText("ContextMenu_Grab"))
+    if opcao and not opcao.iconTexture then
+        opcao.iconTexture = getTexture("media/ui/MeuIcone.png")
+    end
+end
+Events.OnFillWorldObjectContextMenu.Add(injetarIcones)
+```
+
+**Por que `ipairs(context.options)` falha:** O `ISWorldObjectContextMenuLogic` é uma classe Java que manipula diretamente a tabela `options` do ISContextMenu. Dependendo da implementação interna do Kahlua VM, as entradas podem estar indexadas de forma que `ipairs` não percorre todas. O método `getOptionFromName` (definido em `ISContextMenu.lua:889`) usa `ipairs` internamente mas é testado pelo vanilla — se funciona para eles, funciona para nós.
+
+---
+
+## Módulo LKS_Icons — Ícones centralizados do mod
+
+Arquivo: `common/media/lua/shared/LKS_Icons.lua`
+
+Registro único de paths de ícones. Toda referência a textura de menu deve usar este módulo:
+
+```lua
+local LKS_Icons = require("LKS_Icons")
+
+-- Em menus customizados do mod:
+opcao.iconTexture = getTexture(LKS_Icons.PEGAR)
+opcao.iconTexture = getTexture(LKS_Icons.CONECTAR)
+opcao.iconTexture = getTexture(LKS_Icons.DESCONECTAR)
+opcao.iconTexture = getTexture(LKS_Icons.LIGAR)
+opcao.iconTexture = getTexture(LKS_Icons.DESLIGAR)
+```
+
+### Hook global automático (`LKS_ContextMenu_Icons.lua`)
+
+O arquivo `LKS_ContextMenu_Icons.lua` registra um handler em `OnFillWorldObjectContextMenu` que **automaticamente** injeta `LKS_Icons.PEGAR` em qualquer opção vanilla com texto "Pegar" / "Grab" (inclui variantes: Grab_one, Grab_half, Grab_all, GeneratorTake).
+
+**Não é necessário código adicional** para objetos vanilla — o hook já cobre todos. Só usar `LKS_Icons` manualmente quando criar opções de "Pegar" em menus LKS customizados (ex: botijão).
+
+---
+
 ## Resumo operacional
 
 Se a implementação envolver **menu + sprite + tooltip + objeto do mundo**, o fluxo vanilla mais seguro é:

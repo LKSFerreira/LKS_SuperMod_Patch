@@ -14,6 +14,7 @@
 require "LKS_Cooking_SpriteClassification"
 require "TimedActions/ISBaseTimedAction"
 
+local LKS_Icons = require("LKS_Icons")
 local DISTANCIA_MAXIMA_MANGUEIRA = 2
 
 -- ============================================================================
@@ -827,8 +828,7 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 )
             end
         end)
-        local texturaBotijao = itemBotijao and itemBotijao:getTex() or nil
-        opcaoPegar.iconTexture = texturaBotijao
+        opcaoPegar.iconTexture = getTexture(LKS_Icons.PEGAR)
     end
 end
 

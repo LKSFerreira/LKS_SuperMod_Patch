@@ -13,7 +13,7 @@
       "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/shared",
       "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/client",
       "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/server",
-      "C:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/.types"
+      ".types"
     ],
     "ignoreDir": [
       ".venv",
