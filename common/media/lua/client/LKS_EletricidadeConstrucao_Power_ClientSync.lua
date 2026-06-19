@@ -192,7 +192,7 @@ local function SincronizarAPartirDePacote(novoPacote)
     end
 
     if aplicados > 0 or removidos > 0 then
-        print(string.format("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Sincronizadas %d construções energizadas, %d removidas", aplicados, removidos))
+        print(string.format("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Sincronizadas %d construcoes energizadas, %d removidas", aplicados, removidos))
     end
 end
 

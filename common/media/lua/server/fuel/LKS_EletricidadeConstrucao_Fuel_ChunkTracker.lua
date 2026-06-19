@@ -416,7 +416,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
             if totalDepois > totalAntes then
                 totalRestaurados = totalRestaurados + 1
                 LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                    string.format("Restaurado prédio para o gerador %s (%d prédios agora no estado)",
+                    string.format("Restaurado predio para o gerador %s (%d predios agora no estado)",
                         dadosGerador.id, totalDepois),
                     "Fuel")
             end
@@ -556,7 +556,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
                 local todosPredios2 = gerenciadorEstado.GetAllBuildings() or {}
                 for _ in pairs(todosPredios2) do totalPredios2 = totalPredios2 + 1 end
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("StartupGeneratorRefresh (adiado): ForceUpdate chamado (%d prédio(s) no estado)",
+                    string.format("StartupGeneratorRefresh (adiado): ForceUpdate chamado (%d predio(s) no estado)",
                         totalPredios2),
                     "Fuel")
             end
@@ -568,7 +568,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.HandleStartupGeneratorRefr
     local totalPredios = 0
     for _ in pairs(idsPredios) do totalPredios = totalPredios + 1 end
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("StartupGeneratorRefresh: %d geradores pré-carregados encontrados, %d prédios restaurados, agendando atualização para %d prédios",
+        string.format("StartupGeneratorRefresh: %d geradores pre-carregados encontrados, %d predios restaurados, agendando atualizacao para %d predios",
             totalEncontrados, totalRestaurados, totalPredios),
         "Fuel")
 
@@ -871,7 +871,7 @@ tentarRestaurarDadosModIso = function(quadrado)
                 -- Cria / atualiza a entrada do gerador no StateManager
                 if not dadosGerador then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Restauração V1: %s → pool %s ausente do estado, reconstruindo", idGerador, idPoolPredio),
+                        string.format("[ChunkTracker] Restauracao V1: %s → pool %s ausente do estado, reconstruindo", idGerador, idPoolPredio),
                         "Fuel")
 
                     local sucesso, dadosNovos = pcall(LKS_EletricidadeConstrucao.Data.Generator.New, objeto)
@@ -1173,13 +1173,13 @@ tentarRestaurarDadosModIso = function(quadrado)
                                 end)
                                 if dadosPredio then
                                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                        string.format("[ChunkTracker] Restauração V1: varredura concluída para %s (%d consumidores)",
+                                        string.format("[ChunkTracker] Restauracao V1: varredura concluida para %s (%d consumidores)",
                                             idPoolPredio, dadosPredio.powerConsumers and #dadosPredio.powerConsumers or 0),
                                         "Fuel")
                                 end
                             else
                                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                    string.format("[ChunkTracker] Restauração V1: pulando varredura para %s (já possui %d consumidores da mesclagem)",
+                                    string.format("[ChunkTracker] Restauracao V1: pulando varredura para %s (ja possui %d consumidores da mesclagem)",
                                         idPoolPredio, dadosPredio.powerConsumers and #dadosPredio.powerConsumers or 0),
                                     "Fuel")
                             end
@@ -1499,7 +1499,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
             if combustivelAtual ~= combustivelEstado then
                 objetoGerador:setFuel(combustivelEstado)
                 LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                    string.format("Sincronia de combustível pós-carregamento: gerador %s %.3f -> %.3f", 
+                    string.format("Sincronia de combustivel pos-carregamento: gerador %s %.3f -> %.3f", 
                         dadosGerador.id, combustivelAtual, combustivelEstado),
                     "Fuel"
                 )
@@ -1519,7 +1519,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                     end
                 end
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("Carga de chunk: desativado gerador %s de força (sem combustível)", dadosGerador.id),
+                    string.format("Carga de chunk: desativado gerador %s de forca (sem combustivel)", dadosGerador.id),
                     "Fuel"
                 )
             end
@@ -1534,7 +1534,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                 -- mas o sinalizador de ativo não foi redefinido. Confia no IsoObject, corrige o estado.
                 dadosGerador.activated = true
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("Carga de chunk: gerador %s possui combustível (%.2f) e IsoObject ativo, corrigindo ativacao=false obsoleta no estado",
+                    string.format("Carga de chunk: gerador %s possui combustivel (%.2f) e IsoObject ativo, corrigindo ativacao=false obsoleta no estado",
                         dadosGerador.id, combustivelEstado),
                     "Fuel"
                 )
@@ -1555,7 +1555,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                 end
                 
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("Sincronia de ativação pós-carregamento: gerador %s %s -> %s (combustível: %.2f)", 
+                    string.format("Sincronia de ativacao pos-carregamento: gerador %s %s -> %s (combustivel: %.2f)", 
                         dadosGerador.id, tostring(ativacaoAtual), tostring(ativacaoEstado), combustivelEstado),
                     "Fuel"
                 )
@@ -1574,7 +1574,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                 totalAtualizados = totalAtualizados + 1
             end
             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                string.format("Energia atualizada para %d prédio(s) após sincronia de estado de geradores", totalAtualizados),
+                string.format("Energia atualizada para %d predio(s) apos sincronia de estado de geradores", totalAtualizados),
                 "Fuel"
             )
         end
@@ -1617,7 +1617,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                 -- Não verifica _atualizacoesPredioAgendadas - permite reprocessamento
                 totalAdicionados = totalAdicionados + 1
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("[ChunkLoad] Prédio %s adicionado à fila do lote (chunk do gerador carregado)", predioId),
+                    string.format("[ChunkLoad] Predio %s adicionado a fila do lote (chunk do gerador carregado)", predioId),
                     "Fuel")
             end
         end
@@ -1632,7 +1632,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                 if ticksAdiados > 0 then return end
 
                 LKS_EletricidadeConstrucao.Core.Logger.Info(
-                    string.format("[ChunkTracker] Temporizador do lote disparado após 30 ticks"),
+                    string.format("[ChunkTracker] Temporizador do lote disparado apos 30 ticks"),
                     "Fuel")
                 Events.OnTick.Remove(funcaoTimer)
                 _timerLoteAtivo = false
@@ -1761,7 +1761,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                                     -- Área do prédio parcialmente descarregada – pula varredura, mantém lista salva.
                                     totalPuladosPredio = totalPuladosPredio + 1
                                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                        string.format("[ChunkTracker] Pulando varredura para %s – área parcialmente carregada",
+                                        string.format("[ChunkTracker] Pulando varredura para %s – area parcialmente carregada",
                                             predioId), "Fuel")
                                 end
                             end
@@ -1769,7 +1769,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                     end
                     if totalVarridosPredio > 0 then
                         LKS_EletricidadeConstrucao.Core.Logger.Info(
-                            string.format("[ChunkTracker] Revarredura por entrada de chunk: reconstruídos consumidores para %d prédio(s) (pulados %d parciais)",
+                            string.format("[ChunkTracker] Revarredura por entrada de chunk: reconstruidos consumidores para %d predio(s) (pulados %d parciais)",
                                 totalVarridosPredio, totalPuladosPredio), "Fuel")
                     end
                 end
@@ -1779,7 +1779,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                 local gerenciadorEstado3 = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
                 if Distribuidor and Distribuidor.ForceUpdateBuilding and gerenciadorEstado3 then
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Iniciando Fase 2: %d prédios na fila",
+                        string.format("[ChunkTracker] Iniciando Fase 2: %d predios na fila",
                             (function() local n=0; for _ in pairs(_atualizacoesPredioPendentes) do n=n+1 end; return n end)()),
                         "Fuel")
                     local totalLote = 0
@@ -1802,12 +1802,12 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                         else
                             totalPulados = totalPulados + 1
                             LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                                string.format("[ChunkTracker] Lote Fase 2: prédio %s não encontrado no StateManager, pulando ForceUpdate", predioId),
+                                string.format("[ChunkTracker] Lote Fase 2: predio %s nao encontrado no StateManager, pulando ForceUpdate", predioId),
                                 "Fuel")
                         end
                     end
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Lote Fase 2 concluído: atualizados %d prédios (pulados %d ausentes)", totalLote, totalPulados),
+                        string.format("[ChunkTracker] Lote Fase 2 concluido: atualizados %d predios (pulados %d ausentes)", totalLote, totalPulados),
                         "Fuel")
                 end
 
@@ -1822,7 +1822,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                     local totalRepeticoes = 0
                     for _ in pairs(_reescaneamentosGeradorPendentes) do totalRepeticoes = totalRepeticoes + 1 end
                     LKS_EletricidadeConstrucao.Core.Logger.Info(
-                        string.format("[ChunkTracker] Repetição lote agendada: %d gerador(es) pendentes (quadrados ainda não carregados)",
+                        string.format("[ChunkTracker] Repeticao lote agendada: %d gerador(es) pendentes (quadrados ainda nao carregados)",
                             totalRepeticoes), "Fuel")
                     _timerLoteAtivo = true
                     local ticksRepeticao = 120 -- ~8 s
@@ -1845,7 +1845,7 @@ function LKS_EletricidadeConstrucao.Fuel.ChunkTracker.ProcessChunkGenerators(cha
                         end
                         if totalProcessadosRepeticao > 0 then
                             LKS_EletricidadeConstrucao.Core.Logger.Info(
-                                string.format("[ChunkTracker] Repetição lote concluída: processados %d gerador(es)",
+                                string.format("[ChunkTracker] Repeticao lote concluida: processados %d gerador(es)",
                                     totalProcessadosRepeticao), "Fuel")
                         end
                         if tabelaPossuiEntradas(_reescaneamentosGeradorPendentes) then -- B-106

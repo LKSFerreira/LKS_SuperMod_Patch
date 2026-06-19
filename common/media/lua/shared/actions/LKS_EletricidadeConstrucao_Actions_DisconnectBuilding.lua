@@ -127,7 +127,7 @@ function LKS_EletricidadeConstrucao_DisconnectBuilding:complete()
     local identificadorPoolConstrucao = dadosMod.Gen_BuildingPoolID
     
     if not identificadorPoolConstrucao then
-        LKS_EletricidadeConstrucao.Warn("[DisconnectBuilding] O gerador não está acoplado a nenhuma construção")
+        LKS_EletricidadeConstrucao.Warn("[DisconnectBuilding] O gerador nao esta acoplado a nenhuma construcao")
         return true
     end
     

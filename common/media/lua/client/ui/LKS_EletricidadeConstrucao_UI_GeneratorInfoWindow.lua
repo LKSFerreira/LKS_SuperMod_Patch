@@ -2222,7 +2222,7 @@ end
 
 function LKS_EletricidadeConstrucao_GeneratorInfoWindow.Open(character, generator, anchorSquare, buildingHint)
     if not character then
-        LKS_EletricidadeConstrucao.Error("[LKS PATCH - LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow.lua] Personagem inválido")
+        LKS_EletricidadeConstrucao.Error("[LKS PATCH - LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow.lua] Personagem invalido")
         return
     end
 

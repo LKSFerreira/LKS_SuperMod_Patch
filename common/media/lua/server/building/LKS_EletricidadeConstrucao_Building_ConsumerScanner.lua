@@ -37,7 +37,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(dados
     
     if not quadradosBorda or #quadradosBorda == 0 then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("Nenhum quadrado de borda para a construção %s", dadosConstrucao.id),
+            string.format("Nenhum quadrado de borda para a construcao %s", dadosConstrucao.id),
             "Building"
         )
         return
@@ -48,7 +48,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(dados
     local todosQuadrados = quadradosBorda
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Escaneando %d quadrados por consumidores (em múltiplos níveis Z)", #todosQuadrados),
+        string.format("Escaneando %d quadrados por consumidores (em multiplos niveis Z)", #todosQuadrados),
         "Building"
     )
     
@@ -123,7 +123,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(dados
                                 dadosConsumidor.powerDraw = LKS_EletricidadeConstrucao.Data.Consumer.CalculatePowerDraw(dadosConsumidor, quadrado)
                                 
                                 LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                                    string.format("Dispositivo elétrico detectado: tipo=%s, consumoEnergia=%.1f, sprite=%s",
+                                    string.format("Dispositivo eletrico detectado: tipo=%s, consumoEnergia=%.1f, sprite=%s",
                                         tostring(tipoDispositivo or "NENHUM"),
                                         dadosConsumidor.powerDraw,
                                         objeto:getSprite() and objeto:getSprite():getName() or "unknown"),
@@ -201,7 +201,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(dados
     LKS_EletricidadeConstrucao.Core.Logger.EndTimer("ConsumerScan", 100)
     
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Consumidores encontrados na construção %s: %d luzes, %d luminárias, %d aparelhos",
+        string.format("Consumidores encontrados na construcao %s: %d luzes, %d luminarias, %d aparelhos",
             dadosConstrucao.id, totalLuzes, totalLuminarias, totalDispositivos),
         "Building"
     )
@@ -216,7 +216,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.ScanConsumers(dados
             end
         end
         LKS_EletricidadeConstrucao.Core.Logger.Info(
-            string.format("Candidatos a dispositivos encontrados (não contabilizados): %s", table.concat(unicos, ", ")),
+            string.format("Candidatos a dispositivos encontrados (nao contabilizados): %s", table.concat(unicos, ", ")),
             "Building"
         )
     end
@@ -231,7 +231,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.RescanConsumers(dad
     end
 
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("ReescanearConsumidores para a construção %s", dadosConstrucao.id),
+        string.format("ReescanearConsumidores para a construcao %s", dadosConstrucao.id),
         "Building"
     )
 
@@ -258,7 +258,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.RescanConsumers(dad
 
     if not quadradosBorda or #quadradosBorda == 0 then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("ReescanearConsumidores: sem quadrados de borda para a construção %s", dadosConstrucao.id),
+            string.format("ReescanearConsumidores: sem quadrados de borda para a construcao %s", dadosConstrucao.id),
             "Building"
         )
         return
@@ -290,7 +290,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.RescanConsumers(dad
     LKS_EletricidadeConstrucao.Core.StateManager.AddBuilding(dadosConstrucao)
 
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("ReescanearConsumidores concluído para a construção %s: %d consumidores, consumo de %.1f",
+        string.format("ReescanearConsumidores concluido para a construcao %s: %d consumidores, consumo de %.1f",
             dadosConstrucao.id, #dadosConstrucao.powerConsumers, dadosConstrucao.totalPowerDraw or 0),
         "Building"
     )
@@ -536,7 +536,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.GetApplianceDetails
             end
             
             LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                string.format("Sprite de dispositivo não reconhecido: %s (usando padrão %.3f L/h)",
+                string.format("Sprite de dispositivo nao reconhecido: %s (usando padrao %.3f L/h)",
                     spriteName, Constants.CONSUMPTION_APPLIANCE_DEFAULT_LPH),
                 "Building")
         end
@@ -556,7 +556,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.UpdateConsumerPower
     local quadrado = getSquare(dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ)
     if not quadrado then
         LKS_EletricidadeConstrucao.Core.Logger.Trace(
-            string.format("Quadrado não encontrado para o consumidor em (%d,%d,%d)", 
+            string.format("Quadrado nao encontrado para o consumidor em (%d,%d,%d)", 
                 dadosConsumidor.squareX, dadosConsumidor.squareY, dadosConsumidor.squareZ),
             "Building"
         )
@@ -684,7 +684,7 @@ function LKS_EletricidadeConstrucao.Building.ConsumerScanner.CleanInvalidConsume
             table.insert(consumidoresValidos, consumidor)
         else
             LKS_EletricidadeConstrucao.Core.Logger.Debug(
-                string.format("Removendo consumidor inválido em (%d,%d,%d) da construção %s",
+                string.format("Removendo consumidor invalido em (%d,%d,%d) da construcao %s",
                     consumidor.squareX, consumidor.squareY, consumidor.squareZ, dadosConstrucao.id),
                 "Building"
             )

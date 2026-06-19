@@ -338,7 +338,7 @@ end
 --- @param mensagemErro string|nil A mensagem de erro customizada caso a asserção falhe.
 function LKS_EletricidadeConstrucao.Utils.Validation.AssertNotNil(valor, mensagemErro)
     if valor == nil then
-        error(mensagemErro or "O valor não pode ser nulo (nil)")
+        error(mensagemErro or "O valor nao pode ser nulo (nil)")
     end
 end
 
@@ -347,7 +347,7 @@ end
 --- @param mensagemErro string|nil A mensagem de erro customizada caso a asserção falhe.
 function LKS_EletricidadeConstrucao.Utils.Validation.Assert(condicao, mensagemErro)
     if not condicao then
-        error(mensagemErro or "Falha de asserção lógica")
+        error(mensagemErro or "Falha de assercao logica")
     end
 end
 
@@ -358,7 +358,7 @@ end
 function LKS_EletricidadeConstrucao.Utils.Validation.AssertType(valor, tipoEsperado, nomeVariavel)
     local tipoAtual = type(valor)
     if tipoAtual ~= tipoEsperado then
-        error(string.format("A variável %s deve ser do tipo %s (recebido %s)", 
+        error(string.format("A variavel %s deve ser do tipo %s (recebido %s)", 
             nomeVariavel or "valor", tipoEsperado, tipoAtual))
     end
 end

@@ -187,7 +187,7 @@ function LKS_EletricidadeConstrucao.Data.State.Deserialize(dadosSerializados)
         if dadosPredio then
             prediosDesserializados[idPredio] = dadosPredio
         else
-            LKS_EletricidadeConstrucao.Warn("[State.Deserialize] Falha ao desserializar prédio: " .. idPredio)
+            LKS_EletricidadeConstrucao.Warn("[State.Deserialize] Falha ao desserializar predio: " .. idPredio)
         end
     end
     dadosEstado.buildings = prediosDesserializados
@@ -209,7 +209,7 @@ function LKS_EletricidadeConstrucao.Data.State.Deserialize(dadosSerializados)
     -- Valida integridade geral do estado reconstruído
     local valido, erro = LKS_EletricidadeConstrucao.Data.State.Validate(dadosEstado)
     if not valido then
-        LKS_EletricidadeConstrucao.Error("[State.Deserialize] Dados de estado desserializados inválidos: " .. erro)
+        LKS_EletricidadeConstrucao.Error("[State.Deserialize] Dados de estado desserializados invalidos: " .. erro)
         return nil
     end
     

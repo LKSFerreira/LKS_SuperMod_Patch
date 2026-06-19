@@ -192,7 +192,7 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicio
         end
 
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("Detector de Bordas: nenhuma IsoBuilding em (%d,%d,%d), buscando construções próximas...",
+            string.format("Detector de Bordas: nenhuma IsoBuilding em (%d,%d,%d), buscando construcoes proximas...",
                 inicioX, inicioY, inicioZ),
             "Building"
         )
@@ -207,7 +207,7 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicio
                     local construcao = quadrado:getBuilding()
                     if construcao and not construcoesProximas[construcao] then
                         construcoesProximas[construcao] = true
-                        print(string.format("[LKS PATCH - BorderDetector] Construção próxima encontrada no deslocamento (%d,%d)", dx, dy))
+                        print(string.format("[LKS PATCH - BorderDetector] Construcao proxima encontrada no deslocamento (%d,%d)", dx, dy))
                     end
                 end
             end
@@ -219,7 +219,7 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicio
         end
         
         if totalConstrucoesProximas > 0 then
-            print(string.format("[LKS PATCH - BorderDetector] Encontrada(s) %d construção(ões) próxima(s), escaneando seus cômodos...", totalConstrucoesProximas))
+            print(string.format("[LKS PATCH - BorderDetector] Encontrada(s) %d construcao(oes) proxima(s), escaneando seus comodos...", totalConstrucoesProximas))
             
             local quadrados = {}
             
@@ -253,7 +253,7 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicio
             
             if #quadrados > 0 then
                 quadrados = LKS_EletricidadeConstrucao.Building.BorderDetector.RemoveDuplicateTiles(quadrados)
-                print(string.format("[LKS PATCH - BorderDetector] Varredura de construções próximas: %d quadrados em %d construções", 
+                print(string.format("[LKS PATCH - BorderDetector] Varredura de construcoes proximas: %d quadrados em %d construcoes", 
                     #quadrados, totalConstrucoesProximas))
                 LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)
                 return quadrados
@@ -485,7 +485,7 @@ end
 --- @return table Lista de quadrados de borda.
 function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBordersRaycast(startX, startY, startZ, raio)
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Usando detecção de bordas por raycast em (%d,%d,%d) com raio=%d",
+        string.format("Usando deteccao de bordas por raycast em (%d,%d,%d) com raio=%d",
             startX, startY, startZ, raio),
         "Building"
     )

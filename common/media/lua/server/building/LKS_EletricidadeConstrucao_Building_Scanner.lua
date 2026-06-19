@@ -97,7 +97,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.QueueScan(x, y, z, building
     for _, escaneamento in ipairs(_filaEscaneamento) do
         if escaneamento.buildingId == idConstrucao then
             LKS_EletricidadeConstrucao.Core.Logger.Trace(
-                string.format("Escaneamento já enfileirado para %s", idConstrucao),
+                string.format("Escaneamento ja enfileirado para %s", idConstrucao),
                 "Building"
             )
             return
@@ -113,7 +113,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.QueueScan(x, y, z, building
     })
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Escaneamento enfileirado para a construção %s (%d na fila)", idConstrucao, #_filaEscaneamento),
+        string.format("Escaneamento enfileirado para a construcao %s (%d na fila)", idConstrucao, #_filaEscaneamento),
         "Building"
     )
 end
@@ -135,7 +135,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ProcessQueue()
     local escaneamento = table.remove(_filaEscaneamento, 1)
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Iniciando escaneamento para a construção %s", escaneamento.buildingId),
+        string.format("Iniciando escaneamento para a construcao %s", escaneamento.buildingId),
         "Building"
     )
     
@@ -190,7 +190,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     local quadrado = getSquare(x, y, z)
     if not quadrado then
         LKS_EletricidadeConstrucao.Core.Logger.Error(
-            string.format("Quadrado não encontrado em (%d,%d,%d)", x, y, z),
+            string.format("Quadrado nao encontrado em (%d,%d,%d)", x, y, z),
             "Building"
         )
         return nil
@@ -210,7 +210,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     
     if not lightSwitch then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("Interruptor de luz não encontrado em (%d,%d,%d)", x, y, z),
+            string.format("Interruptor de luz nao encontrado em (%d,%d,%d)", x, y, z),
             "Building"
         )
         return nil
@@ -221,7 +221,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     local buildingData = StateManager.GetBuilding(idConstrucao)
     
     local eReescaneamento = (buildingData ~= nil)
-    print(string.format("[LKS PATCH - SCAN] %s construção %s a partir do interruptor (%d,%d,%d)",
+    print(string.format("[LKS PATCH - SCAN] %s construcao %s a partir do interruptor (%d,%d,%d)",
         eReescaneamento and "REESCANEANDO" or "NOVO ESCANEAMENTO", idConstrucao, x, y, z))
     
     if not buildingData then
@@ -232,7 +232,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
         end
         StateManager.AddBuilding(buildingData)
     else
-        print(string.format("[LKS PATCH - SCAN] Construção já registrada - consumidores atuais: %d, consumo atual: %.1f",
+        print(string.format("[LKS PATCH - SCAN] Construcao ja registrada - consumidores atuais: %d, consumo atual: %.1f",
             buildingData.totalConsumers or 0, buildingData.totalPowerDraw or 0))
     end
     
@@ -243,7 +243,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
         local metadeLargura = math.ceil((bb.maxX - bb.minX) / 2) + 3
         local metadeAltura = math.ceil((bb.maxY - bb.minY) / 2) + 3
         scanRadius = math.max(metadeLargura, metadeAltura, scanRadius or 2)
-        print(string.format("[LKS PATCH - SCAN] Construída pelo jogador %s: raio de varredura derivado da caixa %d", idConstrucao, scanRadius))
+        print(string.format("[LKS PATCH - SCAN] Construida pelo jogador %s: raio de varredura derivado da caixa %d", idConstrucao, scanRadius))
     elseif construidoPeloJogador then
         scanRadius = math.max(scanRadius or 2, 30)
     end
@@ -251,14 +251,14 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     local quadradosBorda = LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(x, y, z, scanRadius, idConstrucao)
     if #quadradosBorda == 0 then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("Nenhum quadrado de borda para a construção %s", idConstrucao),
+            string.format("Nenhum quadrado de borda para a construcao %s", idConstrucao),
             "Building"
         )
         return buildingData
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Encontrados %d quadrados de borda para a construção %s", #quadradosBorda, idConstrucao),
+        string.format("Encontrados %d quadrados de borda para a construcao %s", #quadradosBorda, idConstrucao),
         "Building"
     )
     print(string.format("[LKS PATCH - SCAN] Encontrados %d quadrados de borda", #quadradosBorda))
@@ -298,7 +298,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     
     LKS_EletricidadeConstrucao.Data.Building.RecalculatePower(buildingData)
     
-    print(string.format("[LKS PATCH - SCAN] DEPOIS da varredura: %d consumidores, consumo de %.1f (diferença: %+d consumidores, %+.1f consumo)",
+    print(string.format("[LKS PATCH - SCAN] DEPOIS da varredura: %d consumidores, consumo de %.1f (diferenca: %+d consumidores, %+.1f consumo)",
         buildingData.totalConsumers or 0, buildingData.totalPowerDraw or 0,
         (buildingData.totalConsumers or 0) - totalConsumidoresAntigo,
         (buildingData.totalPowerDraw or 0) - consumoEnergiaAntigo))
@@ -312,7 +312,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.ScanBuilding(x, y, z, build
     LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BuildingScan", 50)
     
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Construção %s escaneada: %d consumidores, consumo de %.1f",
+        string.format("Construcao %s escaneada: %d consumidores, consumo de %.1f",
             idConstrucao, #buildingData.powerConsumers, buildingData.totalPowerDraw),
         "Building"
     )
@@ -333,14 +333,14 @@ function LKS_EletricidadeConstrucao.Building.Scanner.RescanBuilding(idConstrucao
     
     if not buildingData then
         LKS_EletricidadeConstrucao.Core.Logger.Error(
-            string.format("Construção %s não encontrada para reescaneamento", idConstrucao),
+            string.format("Construcao %s nao encontrada para reescaneamento", idConstrucao),
             "Building"
         )
         return nil
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Reescaneando a construção %s", idConstrucao),
+        string.format("Reescaneando a construcao %s", idConstrucao),
         "Building"
     )
     
@@ -361,7 +361,7 @@ function LKS_EletricidadeConstrucao.Building.Scanner.RescanAllBuildings()
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Info(
-        string.format("Reescaneadas %d construções", total),
+        string.format("Reescaneadas %d construcoes", total),
         "Building"
     )
 end

@@ -395,7 +395,7 @@ Events.OnFillWorldObjectContextMenu.Add(function(numeroJogador, contexto, objeto
                         quadrado,
                         dadosConstrucao and dadosConstrucao.id or nil))
             else
-                LKS_EletricidadeConstrucao.Warn("[LightSwitchMenu] Interface GeneratorInfoWindow não carregada!")
+                LKS_EletricidadeConstrucao.Warn("[LightSwitchMenu] Interface GeneratorInfoWindow nao carregada!")
             end
         end
     )

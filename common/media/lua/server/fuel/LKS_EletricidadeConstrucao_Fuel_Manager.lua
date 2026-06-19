@@ -382,7 +382,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.Update()
             dadosGerador.activated = false
             qualquerAlteracaoEstado = true
             LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                string.format("Gerador %s estava ativado mas está sem combustível - desativando", dadosGerador.id),
+                string.format("Gerador %s estava ativado mas esta sem combustivel - desativando", dadosGerador.id),
                 "Fuel"
             )
             
@@ -497,7 +497,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.ForceUpdateGenerator(x, y, z)
         LKS_EletricidadeConstrucao.Fuel.Manager.UpdateGenerator(dadosGerador, 1)
         gerenciadorEstado.MarkDirty()
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("Atualização de combustível forçada para gerador em %d,%d,%d", x, y, z),
+            string.format("Atualizacao de combustivel forcada para gerador em %d,%d,%d", x, y, z),
             "Fuel"
         )
     end
@@ -937,7 +937,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(genera
                 local aquecimentoPredio = taxaPorFonte * dadosPredio.heatingSourceCount
                 cargaAquecimentoTotal = cargaAquecimentoTotal + aquecimentoPredio
                 Logger.Debug(
-                    string.format("[PoolHeating] prédio=%s fontes=%d temp=%.1f aquecimento=%.8f L/s (%.4f L/h)",
+                    string.format("[PoolHeating] predio=%s fontes=%d temp=%.1f aquecimento=%.8f L/s (%.4f L/h)",
                         idPredioPool, dadosPredio.heatingSourceCount, tempAlvo, aquecimentoPredio, aquecimentoPredio * 3600),
                     "Fuel"
                 )
@@ -975,7 +975,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(genera
         for _ in pairs(prediosPool) do algumPredioEsperado = true; break end
         if not algumPredioEncontrado and algumPredioEsperado and generatorData.cachedRealPoolTotalLps then
             Logger.Info(
-                string.format("[PoolFallback] gen=%s prédios não estão no estado ainda – usando total de pool em cache %.8f L/s (%.4f L/h), cachedPoolActive=%d",
+                string.format("[PoolFallback] gen=%s predios nao estao no estado ainda – usando total de pool em cache %.8f L/s (%.4f L/h), cachedPoolActive=%d",
                     generatorData.id, generatorData.cachedRealPoolTotalLps, generatorData.cachedRealPoolTotalLps * 3600,
                     generatorData.cachedPoolActive or 1),
                 "Fuel")
@@ -1010,7 +1010,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.CalculateFuelConsumption(genera
     end
 
     Logger.Debug(
-        string.format("[PoolTotal] gen=%s aparelhos+aquecimento=%.8f L/s (%.4f L/h) antes da divisão do pool",
+        string.format("[PoolTotal] gen=%s aparelhos+aquecimento=%.8f L/s (%.4f L/h) antes da divisao do pool",
             generatorData.id, taxaBaseCombustivel, taxaBaseCombustivel * 3600),
         "Fuel"
     )
@@ -1388,7 +1388,7 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.AddFuel(generatorData, amount)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
     LKS_EletricidadeConstrucao.Core.Logger.Debug(
-        string.format("Adicionado %.2f de combustível ao gerador %s (total: %.2f)", 
+        string.format("Adicionado %.2f de combustivel ao gerador %s (total: %.2f)", 
             amount, generatorData.id, novoCombustivel),
         "Fuel"
     )
@@ -1405,12 +1405,12 @@ function LKS_EletricidadeConstrucao.Fuel.Manager.SetCustomFuelRate(generatorData
     
     if fuelRate then
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("Definida taxa de combustível personalizada para %s: %.6f", generatorData.id, fuelRate),
+            string.format("Definida taxa de combustivel personalizada para %s: %.6f", generatorData.id, fuelRate),
             "Fuel"
         )
     else
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("Limpa taxa de combustível personalizada para %s", generatorData.id),
+            string.format("Limpa taxa de combustivel personalizada para %s", generatorData.id),
             "Fuel"
         )
     end

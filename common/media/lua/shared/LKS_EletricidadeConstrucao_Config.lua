@@ -159,7 +159,7 @@ function LKS_EletricidadeConstrucao.Config.LoadFromSandbox()
     local sandboxOptions = SandboxVars
     
     if not sandboxOptions then
-        LKS_EletricidadeConstrucao.Warn("Opções do SandboxVars indisponíveis, utilizando configurações padrão do código")
+        LKS_EletricidadeConstrucao.Warn("Opcoes do SandboxVars indisponiveis, utilizando configuracoes padrao do codigo")
         return
     end
     
@@ -253,7 +253,7 @@ end
 
 --- Reseta todas as chaves de configuração locais para as definições de código estático (Defaults).
 function LKS_EletricidadeConstrucao.Config.ResetToDefaults()
-    LKS_EletricidadeConstrucao.Warn("Resetando preferências de configuração para os padrões estáticos")
+    LKS_EletricidadeConstrucao.Warn("Resetando preferencias de configuracao para os padroes estaticos")
     require("LKS_EletricidadeConstrucao_Config")
 end
 
@@ -302,9 +302,9 @@ function LKS_EletricidadeConstrucao.Config.Validate()
     ApplySandboxBackedConstants()
     
     if warnings > 0 then
-        LKS_EletricidadeConstrucao.Warn(string.format("Validador de Configuração encontrou %d aviso(s) de ajuste", warnings))
+        LKS_EletricidadeConstrucao.Warn(string.format("Validador de Configuracao encontrou %d aviso(s) de ajuste", warnings))
     else
-        LKS_EletricidadeConstrucao.Debug("Validador de Configuração executado com sucesso e zero inconformidades")
+        LKS_EletricidadeConstrucao.Debug("Validador de Configuracao executado com sucesso e zero inconformidades")
     end
 end
 

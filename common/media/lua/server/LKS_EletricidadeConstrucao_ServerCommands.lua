@@ -519,7 +519,7 @@ local function RestaurarConstrucaoDosDadosPool(idConstrucao, stateManager, dados
     stateManager.AddBuilding(dadosConstrucao)
 
     LKS_EletricidadeConstrucao.Core.Logger.Warn(
-        string.format("[StateRepair] %s: restaurada construção %s a partir de LKS_EletricidadeConstrucao_PoolData%s",
+        string.format("[StateRepair] %s: restaurada construcao %s a partir de LKS_EletricidadeConstrucao_PoolData%s",
             tostring(motivo or "desconhecido"), tostring(idConstrucao),
             dadosConstrucao.boundingBox and " com caixa delimitadora" or ""),
         "ServerCommands")
@@ -577,7 +577,7 @@ local function GarantirEstadoConstrucao(idConstrucao, gerador, motivo)
     local Scanner = LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner
     if bx and by and bz and Scanner and Scanner.ScanBuilding then
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("[StateRepair] %s: verificando construção %s a partir da âncora (%d,%d,%d)",
+            string.format("[StateRepair] %s: verificando construcao %s a partir da ancora (%d,%d,%d)",
                 tostring(motivo or "desconhecido"), tostring(idConstrucao), bx, by, bz),
             "ServerCommands")
         local ok, escaneado = pcall(Scanner.ScanBuilding, bx, by, bz, idConstrucao)
@@ -613,7 +613,7 @@ local function GarantirEstadoConstrucao(idConstrucao, gerador, motivo)
         }
         StateManager.AddBuilding(dadosProvisorios)
         LKS_EletricidadeConstrucao.Core.Logger.Warn(
-            string.format("[StateRepair] %s: criado estado provisório de construção para %s",
+            string.format("[StateRepair] %s: criado estado provisorio de construcao para %s",
                 tostring(motivo or "desconhecido"), tostring(idConstrucao)),
             "ServerCommands")
         existente = StateManager.GetBuilding and StateManager.GetBuilding(idConstrucao) or dadosProvisorios
@@ -1015,7 +1015,7 @@ local function AoReceberComandoCliente(module, command, player, args)
                 local stateManager = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
                 local totalConstrucoes = stateManager and stateManager.GetAllBuildings and ContarEntradasMapa(stateManager.GetAllBuildings() or {}) or 0
                 LKS_EletricidadeConstrucao.Core.Logger.Warn(
-                    string.format("Nenhuma construção associada para o barril (%d,%d,%d); construcoesNoEstado=%d",
+                    string.format("Nenhuma construcao associada para o barril (%d,%d,%d); construcoesNoEstado=%d",
                         args.bx, args.by, args.bz, totalConstrucoes),
                     "ServerCommands")
                 RejeitarRequisicao(player, command, "construção não encontrada para o link do barril", {

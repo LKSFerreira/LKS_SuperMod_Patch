@@ -176,7 +176,7 @@ function LKS_EletricidadeConstrucao.Data.Consumer.Deserialize(dadosSerializados)
     -- Realiza validação final dos dados carregados
     local valido, erro = LKS_EletricidadeConstrucao.Data.Consumer.Validate(dadosConsumidor)
     if not valido then
-        LKS_EletricidadeConstrucao.Error("[Consumer.Deserialize] Dados do consumidor inválidos: " .. erro)
+        LKS_EletricidadeConstrucao.Error("[Consumer.Deserialize] Dados do consumidor invalidos: " .. erro)
         return nil
     end
     

@@ -77,7 +77,7 @@ local function EscanearTodasConstrucoes()
 
     if contagemConstrucoes > 0 and LKS_EletricidadeConstrucao.Core.Logger then
         LKS_EletricidadeConstrucao.Core.Logger.Debug(
-            string.format("ConsumerEvents: Re-escaneadas %d construção(ões)", contagemConstrucoes),
+            string.format("ConsumerEvents: Re-escaneadas %d construcao(oes)", contagemConstrucoes),
             "Building")
     end
 end

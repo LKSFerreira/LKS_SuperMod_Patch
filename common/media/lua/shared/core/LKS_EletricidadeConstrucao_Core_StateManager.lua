@@ -367,7 +367,7 @@ end
 --- @return boolean Retorna true se inicializado com sucesso.
 function LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
     if _inicializado then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Initialize] Gerenciador de estado já inicializado anteriormente")
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Initialize] Gerenciador de estado ja inicializado anteriormente")
         return true
     end
 
@@ -400,7 +400,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Load()
     
     -- Clientes em servidores multiplayer não leem o ModData físico diretamente
     if Contexto.IsMultiplayerClient and Contexto.IsMultiplayerClient() then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Clientes de servidores Multiplayer não carregam diretamente do ModData, aguardando sincronização da rede")
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Clientes de servidores Multiplayer nao carregam diretamente do ModData, aguardando sincronizacao da rede")
         return false
     end
 
@@ -435,7 +435,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Load()
         -- a partir do backup auxiliar gravado previamente.
         local dadosBackup = ModData.get(CHAVE_MODDATA_BACKUP)
         if dadosBackup and dadosBackup.state then
-            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Estado principal ausente - tentando recuperar através do backup")
+            LKS_EletricidadeConstrucao.Warn("[StateManager.Load] Estado principal ausente - tentando recuperar atraves do backup")
             local dadosBackupDesserializados = LKS_EletricidadeConstrucao.Data.State.Deserialize(dadosBackup.state)
             if dadosBackupDesserializados then
                 _estado = dadosBackupDesserializados
@@ -488,7 +488,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
 
     local identificadorMundoAtual = ObterIdentificadorMundo()
     if identificadorMundoAtual == "unknown" then
-        LKS_EletricidadeConstrucao.Debug("[StateManager.ConfirmAndLoadState] Mundo indisponível no momento, diferindo carregamento")
+        LKS_EletricidadeConstrucao.Debug("[StateManager.ConfirmAndLoadState] Mundo indisponivel no momento, diferindo carregamento")
         return false
     end
 
@@ -546,7 +546,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Save(forcar, criarBackup)
     local Contexto = LKS_EletricidadeConstrucao.Core.Runtime
     
     if not _inicializado then
-        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Gerenciador de estado não inicializado")
+        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Gerenciador de estado nao inicializado")
         return false
     end
 
@@ -555,23 +555,23 @@ function LKS_EletricidadeConstrucao.Core.StateManager.Save(forcar, criarBackup)
         LKS_EletricidadeConstrucao.Core.StateManager.ConfirmAndLoadState()
     end
     if _estadoCarregamentoDados == "pending" then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Validação do mundo pendente - gravação cancelada para evitar perda de dados")
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Validacao do mundo pendente - gravacao cancelada para evitar perda de dados")
         return false
     end
 
     if not _estaModificado and not forcar then
-        LKS_EletricidadeConstrucao.Debug("[StateManager.Save] Estado limpo, pulando gravação")
+        LKS_EletricidadeConstrucao.Debug("[StateManager.Save] Estado limpo, pulando gravacao")
         return true
     end
     
     -- Apenas o servidor ou sessões Singleplayer podem escrever dados persistentes globais
     if not Contexto.IsServer() and not Contexto.IsSingleplayer() then
-        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Apenas o servidor de jogo pode gravar alterações globais")
+        LKS_EletricidadeConstrucao.Warn("[StateManager.Save] Apenas o servidor de jogo pode gravar alteracoes globais")
         return false
     end
     
     if not _estado then
-        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Nenhum estado válido disponível para gravação")
+        LKS_EletricidadeConstrucao.Error("[StateManager.Save] Nenhum estado valido disponivel para gravacao")
         return false
     end
     
@@ -624,7 +624,7 @@ end
 --- @return table|nil O estado de simulação ativo ou nil.
 function LKS_EletricidadeConstrucao.Core.StateManager.GetState()
     if not _inicializado then
-        LKS_EletricidadeConstrucao.Error("[StateManager.GetState] Gerenciador de estado não inicializado")
+        LKS_EletricidadeConstrucao.Error("[StateManager.GetState] Gerenciador de estado nao inicializado")
         return nil
     end
     return _estado
@@ -643,7 +643,7 @@ end
 --- @param configuracao table Nova tabela de parâmetros sandbox.
 function LKS_EletricidadeConstrucao.Core.StateManager.SetConfig(configuracao)
     if not _estado then
-        LKS_EletricidadeConstrucao.Error("[StateManager.SetConfig] Nenhum estado ativo para configuração")
+        LKS_EletricidadeConstrucao.Error("[StateManager.SetConfig] Nenhum estado ativo para configuracao")
         return
     end
     _estado.config = configuracao
@@ -747,7 +747,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.AddBuilding(dadosConstruca
     LKS_EletricidadeConstrucao.Data.State.AddBuilding(_estado, dadosConstrucao)
     LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
     
-    LKS_EletricidadeConstrucao.Debug("[StateManager] Construção vinculada: " .. dadosConstrucao.id)
+    LKS_EletricidadeConstrucao.Debug("[StateManager] Construcao vinculada: " .. dadosConstrucao.id)
 end
 
 --- Remove os registros associados a uma construção do estado global.
@@ -762,7 +762,7 @@ function LKS_EletricidadeConstrucao.Core.StateManager.RemoveBuilding(identificad
     local geradorRemovido = LKS_EletricidadeConstrucao.Data.State.RemoveBuilding(_estado, identificadorConstrucao)
     if geradorRemovido then
         LKS_EletricidadeConstrucao.Core.StateManager.MarkDirty()
-        LKS_EletricidadeConstrucao.Debug("[StateManager] Construção desvinculada: " .. identificadorConstrucao)
+        LKS_EletricidadeConstrucao.Debug("[StateManager] Construcao desvinculada: " .. identificadorConstrucao)
     end
     
     return geradorRemovido

@@ -128,7 +128,7 @@ function LKS_EletricidadeConstrucao.RegisterModule(moduleName, version)
         version = version or "unknown",
         loadedAt = os.time()
     }
-    print(string.format("[LKS_EletricidadeConstrucao] Módulo carregado: %s (v%s)", moduleName, version or "unknown"))
+    print(string.format("[LKS_EletricidadeConstrucao] Modulo carregado: %s (v%s)", moduleName, version or "unknown"))
 end
 
 --- Verifica se um determinado submódulo do LKS já foi carregado e registrado.

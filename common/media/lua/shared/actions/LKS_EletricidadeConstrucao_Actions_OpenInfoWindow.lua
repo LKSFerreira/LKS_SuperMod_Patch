@@ -151,7 +151,7 @@ function LKS_EletricidadeConstrucao_OpenInfoWindow:complete()
     
     -- Verifica se o módulo de interface gráfica foi carregado com sucesso
     if not LKS_EletricidadeConstrucao.UI or not LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow then
-        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] O módulo LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow não foi localizado!")
+        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] O modulo LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow nao foi localizado!")
         return true
     end
     
@@ -161,7 +161,7 @@ function LKS_EletricidadeConstrucao_OpenInfoWindow:complete()
         LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open(
             self.character, self.generator, self.anchorSquare, self.buildingHint)
     else
-        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] O método LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open não foi localizado!")
+        LKS_EletricidadeConstrucao.Error("[OpenInfoWindow] O metodo LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow.Open nao foi localizado!")
     end
     
     return true

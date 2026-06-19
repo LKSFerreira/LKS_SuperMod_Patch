@@ -326,7 +326,7 @@ print("LKS_EletricidadeConstrucao V2 Pronto")
 print(string.format("  Modo de Jogo: %s", LKS_EletricidadeConstrucao.Core.Runtime.GetGameMode()))
 print(string.format("  Servidor: %s", tostring(LKS_EletricidadeConstrucao.IsServer())))
 print(string.format("  Cliente: %s", tostring(LKS_EletricidadeConstrucao.IsClient())))
-print(string.format("  Módulos: %d", #modulosCarregados))
+print(string.format("  Modulos: %d", #modulosCarregados))
 print("========================================")
 
 -- Salva carimbo de data/hora do boot

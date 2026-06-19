@@ -134,9 +134,9 @@ end
 --- @param expectedContext string O contexto esperado ("server" ou "client").
 function LKS_EletricidadeConstrucao.Core.Runtime.WarnIfWrongContext(expectedContext)
     if expectedContext == "server" and not LKS_EletricidadeConstrucao.Core.Runtime.IsServer() then
-        LKS_EletricidadeConstrucao.Warn("Código esperava rodar no Servidor, mas está rodando no Cliente!")
+        LKS_EletricidadeConstrucao.Warn("Codigo esperava rodar no Servidor, mas esta rodando no Cliente!")
     elseif expectedContext == "client" and not LKS_EletricidadeConstrucao.Core.Runtime.IsClient() then
-        LKS_EletricidadeConstrucao.Warn("Código esperava rodar no Cliente, mas está rodando no Servidor!")
+        LKS_EletricidadeConstrucao.Warn("Codigo esperava rodar no Cliente, mas esta rodando no Servidor!")
     end
 end
 

@@ -378,7 +378,7 @@ function LKS_EletricidadeConstrucao.Data.Building.Deserialize(dadosSerializados)
     -- Valida os dados carregados do prédio
     local valido, erro = LKS_EletricidadeConstrucao.Data.Building.Validate(dadosPredio)
     if not valido then
-        LKS_EletricidadeConstrucao.Error("[Building.Deserialize] Dados desserializados do prédio inválidos: " .. erro)
+        LKS_EletricidadeConstrucao.Error("[Building.Deserialize] Dados desserializados do predio invalidos: " .. erro)
         return nil
     end
     

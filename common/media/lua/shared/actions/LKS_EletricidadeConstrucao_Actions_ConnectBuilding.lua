@@ -292,7 +292,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
 
     local quadradoGerador = self.generator:getSquare()
     if not quadradoGerador then
-        LKS_EletricidadeConstrucao.Error("[ConnectBuilding] Quadrado do gerador não localizado")
+        LKS_EletricidadeConstrucao.Error("[ConnectBuilding] Quadrado do gerador nao localizado")
         return true
     end
 
@@ -306,7 +306,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
 
     local construcao = quadradoConstrucao:getBuilding()
     if not construcao then
-        LKS_EletricidadeConstrucao.Error("[ConnectBuilding] Objeto de construção da engine não encontrado")
+        LKS_EletricidadeConstrucao.Error("[ConnectBuilding] Objeto de construcao da engine nao encontrado")
         return true
     end
 
@@ -323,7 +323,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
         LKS_EletricidadeConstrucao.Print("[ConnectBuilding] ID de reserva obtido da origem da construcao: " .. identificadorConstrucao)
     else
         identificadorConstrucao = string.format("bld_%d_%d_%d", quadradoConstrucao:getX(), quadradoConstrucao:getY(), quadradoConstrucao:getZ())
-        LKS_EletricidadeConstrucao.Warn("[ConnectBuilding] ID de emergência obtido de buildingSquare: " .. identificadorConstrucao)
+        LKS_EletricidadeConstrucao.Warn("[ConnectBuilding] ID de emergencia obtido de buildingSquare: " .. identificadorConstrucao)
     end
 
     local GerenciadorEstado = LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager
@@ -521,7 +521,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
             end
         end
     else
-        LKS_EletricidadeConstrucao.Warn("[ConnectBuilding] Varredura falhou ou interruptor ausente - a detecção de aparelhos requer um interruptor de luz interno")
+        LKS_EletricidadeConstrucao.Warn("[ConnectBuilding] Varredura falhou ou interruptor ausente - a deteccao de aparelhos requer um interruptor de luz interno")
     end
 
     -- Transmite atualização aos clientes se em Multiplayer

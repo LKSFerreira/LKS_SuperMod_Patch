@@ -249,7 +249,7 @@ function LKS_EletricidadeConstrucao.Data.Generator.Deserialize(dadosSerializados
     -- Realiza validação final dos dados lidos
     local valido, erro = LKS_EletricidadeConstrucao.Data.Generator.Validate(dadosGerador)
     if not valido then
-        LKS_EletricidadeConstrucao.Error("[Generator.Deserialize] Estrutura de dados inválida: " .. erro)
+        LKS_EletricidadeConstrucao.Error("[Generator.Deserialize] Estrutura de dados invalida: " .. erro)
         return nil
     end
     
