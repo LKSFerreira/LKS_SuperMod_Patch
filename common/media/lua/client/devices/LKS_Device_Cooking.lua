@@ -687,7 +687,10 @@ local function executarTogglePropano(fogao, jogador)
         if tipoFogao == "convencional" or tipoFogao == "antigo" then
             local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
             if fonteEnergia.disponivel then
-                acenderFogaoPropano(fogao, jogador)
+                local fontesCalor = buscarFontesCalorInventario(jogador)
+                if #fontesCalor > 0 then
+                    acenderFogaoPropano(fogao, jogador)
+                end
             end
             return true
         end
@@ -735,17 +738,19 @@ local function aplicarPatchUIFogao()
         function NR_OvenPanel:createChildren()
             nrCreateChildren(self)
 
-            -- Intercepta prerender do powerButton para injetar tooltip de propano
+            -- Intercepta prerender do powerButton para injetar tooltip de propano.
+            -- O NR substitui o prerender inteiro do ISButton por uma closure que
+            -- nunca chama updateTooltip(), impedindo a exibicao de qualquer tooltip.
+            -- Nosso wrapper restaura essa chamada apos ajustar o campo tooltip.
             if self.header and self.header.powerButton then
                 local prerenderOriginal = self.header.powerButton.prerender
                 local painelRef = self
                 self.header.powerButton.prerender = function(btn)
                     prerenderOriginal(btn)
-                    -- O prerender original seta tooltip=nil para "disabled".
-                    -- Sobrescrevemos com o motivo do propano logo após o render.
                     if painelRef._lksTooltipPropano then
                         btn.tooltip = painelRef._lksTooltipPropano
                     end
+                    btn:updateTooltip()
                 end
             end
 
