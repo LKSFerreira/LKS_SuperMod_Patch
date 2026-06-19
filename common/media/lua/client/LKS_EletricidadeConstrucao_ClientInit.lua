@@ -14,15 +14,15 @@
 -- OBJETIVO: Inicialização do lado do cliente (carrega interfaces, menus e utilitários).
 -- LOCALIZAÇÃO: client
 
-print("[LKS PATCH - LKS_EletricidadeConstrucao_ClientInit.lua] Carregando Inicialização de Cliente do LKS_EletricidadeConstrucao...")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_ClientInit.lua] Carregando Inicializacao de Cliente do LKS_EletricidadeConstrucao...")
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_ClientInit] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_ClientInit] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 
 if LKS_EletricidadeConstrucao.Config and not LKS_EletricidadeConstrucao.Config.ModEnabled then
-    print("[LKS_EletricidadeConstrucao_ClientInit] Eletricidade realista desativada no sandbox - pulando módulo")
+    print("[LKS_EletricidadeConstrucao_ClientInit] Eletricidade realista desativada no sandbox - pulando modulo")
     return
 end
 

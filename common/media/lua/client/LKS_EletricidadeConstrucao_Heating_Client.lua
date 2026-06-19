@@ -15,7 +15,7 @@
 -- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Heating_Client] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Heating_Client] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 
@@ -428,4 +428,4 @@ end)
 
 LKS_EletricidadeConstrucao.RegisterModule("Heating.Client", "2.0.0")
 
-print("[LKS_EletricidadeConstrucao_Heating_Client] Módulo de aquecimento do cliente carregado com sucesso.")
+print("[LKS_EletricidadeConstrucao_Heating_Client] Modulo de aquecimento do cliente carregado com sucesso.")

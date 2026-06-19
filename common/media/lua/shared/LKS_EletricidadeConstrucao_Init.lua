@@ -27,5 +27,5 @@ if sucesso then
     return resultado
 end
 
-print("[LKS_EletricidadeConstrucao_Init] WARNING: 0_LKS_EletricidadeConstrucao_Init.lua não pôde ser carregado: " .. tostring(resultado))
+print("[LKS_EletricidadeConstrucao_Init] WARNING: 0_LKS_EletricidadeConstrucao_Init.lua nao pode ser carregado: " .. tostring(resultado))
 return LKS_EletricidadeConstrucao

@@ -15,12 +15,12 @@
 -- LOCALIZAÇÃO: server
 
 if not LKS_EletricidadeConstrucao or not LKS_EletricidadeConstrucao.Core then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Namespace LKS_EletricidadeConstrucao ou Core não encontrado - pulando carregamento do módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Namespace LKS_EletricidadeConstrucao ou Core nao encontrado - pulando carregamento do modulo")
     return
 end
 
 if not LKS_EletricidadeConstrucao.Core.Logger or not LKS_EletricidadeConstrucao.Core.Logger.Info then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Logger não inicializado - pulando carregamento do módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Logger nao inicializado - pulando carregamento do modulo")
     return
 end
 
@@ -484,5 +484,5 @@ function LKS_EletricidadeConstrucao.DebugCommands.WipeAllData()
 end
 
 LKS_EletricidadeConstrucao.RegisterModule("Debug.Commands", "2.0.0")
-print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Módulo de comandos de depuração carregado com sucesso!")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_DebugCommands.lua] Modulo de comandos de depuracao carregado com sucesso!")
 return LKS_EletricidadeConstrucao.DebugCommands

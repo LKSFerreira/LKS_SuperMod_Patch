@@ -1174,9 +1174,9 @@ end
 
 if Events.OnClientCommand then
     Events.OnClientCommand.Add(AoReceberComandoCliente)
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerCommands.lua] Módulo de comandos de rede carregado com sucesso!")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerCommands.lua] Modulo de comandos de rede carregado com sucesso!")
 else
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerCommands.lua] AVISO: Evento OnClientCommand não disponível")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerCommands.lua] AVISO: Evento OnClientCommand nao disponivel")
 end
 
 return true

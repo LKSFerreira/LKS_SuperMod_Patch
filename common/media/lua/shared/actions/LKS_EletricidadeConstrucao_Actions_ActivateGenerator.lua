@@ -19,7 +19,7 @@
 
 -- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Actions_ActivateGenerator] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Actions_ActivateGenerator] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 

@@ -15,7 +15,7 @@
 -- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_Power_ClientSync.lua] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 

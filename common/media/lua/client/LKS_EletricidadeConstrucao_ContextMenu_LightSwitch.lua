@@ -15,7 +15,7 @@
 -- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_ContextMenu_LightSwitch] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 

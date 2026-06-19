@@ -15,12 +15,12 @@
 -- LOCALIZAÇÃO: server
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 
 if LKS_EletricidadeConstrucao.Config and not LKS_EletricidadeConstrucao.Config.ModEnabled then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Eletricidade realista desativada no sandbox - pulando módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Eletricidade realista desativada no sandbox - pulando modulo")
     return
 end
 
@@ -76,40 +76,40 @@ local function InicializarSistemasServidor()
             LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
         end
     else
-        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: StateManager não carregado")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: StateManager nao carregado")
     end
     
     -- Inicializa o sistema de combustível
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.Manager and LKS_EletricidadeConstrucao.Fuel.Manager.Initialize then
         LKS_EletricidadeConstrucao.Fuel.Manager.Initialize()
     else
-        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Fuel.Manager não carregado")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Fuel.Manager nao carregado")
     end
     
     if LKS_EletricidadeConstrucao.Fuel and LKS_EletricidadeConstrucao.Fuel.ChunkTracker and LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize then
         LKS_EletricidadeConstrucao.Fuel.ChunkTracker.Initialize()
     else
-        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Fuel.ChunkTracker não carregado")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Fuel.ChunkTracker nao carregado")
     end
     
     -- Inicializa o escaneamento de construções
     if LKS_EletricidadeConstrucao.Building and LKS_EletricidadeConstrucao.Building.Scanner and LKS_EletricidadeConstrucao.Building.Scanner.Initialize then
         LKS_EletricidadeConstrucao.Building.Scanner.Initialize()
     else
-        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Building.Scanner não carregado")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Building.Scanner nao carregado")
     end
     
     -- Inicializa a distribuição de energia
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Manager and LKS_EletricidadeConstrucao.Power.Manager.Initialize then
         LKS_EletricidadeConstrucao.Power.Manager.Initialize()
     else
-        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Power.Manager não carregado")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Power.Manager nao carregado")
     end
     
     if LKS_EletricidadeConstrucao.Power and LKS_EletricidadeConstrucao.Power.Distributor and LKS_EletricidadeConstrucao.Power.Distributor.Initialize then
         LKS_EletricidadeConstrucao.Power.Distributor.Initialize()
     else
-        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Power.Distributor não carregado")
+        print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] AVISO: Power.Distributor nao carregado")
     end
     
     LKS_EletricidadeConstrucao.Core.Logger.Info("Sistemas do servidor inicializados", "Core")
@@ -294,6 +294,6 @@ LKS_EletricidadeConstrucao.Core.Logger.Info("Manipuladores de eventos do servido
 
 LKS_EletricidadeConstrucao._InitStatus.ServerModulesLoaded = true
 
-print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Inicialização do servidor concluída com sucesso!")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_ServerInit.lua] Inicializacao do servidor concluida com sucesso!")
 
 return true

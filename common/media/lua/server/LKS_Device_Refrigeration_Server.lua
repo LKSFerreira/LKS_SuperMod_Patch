@@ -13,11 +13,11 @@
 
 -- ============================================================================
 -- ARQUIVO: LKS_Device_Refrigeration_Server.lua
-print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Carregando Lógica Servidor do Fridges Off!...")
+print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Carregando Logica Servidor do Fridges Off!...")
 
 local opcoesSandboxRefrigeracao = SandboxVars and SandboxVars.LKS_EletricidadeConstrucao or nil
 if opcoesSandboxRefrigeracao and opcoesSandboxRefrigeracao.RefrigerationEnabled == false then
-    print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Refrigeração desativada no sandbox.")
+    print("[LKS PATCH - LKS_Device_Refrigeration_Server.lua] Refrigeracao desativada no sandbox.")
     return
 end
 -- EXTENSÃO: LKS SuperMod Patch (Fagocitado nativamente)

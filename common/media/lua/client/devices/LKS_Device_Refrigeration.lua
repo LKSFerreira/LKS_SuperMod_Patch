@@ -20,7 +20,7 @@ LKS_ApplianceManager.containerTypeMap = LKS_ApplianceManager.containerTypeMap or
 LKS_ApplianceManager.javaClassMap = LKS_ApplianceManager.javaClassMap or {}
 
 if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("RefrigerationEnabled", true) then
-    print("[LKS PATCH - LKS_Device_Refrigeration.lua] Refrigeração desativada no sandbox.")
+    print("[LKS PATCH - LKS_Device_Refrigeration.lua] Refrigeracao desativada no sandbox.")
     return
 end
 

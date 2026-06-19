@@ -11,7 +11,7 @@
 -- Criado em: 2025
 
 if not LKS_EletricidadeConstrucao then 
-    print("[LKS_EletricidadeConstrucao_Power_Manager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Power_Manager] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return 
 end
 
@@ -71,7 +71,7 @@ function Gerenciador.GetAllGenerators()
     local celula = getCell()
 
     if not celula then
-        Registrador.Warn("Power.Manager", "GetAllGenerators: Nenhuma célula do mundo encontrada")
+        Registrador.Warn("Power.Manager", "GetAllGenerators: Nenhuma celula do mundo encontrada")
         return geradores
     end
 
@@ -101,7 +101,7 @@ end
 -- @return table Lista de objetos IsoGenerator dentro do raio de alcance
 function Gerenciador.FindNearbyGenerators(dadosPredio, raio)
     if not dadosPredio then
-        Registrador.Error("Power.Manager", "FindNearbyGenerators: dadosPredio é nil")
+        Registrador.Error("Power.Manager", "FindNearbyGenerators: dadosPredio e nil")
         return {}
     end
     
@@ -221,13 +221,13 @@ end
 -- @return boolean Sucesso
 function Gerenciador.ConnectGeneratorToBuilding(generator, buildingData, distance)
     if not generator or not buildingData then
-        Registrador.Error("Power.Manager", "ConnectGeneratorToBuilding: Parâmetros inválidos")
+        Registrador.Error("Power.Manager", "ConnectGeneratorToBuilding: Parametros invalidos")
         return false
     end
     
     local quadrado = generator:getSquare()
     if not quadrado then
-        Registrador.Warn("Power.Manager", "ConnectGeneratorToBuilding: Gerador não possui um quadrado associado")
+        Registrador.Warn("Power.Manager", "ConnectGeneratorToBuilding: Gerador nao possui um quadrado associado")
         return false
     end
     
@@ -283,7 +283,7 @@ function Gerenciador.ConnectGeneratorToBuilding(generator, buildingData, distanc
 
     -- Verifica se a conexão já existe
     if Gerenciador.connections[idConexao] then
-        Registrador.Debug("Power.Manager", "ConnectGeneratorToBuilding: Conexão já existe: " .. idConexao)
+        Registrador.Debug("Power.Manager", "ConnectGeneratorToBuilding: Conexao ja existe: " .. idConexao)
         return true
     end
 
@@ -325,13 +325,13 @@ end
 -- @return boolean Sucesso
 function Gerenciador.DisconnectGeneratorFromBuilding(idConexao)
     if not idConexao then
-        Registrador.Error("Power.Manager", "DisconnectGeneratorFromBuilding: idConexao é nil")
+        Registrador.Error("Power.Manager", "DisconnectGeneratorFromBuilding: idConexao e nil")
         return false
     end
     
     local conexao = Gerenciador.connections[idConexao]
     if not conexao then
-        Registrador.Warn("Power.Manager", "DisconnectGeneratorFromBuilding: Conexão não encontrada: " .. idConexao)
+        Registrador.Warn("Power.Manager", "DisconnectGeneratorFromBuilding: Conexao nao encontrada: " .. idConexao)
         return false
     end
     
@@ -450,7 +450,7 @@ function Gerenciador.ValidateConnection(dadosConexao)
         if objeto and instanceof(objeto, "IsoGenerator") then gerador = objeto; break end
     end
     if not gerador then
-        Registrador.Debug("Power.Manager", "ValidateConnection: Gerador não existe mais em " ..
+        Registrador.Debug("Power.Manager", "ValidateConnection: Gerador nao existe mais em " ..
             string.format("(%d,%d,%d)", dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ))
         return false
     end
@@ -458,7 +458,7 @@ function Gerenciador.ValidateConnection(dadosConexao)
     -- Verifica se o prédio ainda existe no estado
     local dadosPredio = GerenciadorEstado.GetBuilding(dadosConexao.buildingId)
     if not dadosPredio then
-        Registrador.Debug("Power.Manager", "ValidateConnection: Prédio não existe mais: " .. dadosConexao.buildingId)
+        Registrador.Debug("Power.Manager", "ValidateConnection: Predio nao existe mais: " .. dadosConexao.buildingId)
         return false
     end
     
@@ -492,7 +492,7 @@ function Gerenciador.ValidateConnection(dadosConexao)
 
     -- Proteção final: se ainda assim não tiver, considera conexão inválida
     if not px or not py then
-        Registrador.Debug("Power.Manager", "ValidateConnection: Centro do prédio ausente, descartando conexão " .. tostring(dadosConexao.id))
+        Registrador.Debug("Power.Manager", "ValidateConnection: Centro do predio ausente, descartando conexao " .. tostring(dadosConexao.id))
         return false
     end
 
@@ -538,7 +538,7 @@ function Gerenciador.CleanInvalidConnections()
     end
     
     if quantidadeRemovidos > 0 then
-        Registrador.Info("Power.Manager", "CleanInvalidConnections: Removidas " .. quantidadeRemovidos .. " conexões inválidas")
+        Registrador.Info("Power.Manager", "CleanInvalidConnections: Removidas " .. quantidadeRemovidos .. " conexoes invalidas")
     end
     
     return quantidadeRemovidos
@@ -558,14 +558,14 @@ function Gerenciador.UpdateConnections()
     -- Obtém todos os prédios (retorna um mapa: buildingId -> buildingData)
     local predios = GerenciadorEstado.GetAllBuildings()
     if not predios then
-        Registrador.Debug("Power.Manager", "UpdateConnections: Nenhum prédio encontrado")
+        Registrador.Debug("Power.Manager", "UpdateConnections: Nenhum predio encontrado")
         return
     end
     -- Verifica se o mapa possui entradas (Kahlua não suporta next())
     local possuiPredios = false
     for _ in pairs(predios) do possuiPredios = true; break end
     if not possuiPredios then
-        Registrador.Debug("Power.Manager", "UpdateConnections: Nenhum prédio encontrado")
+        Registrador.Debug("Power.Manager", "UpdateConnections: Nenhum predio encontrado")
         return
     end
 
@@ -676,8 +676,8 @@ end
 
 --- Imprime todas as conexões ativas no log (debug)
 function Gerenciador.PrintConnections()
-    Registrador.Info("Power.Manager", "=== TODAS AS CONEXÕES EM EXECUÇÃO ===")
-    Registrador.Info("Power.Manager", string.format("Total de conexões: %d", Gerenciador.GetConnectionCount()))
+    Registrador.Info("Power.Manager", "=== TODAS AS CONEXOES EM EXECUCAO ===")
+    Registrador.Info("Power.Manager", string.format("Total de conexoes: %d", Gerenciador.GetConnectionCount()))
     
     for idConexao, dadosConexao in pairs(Gerenciador.connections) do
         local gerador = Gerenciador.GetGeneratorAt(dadosConexao.generatorX, dadosConexao.generatorY, dadosConexao.generatorZ)
@@ -698,7 +698,7 @@ end
 
 --- Varredura manual de conexões (função de depuração/comando admin)
 function Gerenciador.ManualScan()
-    Registrador.Info("Power.Manager", "ManualScan: Forçando atualização de conexões...")
+    Registrador.Info("Power.Manager", "ManualScan: Forcando atualizacao de conexoes...")
     Gerenciador.UpdateConnections()
     Gerenciador.PrintConnections()
 end

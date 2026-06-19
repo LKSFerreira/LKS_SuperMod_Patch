@@ -15,7 +15,7 @@
 -- LOCALIZAÇÃO: client
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_ContextMenu_Generator.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_ContextMenu_Generator.lua] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 
@@ -231,7 +231,7 @@ function ContextMenu.OnLigar(objetosMundo, numeroJogador)
     if LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.ActivateGenerator then
         ISTimedActionQueue.add(LKS_EletricidadeConstrucao.Actions.ActivateGenerator:new(jogadorObjeto, gerador, true))
     else
-        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.ActivateGenerator não localizada no core!")
+        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.ActivateGenerator nao localizada no core!")
     end
 end
 
@@ -254,7 +254,7 @@ function ContextMenu.OnDesligar(objetosMundo, numeroJogador)
     if LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.ActivateGenerator then
         ISTimedActionQueue.add(LKS_EletricidadeConstrucao.Actions.ActivateGenerator:new(jogadorObjeto, gerador, false))
     else
-        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.ActivateGenerator não localizada no core!")
+        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.ActivateGenerator nao localizada no core!")
     end
 end
 
@@ -277,7 +277,7 @@ function ContextMenu.OnConectarConstrucao(objetosMundo, numeroJogador)
     if LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.ConnectBuilding then
         ISTimedActionQueue.add(LKS_EletricidadeConstrucao.Actions.ConnectBuilding:new(jogadorObjeto, gerador))
     else
-        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.ConnectBuilding não localizada no core!")
+        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.ConnectBuilding nao localizada no core!")
     end
 end
 
@@ -300,7 +300,7 @@ function ContextMenu.OnDesconectarConstrucao(objetosMundo, numeroJogador)
     if LKS_EletricidadeConstrucao.Actions and LKS_EletricidadeConstrucao.Actions.DisconnectBuilding then
         ISTimedActionQueue.add(LKS_EletricidadeConstrucao.Actions.DisconnectBuilding:new(jogadorObjeto, gerador))
     else
-        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.DisconnectBuilding não localizada no core!")
+        print("[LKS PATCH] ERRO: Classe LKS_EletricidadeConstrucao.Actions.DisconnectBuilding nao localizada no core!")
     end
 end
 

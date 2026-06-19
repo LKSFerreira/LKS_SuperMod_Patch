@@ -11,7 +11,7 @@
 -- O cliente lê HeatingPositions e cria objetos IsoHeatSource.
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Heating_Manager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando")
+    print("[LKS_EletricidadeConstrucao_Heating_Manager] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando")
     return
 end
 

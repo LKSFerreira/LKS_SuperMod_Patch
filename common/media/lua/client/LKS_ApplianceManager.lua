@@ -8,7 +8,7 @@
 -- DATA DA ÚLTIMA MODIFICAÇÃO: 14/06/2026
 -- ============================================================================
 
-print("[LKS PATCH - LKS_ApplianceManager.lua] Carregando Gerenciador de Dispositivos e Eletrodomésticos do Mod...")
+print("[LKS PATCH - LKS_ApplianceManager.lua] Carregando Gerenciador de Dispositivos e Eletrodomesticos do Mod...")
 
 -- Inicialização defensiva para independência de ordem de carregamento
 LKS_ApplianceManager = LKS_ApplianceManager or {}

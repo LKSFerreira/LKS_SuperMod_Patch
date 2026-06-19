@@ -11,7 +11,7 @@
 -- Criado em: 2025
 
 if not LKS_EletricidadeConstrucao then 
-    print("[LKS_EletricidadeConstrucao_Power_Distributor] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Power_Distributor] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return 
 end
 
@@ -337,7 +337,7 @@ local function aplicarEnergiaLadrilhos(dadosPredio, estaEnergizado)
 
     sincronizarEstadoEnergiaPredio(dadosPredio, estaEnergizado)
 
-    Registrador.Info(string.format("aplicarEnergiaLadrilhos: %s %d ladrilhos em %d chunks para o prédio %s",
+    Registrador.Info(string.format("aplicarEnergiaLadrilhos: %s %d ladrilhos em %d chunks para o predio %s",
         estaEnergizado and "energizou" or "desenergizou", totalLadrilhos, quantidadeChunksAfetados, dadosPredio.id), "Power")
 end
 
@@ -728,7 +728,7 @@ end
 -- @return boolean True se o estado de energia foi alterado
 function Distribuidor.UpdateBuildingPower(dadosPredio, atualizarConsumidores)
     if not dadosPredio then
-        Registrador.Error("UpdateBuildingPower: dadosPredio é nil", "Power")
+        Registrador.Error("UpdateBuildingPower: dadosPredio e nil", "Power")
         return false
     end
     
@@ -872,7 +872,7 @@ function Distribuidor.UpdateAllBuildings(atualizarConsumidores)
     -- Obtém todos os prédios (retorna um mapa: buildingId -> buildingData)
     local predios = GerenciadorEstado.GetAllBuildings()
     if not predios then
-        Registrador.Warn("UpdateAllBuildings: Nenhum prédio encontrado", "Power")
+        Registrador.Warn("UpdateAllBuildings: Nenhum predio encontrado", "Power")
         return estatisticas
     end
     
@@ -942,7 +942,7 @@ end
 
 --- Força atualização imediata de energia para todos os prédios
 function Distribuidor.ForceUpdate()
-    Registrador.Info("ForceUpdate: Forçando atualização imediata da distribuição de energia...", "Power")
+    Registrador.Info("ForceUpdate: Forcando atualizacao imediata da distribuicao de energia...", "Power")
     
     -- Sempre atualiza o isActive dos consumidores em uma atualização forçada para que a interface veja o estado atualizado
     local estatisticas = Distribuidor.UpdateAllBuildings(true)
@@ -994,7 +994,7 @@ end
 --- @return boolean true se o prédio foi encontrado e atualizado
 function Distribuidor.RefreshBuildingStats(idPredio)
     if not idPredio then
-        Registrador.Error("RefreshBuildingStats: idPredio é nil", "Power")
+        Registrador.Error("RefreshBuildingStats: idPredio e nil", "Power")
         return false
     end
 
@@ -1008,7 +1008,7 @@ end
 -- @param idPredio string ID do Prédio
 function Distribuidor.ForceUpdateBuilding(idPredio)
     if not idPredio then
-        Registrador.Error("ForceUpdateBuilding: idPredio é nil", "Power")
+        Registrador.Error("ForceUpdateBuilding: idPredio e nil", "Power")
         return
     end
 
@@ -1093,18 +1093,18 @@ end
 
 --- Imprime o status da distribuição de energia (debug)
 function Distribuidor.PrintStatus()
-    Registrador.Info("=== STATUS DA DISTRIBUIÇÃO DE ENERGIA ===", "Power")
+    Registrador.Info("=== STATUS DA DISTRIBUICAO DE ENERGIA ===", "Power")
     
     local predios = GerenciadorEstado.GetAllBuildings()
     if not predios then
-        Registrador.Info("Nenhum prédio encontrado", "Power")
+        Registrador.Info("Nenhum predio encontrado", "Power")
         return
     end
     
     -- GetAllBuildings() retorna uma tabela hash (mapa); o operador # sempre retorna 0 para tabelas hash
     local contagemPredios = 0
     for _ in pairs(predios) do contagemPredios = contagemPredios + 1 end
-    Registrador.Info(string.format("Total de prédios: %d", contagemPredios), "Power")
+    Registrador.Info(string.format("Total de predios: %d", contagemPredios), "Power")
     
     local quantidadeEnergizados = 0
     local quantidadeSemEnergia = 0

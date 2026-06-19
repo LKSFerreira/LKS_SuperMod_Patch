@@ -19,7 +19,7 @@
 
 -- Garante a existência do namespace principal
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Runtime] Namespace LKS_EletricidadeConstrucao não encontrado - abortando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Runtime] Namespace LKS_EletricidadeConstrucao nao encontrado - abortando carregamento do modulo")
     return
 end
 

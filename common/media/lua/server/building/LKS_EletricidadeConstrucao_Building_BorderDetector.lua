@@ -15,7 +15,7 @@
 -- LOCALIZAÇÃO: server/building
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS PATCH - LKS_EletricidadeConstrucao_Building_BorderDetector.lua] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS PATCH - LKS_EletricidadeConstrucao_Building_BorderDetector.lua] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 
@@ -261,7 +261,7 @@ function LKS_EletricidadeConstrucao.Building.BorderDetector.DetectBorders(inicio
         end
         
         -- Fallback final por raio
-        print("[LKS PATCH - BorderDetector] Nenhuma construção com cômodos por perto, usando recuo por raio")
+        print("[LKS PATCH - BorderDetector] Nenhuma construcao com comodos por perto, usando recuo por raio")
         local recuo = LKS_EletricidadeConstrucao.Building.BorderDetector.RadiusFallback(
             inicioX, inicioY, inicioZ, raio or 80)
         LKS_EletricidadeConstrucao.Core.Logger.EndTimer("BorderDetection", 100)

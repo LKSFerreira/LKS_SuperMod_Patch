@@ -17,7 +17,7 @@
 
 -- Garante que o namespace existe antes de carregar o módulo
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Utils_Validation] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Utils_Validation] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 

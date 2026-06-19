@@ -27,7 +27,7 @@ if not LKS_EletricidadeConstrucao then
     return
 end
 
-print("[LKS PATCH - LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow.lua] Carregando Janela de Informações do Gerador com correções de HUD...")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow.lua] Carregando Janela de Informacoes do Gerador com correcoes de HUD...")
 
 require "ISUI/ISCollapsableWindow"
 require "ISUI/ISButton"
@@ -2284,4 +2284,4 @@ end
 -- ============================================================
 
 LKS_EletricidadeConstrucao.UI.GeneratorInfoWindow = LKS_EletricidadeConstrucao_GeneratorInfoWindow
-print("[LKS PATCH - LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow.lua] Janela de Informações do Gerador carregada com sucesso")
+print("[LKS PATCH - LKS_EletricidadeConstrucao_UI_GeneratorInfoWindow.lua] Janela de Informacoes do Gerador carregada com sucesso")

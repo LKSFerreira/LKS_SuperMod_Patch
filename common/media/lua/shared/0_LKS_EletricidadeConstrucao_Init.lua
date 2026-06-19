@@ -215,7 +215,7 @@ end
 require "core/LKS_EletricidadeConstrucao_Core_Namespace"
 
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Init] CRÍTICO: Falha na inicialização do Namespace - abortando boot")
+    print("[LKS_EletricidadeConstrucao_Init] CRITICO: Falha na inicializacao do Namespace - abortando boot")
     return
 end
 
@@ -223,7 +223,7 @@ end
 require "core/LKS_EletricidadeConstrucao_Core_RuntimeContext"
 
 if not LKS_EletricidadeConstrucao._InitStatus.RuntimeContextReady then
-    print("[LKS_EletricidadeConstrucao_Init] CRÍTICO: Falha na inicialização do Runtime Context - abortando boot")
+    print("[LKS_EletricidadeConstrucao_Init] CRITICO: Falha na inicializacao do Runtime Context - abortando boot")
     return
 end
 
@@ -246,7 +246,7 @@ end
 if LKS_EletricidadeConstrucao.Config and LKS_EletricidadeConstrucao.Config.Validate then
     LKS_EletricidadeConstrucao.Config.Validate()
 else
-    print("[LKS_EletricidadeConstrucao_Init] AVISO: Config.Validate indisponível, usando configurações padrão")
+    print("[LKS_EletricidadeConstrucao_Init] AVISO: Config.Validate indisponivel, usando configuracoes padrao")
 end
 
 -- ============================================================================
@@ -277,13 +277,13 @@ require "core/LKS_EletricidadeConstrucao_Core_EventManager"
 if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.EventManager and LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents then
     LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents()
 else
-    print("[LKS_EletricidadeConstrucao_Init] ERRO: EventManager.InitializeCustomEvents indisponível!")
+    print("[LKS_EletricidadeConstrucao_Init] ERRO: EventManager.InitializeCustomEvents indisponivel!")
 end
 
 if LKS_EletricidadeConstrucao.Core and LKS_EletricidadeConstrucao.Core.StateManager and LKS_EletricidadeConstrucao.Core.StateManager.Initialize then
     LKS_EletricidadeConstrucao.Core.StateManager.Initialize()
 else
-    print("[LKS_EletricidadeConstrucao_Init] ERRO: StateManager.Initialize indisponível!")
+    print("[LKS_EletricidadeConstrucao_Init] ERRO: StateManager.Initialize indisponivel!")
 end
 
 -- ============================================================================

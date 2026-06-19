@@ -17,7 +17,7 @@
 
 -- Garante que o namespace principal exista
 if not LKS_EletricidadeConstrucao then
-    print("[LKS_EletricidadeConstrucao_Core_EventManager] Namespace LKS_EletricidadeConstrucao não encontrado - pulando carregamento do módulo")
+    print("[LKS_EletricidadeConstrucao_Core_EventManager] Namespace LKS_EletricidadeConstrucao nao encontrado - pulando carregamento do modulo")
     return
 end
 
@@ -210,7 +210,7 @@ function LKS_EletricidadeConstrucao.Core.EventManager.InitializeCustomEvents()
             or not LKS_EletricidadeConstrucao.Constants 
             or not LKS_EletricidadeConstrucao.Core 
             or not LKS_EletricidadeConstrucao.Core.Logger then
-        print("[LKS_EletricidadeConstrucao_Core_EventManager] InitializeCustomEvents: Dependências internas indisponíveis!")
+        print("[LKS_EletricidadeConstrucao_Core_EventManager] InitializeCustomEvents: Dependencias internas indisponiveis!")
         return
     end
     
