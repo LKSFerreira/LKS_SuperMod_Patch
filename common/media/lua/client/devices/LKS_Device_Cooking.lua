@@ -614,106 +614,242 @@ for _, classe in ipairs(LKS_Device_Cooking.classesJava) do
 end
 
 -- ============================================================================
--- MONKEY-PATCH: ISOvenUI — Sincroniza toggle com mecânica de propano
+-- MONKEY-PATCH: UI do Fogão — Sincroniza toggle com mecânica de propano
 -- ============================================================================
--- O vanilla ISOvenUI:updateButtons() desabilita o botão Ligar quando
--- isPowered() é false. Para fogões a propano, precisamos habilitar quando
--- há combustível disponível e usar nossa ignição (addGeneratorPos).
--- Registrado em OnGameStart para garantir que ISOvenUI já esteja carregado.
+-- Detecta qual UI está ativa (NR_OvenPanel do Neat Rocco ou ISOvenUI vanilla)
+-- e aplica o patch correspondente. Nosso mod é o último a carregar, então
+-- qualquer sobrescrita será definitiva.
+--
+-- NR_OvenPanel: getHeaderPowerState + onClickPower
+-- ISOvenUI:     updateButtons + onClick
 -- ============================================================================
 
-local function aplicarPatchISOvenUI()
+--- Lógica compartilhada: determina estado do fogão para propano.
+--- Reutilizada por ambos os patches (NR e vanilla).
+---
+--- @param fogao IsoObject O fogão.
+--- @param jogador IsoPlayer O jogador.
+--- @return string estado "on"|"off"|"sem_combustivel"|"sem_calor"|"eletricidade"
+--- @return string|nil motivo Tooltip explicativo quando desabilitado.
+local function determinarEstadoFogaoPropano(fogao, jogador)
+    if not fogao or not instanceof(fogao, "IsoStove") then
+        return "eletricidade", nil
+    end
+
+    local tipoFogao = ClassificacaoSprites.obterTipoFogao(fogao)
+    if tipoFogao ~= "convencional" and tipoFogao ~= "antigo" then
+        return "eletricidade", nil
+    end
+
+    local estaAtivo = fogao.Activated and fogao:Activated() or false
+    if estaAtivo then
+        return "on", nil
+    end
+
+    local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
+    if not fonteEnergia.disponivel then
+        local motivo = tipoFogao == "convencional"
+            and (getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gas encanado ou botijao")
+            or (getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustivel solido")
+        return "sem_combustivel", motivo
+    end
+
+    local fontesCalor = buscarFontesCalorInventario(jogador)
+    if #fontesCalor == 0 then
+        return "sem_calor", getText("IGUI_LKS_RequerFonteCalor") or "Requer fonte de calor"
+    end
+
+    return "off", nil
+end
+
+--- Lógica compartilhada: executa toggle do fogão com propano.
+---
+--- @param fogao IsoObject O fogão.
+--- @param jogador IsoPlayer O jogador.
+--- @return boolean tratado True se o propano tratou a ação (não precisa do vanilla).
+local function executarTogglePropano(fogao, jogador)
+    if not fogao or not instanceof(fogao, "IsoStove") then
+        return false
+    end
+
+    local dadosMod = fogao:getModData()
+    if dadosMod.LKS_FogaoAcesoPropano == true then
+        apagarFogaoPropano(fogao)
+        return true
+    end
+
+    local containerFogao = fogao:getContainer()
+    local temEletricidade = containerFogao and containerFogao:isPowered() or false
+    local estaAtivo = fogao.Activated and fogao:Activated() or false
+
+    if not temEletricidade and not estaAtivo then
+        local tipoFogao = ClassificacaoSprites.obterTipoFogao(fogao)
+        if tipoFogao == "convencional" or tipoFogao == "antigo" then
+            local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
+            if fonteEnergia.disponivel then
+                acenderFogaoPropano(fogao, jogador)
+            end
+            return true
+        end
+    end
+
+    return false
+end
+
+local function aplicarPatchUIFogao()
+    -- =========================================================================
+    -- PRIORIDADE 1: NR_OvenPanel (Neat Rocco's UI)
+    -- Se instalado, o vanilla ISOvenUI nunca é instanciado — patchear o NR.
+    -- =========================================================================
+    if NR_OvenPanel then
+        local nrGetHeaderPowerState = NR_OvenPanel.getHeaderPowerState
+        local nrOnClickPower = NR_OvenPanel.onClickPower
+
+        function NR_OvenPanel:getHeaderPowerState()
+            local estado, motivo = determinarEstadoFogaoPropano(self.oven, self.character)
+            self._lksTooltipPropano = motivo
+            if estado == "eletricidade" then
+                return nrGetHeaderPowerState(self)
+            elseif estado == "on" then
+                return "on"
+            elseif estado == "off" then
+                return "off"
+            else
+                return "disabled"
+            end
+        end
+
+        function NR_OvenPanel:onClickPower()
+            if executarTogglePropano(self.oven, self.character) then
+                return
+            end
+            nrOnClickPower(self)
+        end
+
+        -- Corrige labels C/F para °C/°F nos botões de unidade de temperatura.
+        -- O NR hardcoda "C" e "F" numa closure local de createChildren.
+        -- Interceptamos createChildren para substituir o prerender dos botões
+        -- após a execução original, reutilizando as texturas já criadas.
+        local nrCreateChildren = NR_OvenPanel.createChildren
+
+        function NR_OvenPanel:createChildren()
+            nrCreateChildren(self)
+
+            -- Intercepta prerender do powerButton para injetar tooltip de propano
+            if self.header and self.header.powerButton then
+                local prerenderOriginal = self.header.powerButton.prerender
+                local painelRef = self
+                self.header.powerButton.prerender = function(btn)
+                    prerenderOriginal(btn)
+                    -- O prerender original seta tooltip=nil para "disabled".
+                    -- Sobrescrevemos com o motivo do propano logo após o render.
+                    if painelRef._lksTooltipPropano then
+                        btn.tooltip = painelRef._lksTooltipPropano
+                    end
+                end
+            end
+
+            -- Reconstrói prerender com °C/°F usando as dimensões reais do botão
+            if self.celsiusBtn then
+                local btnOriginal = self.celsiusBtn
+                btnOriginal.prerender = function(btn)
+                    local ativo = getCore():isCelsius()
+                    local hover = btn:isMouseOver()
+                    local r, g, b2
+                    if ativo then
+                        r, g, b2 = 0.95, 0.5, 0.1
+                        if hover then r, g, b2 = math.min(r*1.2,1), math.min(g*1.2,1), math.min(b2*1.2,1) end
+                    else
+                        local v = hover and 0.3 or 0.2
+                        r, g, b2 = v, v, v
+                    end
+                    local tamanho = btn:getWidth()
+                    btn:drawRect(0, 0, tamanho, tamanho, 0.8, r, g, b2)
+                    btn:drawRectBorder(0, 0, tamanho, tamanho, 1, 0.4, 0.4, 0.4)
+                    local label = getText("IGUI_Oven_Celsius") or "C"
+                    local fh = getTextManager():getFontHeight(UIFont.Small)
+                    local fw = getTextManager():MeasureStringX(UIFont.Small, label)
+                    btn:drawText(label, math.floor((tamanho - fw) / 2), math.floor((tamanho - fh) / 2), 1, 1, 1, 1, UIFont.Small)
+                end
+            end
+
+            if self.fahrenheitBtn then
+                local btnOriginal = self.fahrenheitBtn
+                btnOriginal.prerender = function(btn)
+                    local ativo = not getCore():isCelsius()
+                    local hover = btn:isMouseOver()
+                    local r, g, b2
+                    if ativo then
+                        r, g, b2 = 0.95, 0.5, 0.1
+                        if hover then r, g, b2 = math.min(r*1.2,1), math.min(g*1.2,1), math.min(b2*1.2,1) end
+                    else
+                        local v = hover and 0.3 or 0.2
+                        r, g, b2 = v, v, v
+                    end
+                    local tamanho = btn:getWidth()
+                    btn:drawRect(0, 0, tamanho, tamanho, 0.8, r, g, b2)
+                    btn:drawRectBorder(0, 0, tamanho, tamanho, 1, 0.4, 0.4, 0.4)
+                    local label = getText("IGUI_Oven_Fahrenheit") or "F"
+                    local fh = getTextManager():getFontHeight(UIFont.Small)
+                    local fw = getTextManager():MeasureStringX(UIFont.Small, label)
+                    btn:drawText(label, math.floor((tamanho - fw) / 2), math.floor((tamanho - fh) / 2), 1, 1, 1, 1, UIFont.Small)
+                end
+            end
+        end
+
+        print("[LKS PATCH - LKS_Device_Cooking.lua] Monkey-patch NR_OvenPanel aplicado (Neat Rocco detectado)")
+        return
+    end
+
+    -- =========================================================================
+    -- PRIORIDADE 2: ISOvenUI (vanilla)
+    -- Fallback quando Neat Rocco não está instalado.
+    -- =========================================================================
     if not ISOvenUI then
         pcall(function() require("ISUI/Fireplace/ISOvenUI") end)
     end
 
     if not ISOvenUI then
-        print("[LKS PATCH - LKS_Device_Cooking.lua] ISOvenUI nao encontrado, patch ignorado")
+        print("[LKS PATCH - LKS_Device_Cooking.lua] Nenhuma UI de fogao encontrada, patch ignorado")
         return
     end
 
     local vanillaUpdateButtons = ISOvenUI.updateButtons
     local vanillaOnClick = ISOvenUI.onClick
 
-    --- Override de updateButtons para habilitar toggle em fogões a propano.
-    --- Sincroniza texto (Acender/Apagar) e tooltip com o menu de contexto.
     function ISOvenUI:updateButtons()
         vanillaUpdateButtons(self)
 
-        if not self.oven or not instanceof(self.oven, "IsoStove") then return end
+        local estado, motivo = determinarEstadoFogaoPropano(self.oven, self.character)
+        if estado == "eletricidade" then return end
 
-        local tipoFogao = ClassificacaoSprites.obterTipoFogao(self.oven)
-        if tipoFogao ~= "convencional" and tipoFogao ~= "antigo" then return end
-
-        local estaAtivo = self.oven.Activated and self.oven:Activated() or false
-
-        if estaAtivo then
+        if estado == "on" then
             self.ok:setTitle(getText("IGUI_LKS_Apagar") or "Apagar")
             self.ok:setEnable(true)
             self.ok.tooltip = nil
+        elseif estado == "off" then
+            self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
+            self.ok:setEnable(true)
+            self.ok.tooltip = nil
         else
-            local fonteEnergia = SistemaPropano.verificarFonteEnergia(self.oven, self.character, tipoFogao)
-
-            if fonteEnergia.disponivel then
-                local fontesCalor = buscarFontesCalorInventario(self.character)
-                if #fontesCalor > 0 then
-                    self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
-                    self.ok:setEnable(true)
-                    self.ok.tooltip = nil
-                else
-                    self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
-                    self.ok:setEnable(false)
-                    self.ok.tooltip = getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor"
-                end
-            else
-                self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
-                self.ok:setEnable(false)
-                if tipoFogao == "convencional" then
-                    self.ok.tooltip = getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gas encanado ou botijao"
-                else
-                    self.ok.tooltip = getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustivel solido"
-                end
-            end
+            self.ok:setTitle(getText("IGUI_LKS_Acender") or "Acender")
+            self.ok:setEnable(false)
+            self.ok.tooltip = motivo
         end
     end
 
-    --- Override de onClick para usar ignição por propano em vez do vanilla.
-    --- Usa acenderFogaoPropano/apagarFogaoPropano para fogões a combustão,
-    --- mantendo sincronização com o menu de contexto.
     function ISOvenUI:onClick(button)
-        if button.internal == "OK" and self.oven and instanceof(self.oven, "IsoStove") then
-            local dadosMod = self.oven:getModData()
-            local acesoPorPropano = dadosMod.LKS_FogaoAcesoPropano == true
-
-            -- Se acendemos via propano, apagamos via propano (removeGeneratorPos)
-            if acesoPorPropano then
-                apagarFogaoPropano(self.oven)
+        if button.internal == "OK" then
+            if executarTogglePropano(self.oven, self.character) then
                 return
             end
-
-            -- Se fogão desligado e sem eletricidade, tenta acender via propano
-            local containerFogao = self.oven:getContainer()
-            local temEletricidade = containerFogao and containerFogao:isPowered() or false
-            local estaAtivo = self.oven.Activated and self.oven:Activated() or false
-
-            if not temEletricidade and not estaAtivo then
-                local tipoFogao = ClassificacaoSprites.obterTipoFogao(self.oven)
-                if tipoFogao == "convencional" or tipoFogao == "antigo" then
-                    local fonteEnergia = SistemaPropano.verificarFonteEnergia(self.oven, self.character, tipoFogao)
-                    if fonteEnergia.disponivel then
-                        acenderFogaoPropano(self.oven, self.character)
-                    end
-                    return
-                end
-            end
         end
-
         vanillaOnClick(self, button)
     end
 
-    print("[LKS PATCH - LKS_Device_Cooking.lua] Monkey-patch ISOvenUI aplicado")
+    print("[LKS PATCH - LKS_Device_Cooking.lua] Monkey-patch ISOvenUI vanilla aplicado")
 end
 
-Events.OnGameStart.Add(aplicarPatchISOvenUI)
+Events.OnGameStart.Add(aplicarPatchUIFogao)
 
 print("[LKS PATCH - LKS_Device_Cooking.lua] Carregado com sucesso!")
