@@ -176,6 +176,9 @@
     "IGUI_LKS_RequerOutroBotijao": "Requires another gas tank nearby to perform the swap.",
     "IGUI_LKS_SemFonteCalor": "No heat source available",
     "IGUI_LKS_BotijaoJaConectado": "This tank is already connected to another stove. Uninstall it first.",
+    "IGUI_LKS_Informacoes": "Information",
+    "IGUI_LKS_PropanoRestante": "Propane remaining:",
+    "IGUI_LKS_ConectadoAFogao": "Connected to a stove",
 
     "IGUI_Oven_Celsius": "°C",
     "IGUI_Oven_Fahrenheit": "°F"

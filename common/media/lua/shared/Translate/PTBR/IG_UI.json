@@ -16,7 +16,7 @@
   "IGUI_BuildingCoverage": "Alcance na Construção",
   "IGUI_GeneratorConditions": "Condição dos Geradores",
   "IGUI_BarrelFuel": "Combustível nos Barris",
-  "IGUI_GeneratorInfo": "Informações do Gerador",
+  "IGUI_GeneratorInfo": "Informações",
   "IGUI_LKS_EletricidadeConstrucao_TargetTemp": "Ajustar Temperatura",
   "IGUI_BuildingPowerInfo": "Informações Elétricas da Construção",
   "IGUI_TotalGenerators": "Geradores:",
@@ -194,6 +194,9 @@
   "IGUI_LKS_RequerOutroBotijao": "Necessário outro botijão de gás próximo para realizar a troca.",
   "IGUI_LKS_SemFonteCalor": "Nenhuma fonte de calor disponível",
   "IGUI_LKS_BotijaoJaConectado": "Este botijão já está conectado a outro fogão. Desinstale-o primeiro.",
+  "IGUI_LKS_Informacoes": "Informações",
+  "IGUI_LKS_PropanoRestante": "Propano restante:",
+  "IGUI_LKS_ConectadoAFogao": "Conectado a um fogão",
 
   "IGUI_Oven_Celsius": "°C",
   "IGUI_Oven_Fahrenheit": "°F"

@@ -146,7 +146,37 @@ end
 Events.OnFillWorldObjectContextMenu.Add(injetarIcones)
 ```
 
-**Por que `ipairs(context.options)` falha:** O `ISWorldObjectContextMenuLogic` é uma classe Java que manipula diretamente a tabela `options` do ISContextMenu. Dependendo da implementação interna do Kahlua VM, as entradas podem estar indexadas de forma que `ipairs` não percorre todas. O método `getOptionFromName` (definido em `ISContextMenu.lua:889`) usa `ipairs` internamente mas é testado pelo vanilla — se funciona para eles, funciona para nós.
+## Detectar IsoWorldInventoryObject de item no chão via menu vanilla
+
+Items dropados no chão (`IsoWorldInventoryObject`) têm hitbox minúscula na visão isométrica. A detecção direta via `objetosMundo` só funciona clicando no pixel exato do item. Para detectar de forma confiável:
+
+**Solução:** Extrair a referência do objeto da opção "Posicionamento 3D Estendido" (`ContextMenu_ExtendedPlacement`), que é criada pelo Java com detecção precisa via `IsoObjectPicker`.
+
+```lua
+-- A opção vanilla "Posicionamento 3D Estendido" armazena:
+--   target = IsoWorldInventoryObject (o item no chão)
+--   param1 = IsoPlayer (o jogador)
+-- ATENÇÃO: target e param1 estão INVERTIDOS do que se espera!
+
+local textoPlacement = getText("ContextMenu_ExtendedPlacement")
+local opcaoPlacement = menuContexto:getOptionFromName(textoPlacement)
+if opcaoPlacement and opcaoPlacement.subOption then
+    local submenu = menuContexto:getSubMenu(opcaoPlacement.subOption)
+    if submenu then
+        local opcaoItem = submenu:getOptionFromName(nomeDoItem)
+        if opcaoItem and opcaoItem.target then
+            local worldItem = opcaoItem.target  -- IsoWorldInventoryObject
+            local item = worldItem:getItem()    -- InventoryItem
+        end
+    end
+end
+```
+
+**Por que funciona:** O Java `ISWorldObjectContextMenuLogic.createMenuEntries` usa `IsoObjectPicker` internamente para detectar items com projeção 3D→2D precisa. A opção é criada ANTES do evento `OnFillWorldObjectContextMenu` disparar, então sempre está disponível no menu quando nosso handler roda.
+
+**Por que `ipairs(options)` não funciona:** Opções criadas pelo Java podem usar indexação diferente. Usar `getOptionFromName(nome)` é seguro e testado pelo vanilla.
+
+**Armadilha:** O campo `param1` contém o **IsoPlayer**, NÃO o item. O item está em `target`. Verificado via debug em 19/06/2026.
 
 ---
 

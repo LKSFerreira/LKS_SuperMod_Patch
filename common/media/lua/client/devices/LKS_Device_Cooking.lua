@@ -59,6 +59,7 @@ local function acenderFogaoPropano(fogao, jogador)
     end
 
     fogao:getModData().LKS_FogaoAcesoPropano = true
+    registrarFogaoAceso(fogao)
     ISTimedActionQueue.add(ISToggleStoveAction:new(jogador, fogao))
 end
 
@@ -80,6 +81,7 @@ local function apagarFogaoPropano(fogao)
     end
 
     fogao:getModData().LKS_FogaoAcesoPropano = nil
+    desregistrarFogaoAceso(fogao)
     fogao:setActivated(false)
 end
 
@@ -856,5 +858,118 @@ local function aplicarPatchUIFogao()
 end
 
 Events.OnGameStart.Add(aplicarPatchUIFogao)
+
+-- ============================================================================
+-- SISTEMA DE CONSUMO DE PROPANO DO BOTIJÃO
+-- ============================================================================
+-- Tick client-side que drena o botijão conectado enquanto o fogão está aceso.
+-- Regra: se LKS_FogaoAcesoPropano + LKS_BotijaoConectado → consome.
+-- Gás encanado sem botijão: não consome.
+-- Botijão vazio: apaga o fogão automaticamente.
+-- ============================================================================
+
+--- Multiplicador de consumo aplicado ao UseDelta do item por minuto de jogo.
+--- Quanto maior, mais rápido o botijão se esvazia.
+--- Com valor 8: botijão 15kg dura ~20h, 45kg dura ~42h de fogo contínuo.
+local MULTIPLICADOR_CONSUMO_PROPANO = 8
+
+--- IDs de botijão aceitos para busca no raio.
+local IDS_BOTIJAO_CONSUMO = {
+    ["Base.PropaneTank"] = true,
+    ["LKS_Propano.LKS_Botijao15kg"] = true,
+    ["LKS_Propano.LKS_Botijao45kg"] = true,
+}
+
+--- Registro de fogões atualmente acesos via propano (para evitar varredura global).
+--- Chave: "x_y_z", Valor: IsoObject
+local _registroFogoesAcesos = {}
+
+--- Registra um fogão como aceso via propano.
+---@param fogao IsoObject
+local function registrarFogaoAceso(fogao)
+    if not fogao then return end
+    local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
+    _registroFogoesAcesos[chave] = fogao
+end
+
+--- Remove um fogão do registro.
+---@param fogao IsoObject
+local function desregistrarFogaoAceso(fogao)
+    if not fogao then return end
+    local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
+    _registroFogoesAcesos[chave] = nil
+end
+
+--- Busca o botijão fisicamente conectado a um fogão no raio.
+---@param fogao IsoObject
+---@return InventoryItem|nil itemBotijao O item do botijão, ou nil.
+local function buscarBotijaoConectado(fogao)
+    local fogaoX = fogao:getX()
+    local fogaoY = fogao:getY()
+    local fogaoZ = fogao:getZ()
+    local celula = getCell()
+    if not celula then return nil end
+
+    local RAIO = 2
+    for deslocY = -RAIO, RAIO do
+        for deslocX = -RAIO, RAIO do
+            local quadrado = celula:getGridSquare(fogaoX + deslocX, fogaoY + deslocY, fogaoZ)
+            if quadrado then
+                local objetosChao = quadrado:getWorldObjects()
+                if objetosChao then
+                    for idx = 0, objetosChao:size() - 1 do
+                        local obj = objetosChao:get(idx)
+                        if obj and obj:getItem() then
+                            local tipo = obj:getItem():getFullType()
+                            if IDS_BOTIJAO_CONSUMO[tipo] then
+                                local dadosItem = obj:getItem():getModData()
+                                if dadosItem.LKS_ConectadoAoFogaoX == fogaoX
+                                    and dadosItem.LKS_ConectadoAoFogaoY == fogaoY
+                                    and dadosItem.LKS_ConectadoAoFogaoZ == fogaoZ then
+                                    return obj:getItem()
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+--- Tick de consumo: drena botijões conectados a fogões acesos.
+local function tickConsumoPropano()
+    for chave, fogao in pairs(_registroFogoesAcesos) do
+        local dadosMod = fogao:getModData()
+
+        -- Validação: fogão ainda existe e está aceso?
+        if not dadosMod or dadosMod.LKS_FogaoAcesoPropano ~= true then
+            _registroFogoesAcesos[chave] = nil
+        elseif dadosMod.LKS_BotijaoConectado == true then
+            local itemBotijao = buscarBotijaoConectado(fogao)
+            if itemBotijao then
+                local consumoPorMinuto = itemBotijao:getUseDelta() * MULTIPLICADOR_CONSUMO_PROPANO
+                local deltaAtual = itemBotijao:getCurrentUsesFloat()
+                local novoDelta = deltaAtual - consumoPorMinuto
+
+                if novoDelta <= 0 then
+                    itemBotijao:setUsedDelta(0)
+                    apagarFogaoPropano(fogao)
+                    _registroFogoesAcesos[chave] = nil
+                else
+                    itemBotijao:setUsedDelta(novoDelta)
+                end
+            else
+                -- Botijão sumiu (pickup, destruição) — apaga fogão
+                apagarFogaoPropano(fogao)
+                _registroFogoesAcesos[chave] = nil
+            end
+        end
+        -- Se não tem botijão conectado (gás encanado puro), não consome
+    end
+end
+
+Events.EveryOneMinute.Add(tickConsumoPropano)
 
 print("[LKS PATCH - LKS_Device_Cooking.lua] Carregado com sucesso!")

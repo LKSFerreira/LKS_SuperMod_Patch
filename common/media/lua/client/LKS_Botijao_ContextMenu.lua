@@ -605,26 +605,53 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
 
     -- Identifica o que foi clicado
     for _, objetoMundo in ipairs(objetosMundo) do
-        local quadrado = objetoMundo:getSquare()
-        if quadrado then
-            local objetos = quadrado:getObjects()
+        if instanceof(objetoMundo, "IsoWorldInventoryObject") and objetoMundo:getItem() then
+            local tipoCompleto = objetoMundo:getItem():getFullType()
+            if IDS_BOTIJAO[tipoCompleto] and not botijaoClicado then
+                botijaoClicado = objetoMundo
+            end
+        end
+
+        local quadradoCentral = objetoMundo:getSquare()
+        if quadradoCentral and not fogaoClicado then
+            local objetos = quadradoCentral:getObjects()
             if objetos then
                 for indice = 0, objetos:size() - 1 do
                     local objeto = objetos:get(indice)
-                    if objeto and instanceof(objeto, "IsoStove") and not fogaoClicado then
+                    if objeto and instanceof(objeto, "IsoStove") then
                         fogaoClicado = objeto
+                        break
                     end
                 end
             end
+        end
+    end
 
-            local objetosNoChao = quadrado:getWorldObjects()
-            if objetosNoChao then
-                for indice = 0, objetosNoChao:size() - 1 do
-                    local objetoChao = objetosNoChao:get(indice)
-                    if objetoChao and objetoChao:getItem() then
-                        local tipoCompleto = objetoChao:getItem():getFullType()
-                        if IDS_BOTIJAO[tipoCompleto] and not botijaoClicado then
-                            botijaoClicado = objetoChao
+    -- Fallback: extrai referência do botijão da opção "Posicionamento 3D Estendido"
+    -- (criada pelo Java com detecção precisa via IsoObjectPicker)
+    -- Estrutura da opção: target = IsoWorldInventoryObject, param1 = IsoPlayer
+    if not botijaoClicado then
+        local textoPlacement = getText("ContextMenu_ExtendedPlacement") or "Extended 3D Placement"
+        local opcaoPlacement = menuContexto:getOptionFromName(textoPlacement)
+        if opcaoPlacement and opcaoPlacement.subOption then
+            local submenuPlacement = menuContexto:getSubMenu(opcaoPlacement.subOption)
+            if submenuPlacement then
+                local nomesBotijao = {
+                    getText("ItemName_Base.PropaneTank") or "Propane Tank",
+                    getText("ItemName_LKS_Propano.LKS_Botijao15kg") or "Gas Tank 15kg",
+                    getText("ItemName_LKS_Propano.LKS_Botijao45kg") or "Gas Tank 45kg",
+                    "Propane Tank", "Gas Tank 15kg", "Gas Tank 45kg",
+                    "Botijão de Gás", "Botijão de Gás 15kg", "Botijão de Gás 45kg",
+                }
+                for _, nome in ipairs(nomesBotijao) do
+                    local opcaoItem = submenuPlacement:getOptionFromName(nome)
+                    if opcaoItem and opcaoItem.target then
+                        local candidato = opcaoItem.target
+                        if instanceof(candidato, "IsoWorldInventoryObject") and candidato:getItem() then
+                            if IDS_BOTIJAO[candidato:getItem():getFullType()] then
+                                botijaoClicado = candidato
+                                break
+                            end
                         end
                     end
                 end
@@ -726,22 +753,43 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
         end
     end
 
-    -- CAMINHO 2: Clicou num botijão → mesma lógica espelhada com fogões como destino
+    -- CAMINHO 2: Clicou num botijão → submenu estilo gerador
     if botijaoClicado then
         local botijaoX = botijaoClicado:getX()
         local botijaoY = botijaoClicado:getY()
         local botijaoZ = botijaoClicado:getZ()
 
-        -- Verifica se este botijão já está conectado a algum fogão
         local itemBotijao = botijaoClicado:getItem()
-        local dadosModBotijao = itemBotijao and itemBotijao:getModData() or nil
+        if not itemBotijao then return end
+
+        local dadosModBotijao = itemBotijao:getModData()
         local botijaoJaConectado = dadosModBotijao and botijaoConectadoAAlgumFogao(dadosModBotijao) or false
         local botijaoItemInfo = { item = botijaoClicado, noChao = true }
 
+        -- Opção pai com nome do botijão e ícone do item
+        local nomeBotijao = itemBotijao:getDisplayName()
+        local opcaoPai = menuContexto:addOption(nomeBotijao, objetosMundo, nil)
+        local texturaBotijao = itemBotijao:getTex()
+        opcaoPai.iconTexture = texturaBotijao and texturaBotijao:splitIcon() or nil
+
+        local submenuBotijao = ISContextMenu:getNew(menuContexto)
+        menuContexto:addSubMenu(opcaoPai, submenuBotijao)
+
+        -- Pegar: recolher botijão do chão com animação
+        local textoPegar = getText("ContextMenu_Grab") or "Pegar"
+        local opcaoPegar = submenuBotijao:addOption(textoPegar, objetosMundo, function()
+            if luautils.walkAdj(jogador, botijaoClicado:getSquare()) then
+                ISTimedActionQueue.add(
+                    LKS_BotijaoAction:new(jogador, nil, "pegar", botijaoItemInfo)
+                )
+            end
+        end)
+        opcaoPegar.iconTexture = getTexture(LKS_Icons.PEGAR)
+
+        -- Instalar / Trocar: busca fogões no raio
         local fogoesProximos = buscarFogoesProximos(botijaoX, botijaoY, botijaoZ)
 
         if #fogoesProximos > 0 then
-            -- Separa fogões por estado (com/sem botijão conectado)
             local fogoesSemBotijao = {}
             local fogoesComBotijao = {}
             for _, fogaoInfo in ipairs(fogoesProximos) do
@@ -752,28 +800,27 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 end
             end
 
-            -- Instalar: fogões que ainda não têm botijão (só se este botijão estiver livre)
+            -- Instalar: fogões sem botijão (só se este botijão estiver livre)
             if #fogoesSemBotijao > 0 then
                 local textoInstalar = getText("IGUI_LKS_Instalar") or "Instalar"
-                local opcaoPai = menuContexto:addOption(textoInstalar, objetosMundo, nil)
-                opcaoPai.iconTexture = getTexture("media/ui/LKS_Connect.png")
+                local opcaoInstalar = submenuBotijao:addOption(textoInstalar, objetosMundo, nil)
+                opcaoInstalar.iconTexture = getTexture(LKS_Icons.CONECTAR)
 
                 if botijaoJaConectado then
-                    -- Botijão já conectado a outro fogão — desabilita com tooltip
-                    opcaoPai.notAvailable = true
+                    opcaoInstalar.notAvailable = true
                     local tooltipJaConectado = ISWorldObjectContextMenu.addToolTip()
                     tooltipJaConectado.description = getText("IGUI_LKS_BotijaoJaConectado") or "Este botijao ja esta conectado a outro fogao. Desinstale-o primeiro."
-                    opcaoPai.toolTip = tooltipJaConectado
+                    opcaoInstalar.toolTip = tooltipJaConectado
                 else
-                    local submenu = ISContextMenu:getNew(menuContexto)
-                    menuContexto:addSubMenu(opcaoPai, submenu)
+                    local submenuInstalar = ISContextMenu:getNew(submenuBotijao)
+                    submenuBotijao:addSubMenu(opcaoInstalar, submenuInstalar)
 
                     for _, fogaoInfo in ipairs(fogoesSemBotijao) do
                         local temItens = verificarItensNecessarios(jogador, ITENS_INSTALACAO)
                         local spriteFogao = fogaoInfo.fogao:getSprite()
                         local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
                         local texturaFogao = nomeSpriteFogao and getTexture(nomeSpriteFogao) or nil
-                        local opcao = submenu:addOption(fogaoInfo.nome, objetosMundo, function()
+                        local opcao = submenuInstalar:addOption(fogaoInfo.nome, objetosMundo, function()
                             if luautils.walkAdj(jogador, fogaoInfo.fogao:getSquare()) then
                                 ISTimedActionQueue.add(
                                     LKS_BotijaoAction:new(jogador, fogaoInfo.fogao, "instalar", botijaoItemInfo)
@@ -789,20 +836,20 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
                 end
             end
 
-            -- Trocar: fogões que já possuem botijão conectado (só se este botijão estiver livre)
+            -- Trocar: fogões que já possuem botijão (só se este botijão estiver livre)
             if #fogoesComBotijao > 0 and not botijaoJaConectado then
                 local textoTrocar = getText("IGUI_LKS_Trocar") or "Trocar"
-                local opcaoPai = menuContexto:addOption(textoTrocar, objetosMundo, nil)
-                opcaoPai.iconTexture = getTexture("media/ui/LKS_Swap.png")
-                local submenu = ISContextMenu:getNew(menuContexto)
-                menuContexto:addSubMenu(opcaoPai, submenu)
+                local opcaoTrocar = submenuBotijao:addOption(textoTrocar, objetosMundo, nil)
+                opcaoTrocar.iconTexture = getTexture("media/ui/LKS_Swap.png")
+                local submenuTrocar = ISContextMenu:getNew(submenuBotijao)
+                submenuBotijao:addSubMenu(opcaoTrocar, submenuTrocar)
 
                 for _, fogaoInfo in ipairs(fogoesComBotijao) do
                     local temItens = verificarItensNecessarios(jogador, ITENS_TROCA)
                     local spriteFogao = fogaoInfo.fogao:getSprite()
                     local nomeSpriteFogao = spriteFogao and spriteFogao:getName() or nil
                     local texturaFogao = nomeSpriteFogao and getTexture(nomeSpriteFogao) or nil
-                    local opcao = submenu:addOption(fogaoInfo.nome, objetosMundo, function()
+                    local opcao = submenuTrocar:addOption(fogaoInfo.nome, objetosMundo, function()
                         if luautils.walkAdj(jogador, fogaoInfo.fogao:getSquare()) then
                             ISTimedActionQueue.add(
                                 LKS_BotijaoAction:new(jogador, fogaoInfo.fogao, "trocar", botijaoItemInfo)
@@ -818,17 +865,56 @@ local function adicionarOpcoesMenuBotijao(jogadorNumero, menuContexto, objetosMu
             end
         end
 
-        -- Pegar: recolher botijão do chão com animação
-        local textoPegar = getText("ContextMenu_Grab") or "Pegar"
-        local botijaoInfoPegar = { item = botijaoClicado, noChao = true }
-        local opcaoPegar = menuContexto:addOption(textoPegar, objetosMundo, function()
-            if luautils.walkAdj(jogador, botijaoClicado:getSquare()) then
-                ISTimedActionQueue.add(
-                    LKS_BotijaoAction:new(jogador, nil, "pegar", botijaoInfoPegar)
-                )
+        -- Informações: tooltip com estado do botijão
+        local textoInfo = getText("IGUI_LKS_Informacoes") or "Informacoes"
+        local opcaoInfo = submenuBotijao:addOption(textoInfo, objetosMundo, nil)
+        opcaoInfo.iconTexture = getTexture("media/ui/LKS_House_Info.png")
+        local tooltipInfo = ISWorldObjectContextMenu.addToolTip()
+        local porcentagem = math.floor(itemBotijao:getCurrentUsesFloat() * 100)
+        local corPorcentagem = porcentagem > 50 and "<RGB:0.2,0.8,0.2>"
+            or porcentagem > 20 and "<RGB:1,0.8,0>"
+            or "<RGB:1,0.2,0.2>"
+        tooltipInfo.description = string.format(
+            " <RGB:1,1,1> %s <LINE> <LINE> %s %s %d%%",
+            nomeBotijao,
+            getText("IGUI_LKS_PropanoRestante") or "Propano restante:",
+            corPorcentagem,
+            porcentagem
+        )
+        if botijaoJaConectado then
+            tooltipInfo.description = tooltipInfo.description .. string.format(
+                " <LINE> <RGB:0.6,0.8,1> %s",
+                getText("IGUI_LKS_ConectadoAFogao") or "Conectado a um fogao"
+            )
+        end
+        opcaoInfo.toolTip = tooltipInfo
+
+        -- Remove o botijão da opção vanilla "Pegar" para evitar duplicação.
+        -- A opção vanilla "Pegar" pode conter outros itens no mesmo tile,
+        -- então removemos apenas a entrada do botijão dentro do submenu.
+        local textoGrabVanilla = getText("ContextMenu_Grab") or "Grab"
+        local opcaoGrabVanilla = menuContexto:getOptionFromName(textoGrabVanilla)
+        if opcaoGrabVanilla then
+            local submenuGrab = menuContexto:getSubMenu(opcaoGrabVanilla.subOption)
+            if submenuGrab and submenuGrab.options then
+                -- Remove entrada do botijão pelo nome do item
+                local nomeBotijaoVanilla = nomeBotijao
+                for indice = #submenuGrab.options, 1, -1 do
+                    local opcaoFilha = submenuGrab.options[indice]
+                    if opcaoFilha and opcaoFilha.name == nomeBotijaoVanilla then
+                        table.remove(submenuGrab.options, indice)
+                        submenuGrab.numOptions = submenuGrab.numOptions - 1
+                    end
+                end
+                -- Se o submenu ficou vazio, remove a opção "Pegar" inteira
+                if submenuGrab.numOptions <= 1 then
+                    menuContexto:removeOptionByName(textoGrabVanilla)
+                end
+            elseif not opcaoGrabVanilla.subOption then
+                -- "Pegar" sem submenu (item único) — remove direto se é o botijão
+                menuContexto:removeOptionByName(textoGrabVanilla)
             end
-        end)
-        opcaoPegar.iconTexture = getTexture(LKS_Icons.PEGAR)
+        end
     end
 end
 

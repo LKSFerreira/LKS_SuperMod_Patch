@@ -500,7 +500,7 @@ function ContextMenu.Construir(numeroJogador, contexto, objetosMundo, modoTeste)
         ["Desconectar Gerador"] = TEX_DISCONNECT,
 
         [getText("ContextMenu_GeneratorInfo")] = TEX_GEN_INFO,
-        ["Informações do Gerador"] = TEX_GEN_INFO,
+        ["Informações"] = TEX_GEN_INFO,
         [getText("ContextMenu_Examine")] = TEX_GEN_INFO,
         ["Examinar"] = TEX_GEN_INFO,
 
