@@ -54,6 +54,10 @@ MAPA_ACENTOS = str.maketrans({
 PADROES_LOG = [
     re.compile(r'Registrador\.(Info|Warn|Error|Debug)\s*\('),
     re.compile(r'Logger\.(Info|Warn|Error|Debug)\s*\('),
+    re.compile(r'LKS_EletricidadeConstrucao\.(Warn|Info|Error|Debug)\s*\('),
+    re.compile(r'LKS_EletricidadeConstrucao\.Core\.Logger\.(Info|Warn|Error|Debug)\s*\('),
+    re.compile(r'string\.format\s*\('),
+    re.compile(r'error\s*\('),
     re.compile(r'\.Print\s*\('),
     re.compile(r'print\s*\(\s*["\'].*\[LKS'),
     re.compile(r'print\s*\(\s*["\']\[LKS'),
