@@ -132,22 +132,30 @@ planos:
 # CONFLITOS RESOLVIDOS
 # ---------------------------------------------------------------------------
 
-conflitos:
-  - diretorio: conflitos_resolvidos/
+postmortem:
+  - diretorio: postmortem/
     conteudo:
-      - arquivo: conflitos_resolvidos/funcionamento_encanamento_e_modos_combo.md
+      - arquivo: postmortem/funcionamento_encanamento_e_modos_combo.md
         titulo: Encanamento e Modos do Combo Washer Dryer
         descricao: >
           Diagnóstico de timed actions distintas (ISToggleComboWasherDryer),
           menu de sub-opções de modo, validação hidráulica e ícones acumulativos.
         tags: [combo, lavadora, encanamento, conflito, timed-action]
 
-      - arquivo: conflitos_resolvidos/relatorio_compatibilidades_16062026.md
+      - arquivo: postmortem/relatorio_compatibilidades_16062026.md
         titulo: Relatório de Compatibilidades (16/06/2026)
         descricao: >
           Diagnóstico de crash por espaço em disco, conflito de fagocitação
           do PoweredBuildings V2, problemas de compatibilidade com mods.
         tags: [compatibilidade, crash, conflito, relatorio]
+
+      - arquivo: postmortem/deteccao_iso_world_inventory_object.md
+        titulo: Detecção de IsoWorldInventoryObject no Menu de Contexto
+        descricao: >
+          Investigação de como detectar items dropados no chão (IsoWorldInventoryObject)
+          para menus de contexto. Solução: extrair referência do target da opção vanilla
+          "Posicionamento 3D Estendido". Campos target vs param1 invertidos.
+        tags: [IsoWorldInventoryObject, menu-contexto, IsoObjectPicker, target, botijao]
 
 # ---------------------------------------------------------------------------
 # WALKTHROUGHS (entregas documentadas)
