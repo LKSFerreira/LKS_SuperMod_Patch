@@ -1,0 +1,95 @@
+# ===========================================================================
+# Índice de Ferramentas Python — tools/
+# ===========================================================================
+#
+# PROPÓSITO:
+#   Catálogo de ferramentas de desenvolvimento para o LKS SuperMod Patch.
+#   Todas utilizam PZ_GAME_DIR do .env quando necessário.
+#
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-19
+# ===========================================================================
+
+ferramentas:
+  - arquivo: LKS_Tools.py
+    titulo: Gerenciador de Assets do Mod
+    descricao: >
+      Extrair sprites do jogo (.pack → PNG), inspecionar resolução,
+      converter 16-bit para 8-bit, buscar referências 2D/3D,
+      auditar imagens órfãs.
+    comandos:
+      menu_interativo: python tools/LKS_Tools.py
+      extracao_direta: python tools/LKS_Tools.py <Sprite>
+      busca_referencias: python tools/LKS_Tools.py -b <Termo>
+      inspecao_imagem: python tools/LKS_Tools.py -i <Caminho>
+      otimizacao_8bit: python tools/LKS_Tools.py -c <Entrada> -o <Saida>
+      auditoria_orfas: python tools/LKS_Tools.py -a
+    tags: [assets, sprites, texturas, extracao, pack, png]
+
+  - arquivo: auditoria_mod.py
+    titulo: Auditoria Estática do Mod
+    descricao: >
+      Validação de blocos Lua (if/end, function/end), auditoria de chaves
+      de tradução (Lua ↔ .properties), detecção de caminhos absolutos locais,
+      documentação automática de API (EmmyLua).
+    comandos:
+      validar_sintaxe: python tools/auditoria_mod.py validar-sintaxe
+      auditar_traducoes: python tools/auditoria_mod.py auditar-traducoes --ignorar-nativas
+      auditar_caminhos: python tools/auditoria_mod.py auditar-caminhos
+      documentar_api: python tools/auditoria_mod.py documentar-api
+    tags: [auditoria, sintaxe, traducao, caminhos, api, EmmyLua]
+
+  - arquivo: filtrar_console_pz.py
+    titulo: Filtrador de Logs do Console PZ
+    descricao: >
+      Lê console.txt do Project Zomboid, remove ruídos de outros mods,
+      gera console_sanitizado.txt (foco LKS) e console_erros.txt (exceções).
+    comandos:
+      execucao_padrao: python tools/filtrar_console_pz.py
+      caminho_custom: python tools/filtrar_console_pz.py <caminho_console.txt>
+    tags: [console, log, depuracao, debug, erros, filtro]
+
+  - arquivo: normaliza_utf8_para_ascii_lua.py
+    titulo: Normalizador UTF-8→ASCII em Logs Lua
+    descricao: >
+      Substitui acentos PT-BR por ASCII em strings de log/debug no
+      código-fonte Lua (Logger.*, print [LKS], string.format, error).
+      Preserva strings visíveis ao jogador (getText, tooltip, addOption).
+    comandos:
+      dry_run: python tools/normaliza_utf8_para_ascii_lua.py
+      aplicar: python tools/normaliza_utf8_para_ascii_lua.py --aplicar
+    tags: [sanitizacao, acentos, ascii, utf8, logs, lua]
+
+  - arquivo: gerar_luarc.py
+    titulo: Gerador de .luarc.json e Tipos
+    descricao: >
+      Gera .luarc.json e .types/LKS_PZ_Types.lua para eliminar
+      warnings falso-positivos no lua-language-server (VS Code).
+    comandos:
+      gerar: python tools/gerar_luarc.py
+    tags: [luarc, tipos, vscode, lua-language-server]
+
+  - arquivo: atualizar_dicionario_tilesets.py
+    titulo: Atualizador do Dicionário de Tilesets
+    descricao: >
+      Varre newtiledefinitions.tiles.txt do PZ e regenera
+      tools/data/dicionario_tilesets.json para busca de sprites em LKS_Tools.
+    comandos:
+      atualizar: python tools/atualizar_dicionario_tilesets.py
+    tags: [dicionario, tilesets, sprites, atualizacao]
+
+  - arquivo: configurar_terminal.py
+    titulo: Configurador de Terminal
+    descricao: >
+      Corrige Shift+Enter no Antigravity IDE e MinTTY para
+      permitir multiline no terminal.
+    comandos:
+      executar: python tools/configurar_terminal.py
+    tags: [terminal, configuracao, antigravity, mintty]
+
+dados:
+  - arquivo: data/dicionario_tilesets.json
+    titulo: Dicionário de Tilesets do PZ
+    descricao: >
+      Mapeamento de sprites/eletrodomésticos extraído de
+      newtiledefinitions.tiles.txt. Consumido por LKS_Tools.py.
+    tags: [dicionario, tilesets, json, sprites]

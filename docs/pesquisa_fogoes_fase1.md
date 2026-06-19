@@ -68,7 +68,7 @@ stove:getContainer():isPowered()
 
 ### Conclusão sobre IsoStove
 
-O `IsoStove` vanilla **requer eletricidade** (`isPowered()`). Não há mecânica nativa de propano encanado/botijão para `IsoStove`. **Solução implementada:** `chunk:addGeneratorPos(x,y,z)` marca o tile como energizado → `isPowered()` retorna `true` nativamente → motor Java mantém fogão aceso sem resistência. Ver `documents/referencia_padroes_vanilla_pz.md` seção 4.1.
+O `IsoStove` vanilla **requer eletricidade** (`isPowered()`). Não há mecânica nativa de propano encanado/botijão para `IsoStove`. **Solução implementada:** `chunk:addGeneratorPos(x,y,z)` marca o tile como energizado → `isPowered()` retorna `true` nativamente → motor Java mantém fogão aceso sem resistência. Ver `docs/pz_energizacao_sem_rede.md`.
 
 ---
 
@@ -156,7 +156,7 @@ O **botijão vanilla É o nosso "Botijão Vanilla (Pequeno)"** — já existe, p
 
 **⚠️ CORREÇÃO IMPORTANTE (validado in-game em 18/06/2026):** A API de propano (`setPropaneTank`, `addFuel`, `setFuelAmount`) é **exclusiva de `IsoFireplace`** (churrasqueira/BBQ). O `IsoStove` (fogão comum) **NÃO possui** nenhum setter de propano. O motor Java do PZ simplesmente não suporta propano nativo em fogões regulares.
 
-**Solução implementada:** `chunk:addGeneratorPos(x,y,z)` marca o tile do fogão como energizado por gerador → `isPowered()` retorna `true` nativamente → motor Java mantém fogão aceso. Remoção com `removeGeneratorPos()` ao apagar. Documentação completa em `documents/referencia_padroes_vanilla_pz.md` seção 4.1.
+**Solução implementada:** `chunk:addGeneratorPos(x,y,z)` marca o tile do fogão como energizado por gerador → `isPowered()` retorna `true` nativamente → motor Java mantém fogão aceso. Remoção com `removeGeneratorPos()` ao apagar. Documentação completa em `docs/pz_energizacao_sem_rede.md`.
 
 Botijões criados pelo mod:
 - Botijão de 15kg (não cabe no inventário — mecânica de carregar como gerador)

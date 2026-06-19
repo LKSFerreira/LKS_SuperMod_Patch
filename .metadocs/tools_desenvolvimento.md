@@ -50,7 +50,7 @@ python tools/auditoria_mod.py auditar-assets
 python tools/auditoria_mod.py documentar-api
 ```
 
-O comando `documentar-api` extrai automaticamente funções com anotações EmmyLua de todos os módulos Lua do mod e gera `documents/referencia_api_interna_lks.md`.
+O comando `documentar-api` extrai automaticamente funções com anotações EmmyLua de todos os módulos Lua do mod e gera `.metadocs/referencia_api_interna_lks.md`.
 
 ---
 
@@ -91,7 +91,7 @@ python tools/sanitiza_log.py <console.txt> [<saida>]  # Informando caminho manua
 
 ## 5. `atualizar_dicionario_tilesets.py` — Extrator de metadados de tilesets
 
-**Propósito:** Varre `newtiledefinitions.tiles.txt` do PZ para extrair metadados de eletrodomésticos (contêineres, texturas, propriedades) e compila em `tools/dicionario_tilesets.json`. Esse dicionário é consumido por `LKS_Tools.py` para sugestões dinâmicas.
+**Propósito:** Varre `newtiledefinitions.tiles.txt` do PZ para extrair metadados de eletrodomésticos (contêineres, texturas, propriedades) e compila em `tools/data/dicionario_tilesets.json`. Esse dicionário é consumido por `LKS_Tools.py` para sugestões dinâmicas.
 
 **Quando usar:**
 - Após atualização do PZ que altera tiles/appliances

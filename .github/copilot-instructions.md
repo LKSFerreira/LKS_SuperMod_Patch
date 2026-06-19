@@ -79,7 +79,7 @@ Scripts em `scratch/` são experimentais e descartáveis.
 ## Ambiente
 
 - `PZ_GAME_DIR` definido em `.env` na raiz aponta para a instalação do Project Zomboid.
-- O dicionário `tools/dicionario_tilesets.json` mapeia sprites e tilesets do jogo.
+- O dicionário `tools/data/dicionario_tilesets.json` mapeia sprites e tilesets do jogo.
 - Arquivo `42.15/mod.info` define metadata do mod (versão, incompatibilidades).
 
 ## Tradução PT-BR

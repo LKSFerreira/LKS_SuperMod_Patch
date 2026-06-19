@@ -147,7 +147,7 @@ if __name__ == "__main__":
     diretorio_ferramentas = os.path.dirname(os.path.abspath(__file__))
     diretorio_raiz = os.path.dirname(diretorio_ferramentas)
     caminho_env = os.path.join(diretorio_raiz, ".env")
-    caminho_saida = os.path.join(diretorio_ferramentas, "dicionario_tilesets.json")
+    caminho_saida = os.path.join(diretorio_ferramentas, "data", "dicionario_tilesets.json")
     
     # Ler caminho do jogo do .env na raiz do projeto
     pz_dir = None

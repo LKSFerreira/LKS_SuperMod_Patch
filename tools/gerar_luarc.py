@@ -102,6 +102,8 @@ GLOBALS_ENGINE_CONHECIDOS = frozenset({
     "ISTextEntryBox", "ISScrollingListBox", "ISTickBox",
     "luautils", "ContainerButtonIcons", "Fluid", "FluidType",
     "getNumActivePlayers", "getPlayerData", "getMouseX", "getMouseY",
+    "ISOvenUI", "NR_OvenPanel", "NI_SquareButton",
+    "ItemTag", "Perks", "State",
 })
 
 # Diretórios a ignorar no workspace do LuaLS

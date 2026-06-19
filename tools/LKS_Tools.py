@@ -54,7 +54,7 @@ DIRETORIO_UI_MOD = DIRETORIO_RAIZ / "common" / "media" / "ui"
 def sugerir_nome_arquivo(sprite_nome):
     """Consulta o dicionario_tilesets.json e gera um nome de arquivo amigável e limpo."""
     try:
-        caminho_json = DIRETORIO_FERRAMENTAS / "dicionario_tilesets.json"
+        caminho_json = DIRETORIO_FERRAMENTAS / "data" / "dicionario_tilesets.json"
         if caminho_json.exists():
             import json
             with open(caminho_json, "r", encoding="utf-8") as f:
@@ -961,7 +961,7 @@ def buscar_referencias_assets(termo_busca, pasta_jogo):
     
     # 1. Busca no JSON de metadados (dicionario_tilesets.json) para sprites do mundo 3D
     sprites_mundo = []
-    caminho_json = DIRETORIO_FERRAMENTAS / "dicionario_tilesets.json"
+    caminho_json = DIRETORIO_FERRAMENTAS / "data" / "dicionario_tilesets.json"
     if caminho_json.exists():
         try:
             import json

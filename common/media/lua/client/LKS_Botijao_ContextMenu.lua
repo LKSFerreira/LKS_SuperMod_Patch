@@ -23,6 +23,7 @@ local DISTANCIA_MAXIMA_MANGUEIRA = 2
 -- Todas compartilham: walkAdj + faceThisObject + agachar + barra de ação.
 -- ============================================================================
 
+---@class LKS_BotijaoAction : ISBaseTimedAction
 LKS_BotijaoAction = ISBaseTimedAction:derive("LKS_BotijaoAction")
 
 --- Referências para funções locais (registradas após definição).

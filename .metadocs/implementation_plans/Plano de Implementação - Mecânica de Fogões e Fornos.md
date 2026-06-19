@@ -5,8 +5,8 @@
 Implementação completa da mecânica de fogões recategorizada em 3 tipos (Convencional, Antigo, Indução) com diferenciação de combustível, ignição, qualidade de comida e interação com o mundo. O fogão de indução é um item novo exclusivo do mod (craftável), colocável em cima de balcões. Sprites vanilla de fogões modernos também serão reclassificados como indução via tabela de sprites (seleção manual futura) — a **resistência elétrica é apenas uma variante visual do tipo Indução**, compartilhando exatamente a mesma mecânica (só eletricidade, só panela de metal, qualidade superior). O fogão convencional utiliza propano encanado (pré-corte) e botijões (pós-corte). O fogão antigo (`IsoFireplace`) já funciona no vanilla com combustível sólido.
 
 **Referências**:
-- Design: `documents/mecanica_fogoes_fornos.md`
-- Pesquisa: `documents/pesquisa_fogoes_fase1.md`
+- Design: `.metadocs/feat/mecanica_fogoes_fornos.md`
+- Pesquisa: `docs/pesquisa_fogoes_fase1.md`
 - Driver existente: `common/media/lua/client/devices/LKS_Device_Cooking.lua`
 
 ---

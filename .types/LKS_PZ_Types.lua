@@ -19,6 +19,9 @@
 ---@class ISContextMenu
 ---@field [any] any
 
+---@class ISToolTip
+---@field [any] any
+
 ---@class ISUIElement
 ---@field [any] any
 
@@ -35,6 +38,9 @@
 ---@field [any] any
 
 ---@class IsoPlayer
+---@field [any] any
+
+---@class IsoStove
 ---@field [any] any
 
 ---@class ItemContainer

@@ -338,7 +338,7 @@ Quando não há rede elétrica nem gerador disponível, o jogador pode improvisa
 
 A mecânica de detecção de metais no micro-ondas **existe** no driver `LKS_Device_Cooking.lua` (função `verificarPresencaMetal()` — usa `item:isMetal()` e `item:getMetalValue()`). **Validar in-game** se funciona corretamente antes de reutilizar como referência para a lógica inversa do fogão de indução (micro-ondas rejeita metal, indução exige metal).
 
-> **Ação pendente**: Criar um documento de **mecânicas já implementadas** no mod para evitar esquecimento do que existe ou não. Referência: `.metadocs/` ou `documents/`.
+> **Ação pendente**: Criar um documento de **mecânicas já implementadas** no mod para evitar esquecimento do que existe ou não. Referência: `.metadocs/` ou `docs/`.
 
 ### Futura integração com sistema de Cooking
 

@@ -1,0 +1,74 @@
+# ===========================================================================
+# Índice de Scripts Avulsos — scratch/
+# ===========================================================================
+#
+# PROPÓSITO:
+#   Scripts de uso único ou pontual. Engenharia reversa, inspeção binária,
+#   renomeação em lote. Provavelmente nunca serão reutilizados.
+#
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-19
+# ===========================================================================
+
+scripts:
+  - arquivo: achar_imagens.py
+    titulo: Rastreador de Imagens Temporárias
+    descricao: >
+      Mapeia a primeira aparição de cada imagem temporária (media__*)
+      lendo transcript.jsonl de sessões anteriores da IA.
+    tags: [imagens, historico, transcript]
+
+  - arquivo: buscar_laundry.py
+    titulo: Inspetor de Dimensões de Imagens Temporárias
+    descricao: >
+      Analisa largura/altura, formato e modo de cor de imagens
+      temporárias (media__*) geradas pela IA.
+    tags: [imagens, dimensoes, resolucao]
+
+  - arquivo: fix_script.py
+    titulo: Recuperador de Emergência
+    descricao: >
+      Restaura blocos de código corrompidos ou truncados
+      em LKS_Tools.py. Uso exclusivo de emergência.
+    tags: [emergencia, recuperacao, corrupcao]
+
+  - arquivo: identificar_media.py
+    titulo: Inspetor Binário de PNG
+    descricao: >
+      Lê cabeçalho IHDR de PNGs no cache de artefatos
+      para extrair dimensões e tamanho sem carregar imagem.
+    tags: [png, binario, ihdr, cache]
+
+  - arquivo: inspect_class.py
+    titulo: Extrator de Constant Pool (Java)
+    descricao: >
+      Abre projectzomboid.jar e extrai strings/campos do
+      Constant Pool de classes Java compiladas.
+    tags: [java, jar, engenharia-reversa, constant-pool]
+
+  - arquivo: inspect_isoobject.py
+    titulo: Listador de Métodos Java (IsoObject)
+    descricao: >
+      Decodifica .class Java e lista métodos filtrados
+      por palavra-chave (ex: 'sprite', 'container').
+    tags: [java, metodos, isoobject, engenharia-reversa]
+
+  - arquivo: inspect_methods.py
+    titulo: Extrator de Assinaturas Java Avançado
+    descricao: >
+      Lê assinaturas e tipos de retorno de métodos específicos
+      em .class no JAR do jogo (LoadSingleTexture, etc).
+    tags: [java, assinaturas, metodos, engenharia-reversa]
+
+  - arquivo: inspect_pack.py
+    titulo: Inspetor de .pack (Atlas de Sprites)
+    descricao: >
+      Inspeciona cabeçalho binário de .pack do PZ e extrai
+      coordenadas (X, Y, W, H, offset) de sprites no atlas.
+    tags: [pack, atlas, sprites, binario, coordenadas]
+
+  - arquivo: rename_textures.py
+    titulo: Renomeador em Lote de Texturas
+    descricao: >
+      Renomeia texturas de lavadora/secadora adicionando prefixo
+      LKS_ para padronização de assets.
+    tags: [rename, texturas, lote, padronizacao]
