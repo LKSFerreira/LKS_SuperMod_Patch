@@ -40,6 +40,26 @@ local LKS_Device_Cooking = {
 -- Mesmo mecanismo usado pelo LKS_EletricidadeConstrucao para prédios.
 -- ============================================================================
 
+--- Registro de fogões atualmente acesos via propano (para evitar varredura global).
+--- Chave: "x_y_z", Valor: IsoObject
+local _registroFogoesAcesos = {}
+
+--- Registra um fogão como aceso via propano.
+---@param fogao IsoObject
+local function registrarFogaoAceso(fogao)
+    if not fogao then return end
+    local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
+    _registroFogoesAcesos[chave] = fogao
+end
+
+--- Remove um fogão do registro.
+---@param fogao IsoObject
+local function desregistrarFogaoAceso(fogao)
+    if not fogao then return end
+    local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
+    _registroFogoesAcesos[chave] = nil
+end
+
 --- Marca o tile do fogão como energizado e acende via TimedAction vanilla.
 ---
 --- @param fogao IsoStove O fogão a acender.
@@ -565,7 +585,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     -- jogador sempre possa ajustar temperatura e timer independente do estado.
     -- Também aplicamos o ícone LKS_Menu_Settings em qualquer opção sem ícone.
     -- =========================================================================
-    local textoConfiguracoes = getText("ContextMenu_StoveSetting") or "Configuracoes"
+    local textoConfiguracoes = getText("ContextMenu_StoveSetting") or "Configurações"
     local jaTemConfiguracoes = false
 
     if submenu and submenu.options then
@@ -651,14 +671,14 @@ local function determinarEstadoFogaoPropano(fogao, jogador)
     local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
     if not fonteEnergia.disponivel then
         local motivo = tipoFogao == "convencional"
-            and (getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gas encanado ou botijao")
-            or (getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustivel solido")
+            and (getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gás encanado ou botijão de gás conectado.")
+            or (getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustível sólido (lenha, tábuas) no interior.")
         return "sem_combustivel", motivo
     end
 
     local fontesCalor = buscarFontesCalorInventario(jogador)
     if #fontesCalor == 0 then
-        return "sem_calor", getText("IGUI_LKS_RequerFonteCalor") or "Requer fonte de calor"
+        return "sem_calor", getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor."
     end
 
     return "off", nil
@@ -879,26 +899,6 @@ local IDS_BOTIJAO_CONSUMO = {
     ["LKS_Propano.LKS_Botijao15kg"] = true,
     ["LKS_Propano.LKS_Botijao45kg"] = true,
 }
-
---- Registro de fogões atualmente acesos via propano (para evitar varredura global).
---- Chave: "x_y_z", Valor: IsoObject
-local _registroFogoesAcesos = {}
-
---- Registra um fogão como aceso via propano.
----@param fogao IsoObject
-local function registrarFogaoAceso(fogao)
-    if not fogao then return end
-    local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
-    _registroFogoesAcesos[chave] = fogao
-end
-
---- Remove um fogão do registro.
----@param fogao IsoObject
-local function desregistrarFogaoAceso(fogao)
-    if not fogao then return end
-    local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
-    _registroFogoesAcesos[chave] = nil
-end
 
 --- Busca o botijão fisicamente conectado a um fogão no raio.
 ---@param fogao IsoObject
