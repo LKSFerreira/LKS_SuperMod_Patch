@@ -103,6 +103,48 @@ python tools/atualizar_dicionario_tilesets.py
 
 ---
 
+## 6. `configurar_terminal.py` — Configuração de terminal
+
+**Propósito:** Corrige Shift+Enter no Antigravity IDE e MinTTY.
+
+```bash
+python tools/configurar_terminal.py
+```
+
+---
+
+## 7. `filtrar_console_pz.py` — Filtro de console do PZ
+
+**Propósito:** Filtra e destaca linhas relevantes do console do Project Zomboid, facilitando debug.
+
+```bash
+python tools/filtrar_console_pz.py
+```
+
+---
+
+## 8. `compor_icone.py` — Compositor de ícones para menus
+
+**Propósito:** Gera ícones compostos para menus de contexto do PZ combinando uma imagem base escurecida com um badge sobreposto. Canvas fixo 32x32px. Nunca redimensiona — centraliza se menor, rejeita se maior. Escurecimento auto-detectado pela luminosidade (tabela do projeto: claro 35%, médio 25%, escuro 15%).
+
+**Quando usar:**
+- Ao criar variante desabilitada de um ícone de menu
+- Ao compor ícone base + badge de estado (proibido, alerta, etc.)
+
+```bash
+uv run tools/compor_icone.py <base.png> <badge.png>
+uv run tools/compor_icone.py icon.png badge.png --saida common/media/ui/LKS_Off.png
+uv run tools/compor_icone.py icon.png badge.png --brilho claro
+```
+
+**Regras:**
+- Canvas sempre 32x32 (padrão de ícones do PZ)
+- Base e badge centralizados sem redimensionamento
+- Imagens maiores que 32x32 são rejeitadas (evita distorção)
+```
+
+---
+
 ## 6. `configurar_terminal.py` — Configurador de atalhos do IDE
 
 **Propósito:** Aplica configurações de teclado no Antigravity IDE (fork VS Code) para que Shift+Enter funcione como quebra de linha no terminal integrado. Também configura MinTTY se necessário.

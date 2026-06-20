@@ -11,7 +11,7 @@
 #   Documentação interna do LKS SuperMod Patch. Para referência de mecânicas
 #   do engine PZ, mods externos e APIs, consulte docs/_indice.yaml.
 #
-# ÚLTIMA ATUALIZAÇÃO: 2026-06-19
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-20
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
@@ -75,9 +75,9 @@ ferramentas:
   - arquivo: tools_desenvolvimento.md
     titulo: Catálogo de Ferramentas Python
     descricao: >
-      Documentação dos 7 scripts em tools/: gerar_luarc.py, auditoria_mod.py,
+      Documentação dos 8 scripts em tools/: gerar_luarc.py, auditoria_mod.py,
       LKS_Tools.py, filtrar_console_pz.py, normaliza_utf8_para_ascii_lua.py,
-      atualizar_dicionario_tilesets.py, configurar_terminal.py.
+      atualizar_dicionario_tilesets.py, configurar_terminal.py, compor_icone.py.
     tags: [ferramentas, python, auditoria, tools, uv]
 
 # ---------------------------------------------------------------------------
@@ -179,6 +179,7 @@ walkthroughs:
       - walkthrough/correcao_auditoria.md
       - walkthrough/desacoplamento_generator_powered_buildings.md
       - walkthrough/fagocitacao_fridges_off.md
+      - walkthrough/fagocitacao_light_my_fire.md
       - walkthrough/gerenciador_dispositivos.md
       - walkthrough/lavadora_e_secadora.md
       - walkthrough/ocultacao_conexao_vanilla.md
