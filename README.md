@@ -23,12 +23,14 @@ O projeto evoluiu de um patch de compatibilidade para uma base modular LKS. Mods
 | :--- | :--- | :--- | :--- |
 | Generator Powered Buildings | Beathoven | 3597471949 | Incorporado nativamente; não carregar junto |
 | Fridges Off! | 4422 / Erick | 2853974107 | Incorporado nativamente |
+| Light My Fire | Eurymachus | 3575007347 | Incorporado nativamente; não carregar junto |
 
 ## Instalação
 
 1. Inscreva-se neste patch.
 2. Não ative o Generator Powered Buildings / GeneratorPlus2 junto com este mod.
-3. Coloque o LKS SuperMod Patch no final da ordem de carregamento quando usar outros mods compatíveis.
+3. Não ative o Light My Fire junto com este mod.
+4. Coloque o LKS SuperMod Patch no final da ordem de carregamento quando usar outros mods compatíveis.
 
 ## Ferramentas de Desenvolvimento
 

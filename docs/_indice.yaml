@@ -178,3 +178,11 @@ mods_externos:
       powerButton com prerender customizado, bug de updateTooltip(),
       NI_SquareButton vs ISButton, knobs, fluxo de dados, constantes NR_Config.
     tags: [neat-rocco, NR_OvenPanel, NR_Header, powerButton, tooltip, NeatUI]
+
+  - arquivo: mod_light_my_fire.md
+    titulo: Referência — Light My Fire (Mod Original por Eurymachus)
+    descricao: >
+      Menu unificado de fogo para campfires, fireplaces e BBQs.
+      Handler único substituindo ISCampingMenu + ISBBQMenu, patch de
+      combustível por ID, ícones temáticos. Workshop ID: 3575007347.
+    tags: [light-my-fire, fireplace, campfire, bbq, mod-externo, fagocitacao, eurymachus]
