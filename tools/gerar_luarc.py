@@ -96,6 +96,7 @@ GLOBALS_ENGINE_CONHECIDOS = frozenset({
     "IsoPlayer", "IsoObject", "IsoMicrowave", "IsoGridSquare",
     "IsoGenerator", "IsoHeatSource", "IsoLightSwitch", "IsoStove",
     "IsoThumpable", "IsoSpriteManager", "IsoUtils", "IsoDirections",
+    "IsoWorldInventoryObject",
     "Texture", "ItemContainer", "ISContextMenu", "ISWorldObjectContextMenu",
     "ISTimedActionQueue", "ISBaseTimedAction", "ISUIElement",
     "ISCollapsableWindow", "ISPanel", "ISButton", "ISLabel",
@@ -144,7 +145,8 @@ ALIASES_PRIMITIVOS_JAVA = frozenset({
 PADROES_TIPO_ENGINE = [
     re.compile(r"^Iso[A-Z]"),        # IsoObject, IsoPlayer, IsoGenerator, etc.
     re.compile(r"^IS[A-Z]"),         # ISBaseTimedAction, ISContextMenu, etc.
-    re.compile(r"^Item[A-Z]"),       # ItemContainer
+    re.compile(r"^Item[A-Z]"),       # ItemContainer, ItemTag
+    re.compile(r"^Inventory[A-Z]"),  # InventoryItem, InventoryContainer
     re.compile(r"^Kahlua[A-Z]"),     # KahluaTable
     re.compile(r"^Texture$"),        # Texture
     re.compile(r"^ArrayList$"),      # ArrayList
@@ -534,7 +536,7 @@ def exibir_banner() -> None:
     Exibe o banner estilizado do gerador no terminal.
     """
     print(f"\n{CYAN}╔══════════════════════════════════════════════════════╗{RESET}")
-    print(f"{CYAN}║  ⚙️  LuaLS Config Generator — PZ Build 42            ║{RESET}")
+    print(f"{CYAN}║   ⚙️  LuaLS Config Generator — PZ Build 42            ║{RESET}")
     print(f"{CYAN}╚══════════════════════════════════════════════════════╝{RESET}\n")
 
 

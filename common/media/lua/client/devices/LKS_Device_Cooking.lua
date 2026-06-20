@@ -41,11 +41,11 @@ local LKS_Device_Cooking = {
 -- ============================================================================
 
 --- Registro de fogões atualmente acesos via propano (para evitar varredura global).
---- Chave: "x_y_z", Valor: IsoObject
+--- Chave: "x_y_z", Valor: IsoStove
 local _registroFogoesAcesos = {}
 
 --- Registra um fogão como aceso via propano.
----@param fogao IsoObject
+---@param fogao IsoStove
 local function registrarFogaoAceso(fogao)
     if not fogao then return end
     local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
@@ -53,7 +53,7 @@ local function registrarFogaoAceso(fogao)
 end
 
 --- Remove um fogão do registro.
----@param fogao IsoObject
+---@param fogao IsoStove
 local function desregistrarFogaoAceso(fogao)
     if not fogao then return end
     local chave = fogao:getX() .. "_" .. fogao:getY() .. "_" .. fogao:getZ()
@@ -901,7 +901,7 @@ local IDS_BOTIJAO_CONSUMO = {
 }
 
 --- Busca o botijão fisicamente conectado a um fogão no raio.
----@param fogao IsoObject
+---@param fogao IsoStove
 ---@return InventoryItem|nil itemBotijao O item do botijão, ou nil.
 local function buscarBotijaoConectado(fogao)
     local fogaoX = fogao:getX()

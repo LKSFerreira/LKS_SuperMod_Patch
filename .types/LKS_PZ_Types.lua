@@ -25,6 +25,9 @@
 ---@class ISUIElement
 ---@field [any] any
 
+---@class InventoryItem
+---@field [any] any
+
 ---@class IsoGenerator
 ---@field [any] any
 
