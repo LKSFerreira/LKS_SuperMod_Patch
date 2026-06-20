@@ -7,7 +7,6 @@ module LKS_Propano
 
     item LKS_Botijao15kg
     {
-        DisplayName = Gas Tank 15kg,
         DisplayCategory = Material,
         ItemType = base:drainable,
         Weight = 15.0,
@@ -25,7 +24,6 @@ module LKS_Propano
 
     item LKS_Botijao45kg
     {
-        DisplayName = Gas Tank 45kg,
         DisplayCategory = Material,
         ItemType = base:drainable,
         Weight = 45.0,
