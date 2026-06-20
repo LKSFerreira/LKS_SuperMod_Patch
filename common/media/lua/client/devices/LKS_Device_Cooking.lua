@@ -22,12 +22,13 @@ if LKS_ApplianceManager.recursoAtivo and not LKS_ApplianceManager.recursoAtivo("
     return
 end
 
-local ClassificacaoSprites = require("LKS_Cooking_SpriteClassification")
-local SistemaPropano = require("LKS_Cooking_PropanoSystem")
+local ClassificacaoSprites = require("cooking/LKS_Cooking_SpriteClassification")
+local SistemaPropano = require("cooking/LKS_Cooking_PropanoSystem")
+local FogaoAntigo = require("devices/cooking/LKS_Device_Cooking_Antigo")
 
 local LKS_Device_Cooking = {
-    recipientesAceitos = {"stove", "microwave", "woodstove", "fireplace"},
-    classesJava = {"IsoStove", "IsoMicrowave", "IsoFireplace"},
+    recipientesAceitos = {"stove", "microwave"},
+    classesJava = {"IsoStove", "IsoMicrowave"},
     brilhoInativo = "escurece25"
 }
 
@@ -288,6 +289,9 @@ end
 function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, objetosMundo, objetoEletrico)
     local ehFogao = instanceof(objetoEletrico, "IsoStove")
     local ehMicroondas = instanceof(objetoEletrico, "IsoMicrowave")
+    local ehFireplace = instanceof(objetoEletrico, "IsoFireplace")
+
+    print("[LKS DEBUG Cooking] construirMenuContexto chamado - ehFogao=" .. tostring(ehFogao) .. " ehMicroondas=" .. tostring(ehMicroondas) .. " ehFireplace=" .. tostring(ehFireplace))
 
     local chaveConfiguracao = nil
     if ehFogao then
@@ -317,9 +321,11 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
 
     -- Identifica o tipo de fogão por sprite (convencional, inducao ou antigo)
     local tipoFogao = nil
-    if ehFogao then
+    if ehFogao or ehFireplace then
         tipoFogao = ClassificacaoSprites.obterTipoFogao(objetoEletrico)
     end
+
+    print("[LKS DEBUG Cooking] tipoFogao=" .. tostring(tipoFogao) .. " nomeObjeto=" .. tostring(nomeObjetoTraduzido))
 
     -- Detecta fonte de energia usando o sistema unificado
     local jogador = getSpecificPlayer(jogadorNumero)
@@ -327,9 +333,14 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     local temEnergia = false
     local containerInventario = objetoEletrico:getContainer()
 
-    if ehFogao and tipoFogao then
-        fonteEnergia = SistemaPropano.verificarFonteEnergia(objetoEletrico, jogador, tipoFogao)
+    if tipoFogao then
+        if tipoFogao == "antigo" then
+            fonteEnergia = FogaoAntigo.verificarFonteEnergia(objetoEletrico)
+        else
+            fonteEnergia = SistemaPropano.verificarFonteEnergia(objetoEletrico, jogador, tipoFogao)
+        end
         temEnergia = fonteEnergia.disponivel
+        print("[LKS DEBUG Cooking] fonteEnergia.tipo=" .. tostring(fonteEnergia.tipo) .. " disponivel=" .. tostring(fonteEnergia.disponivel))
     else
         -- Micro-ondas: mantém lógica original (só eletricidade)
         if containerInventario and containerInventario:isPowered() then
@@ -350,21 +361,33 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     -- =========================================================================
     -- O jogo base já cria uma opção-pai com o nome do aparelho (ex: "Fogão Vermelho")
     -- e vincula um submenu a ela contendo "Ligar" e "Configurações".
-    -- Precisamos ENCONTRAR essa opção existente para sequestrar seu submenu,
-    -- em vez de criar um duplicado.
-    --
-    -- A busca é feita por nome exato (`opcao.name == nomeObjetoTraduzido`) e
-    -- verificando se a opção possui um submenu vinculado (`.subOption` preenchido).
+    -- Para IsoFireplace, o vanilla cria até 2 entradas (ISCampingMenu + ISBBQMenu).
+    -- Precisamos ENCONTRAR a primeira existente para sequestrar seu submenu e
+    -- REMOVER todas as duplicatas — mantendo apenas a nossa entrada unificada.
     -- =========================================================================
     local opcaoVanillaEncontrada = nil
     local submenuVanilla = nil
+    local indicesParaRemover = {}
 
-    for _, opcao in ipairs(menuContexto.options) do
+    print("[LKS DEBUG Cooking] Passo 1: buscando opcoes vanilla com nome='" .. tostring(nomeObjetoTraduzido) .. "' total_opcoes=" .. tostring(#menuContexto.options))
+
+    for indice, opcao in ipairs(menuContexto.options) do
         if opcao.name == nomeObjetoTraduzido and opcao.subOption then
-            opcaoVanillaEncontrada = opcao
-            submenuVanilla = menuContexto:getSubMenu(opcao.subOption)
-            break
+            if not opcaoVanillaEncontrada then
+                opcaoVanillaEncontrada = opcao
+                submenuVanilla = menuContexto:getSubMenu(opcao.subOption)
+                print("[LKS DEBUG Cooking] Passo 1: sequestrou opcao vanilla indice=" .. indice)
+            else
+                table.insert(indicesParaRemover, indice)
+                print("[LKS DEBUG Cooking] Passo 1: marcou duplicata para remocao indice=" .. indice)
+            end
         end
+    end
+
+    -- Remove entradas duplicadas do vanilla (de trás para frente para não invalidar índices)
+    print("[LKS DEBUG Cooking] Passo 1: removendo " .. #indicesParaRemover .. " duplicata(s)")
+    for idx = #indicesParaRemover, 1, -1 do
+        table.remove(menuContexto.options, indicesParaRemover[idx])
     end
 
     -- =========================================================================
@@ -378,15 +401,14 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     local opcaoMenuPai = nil
 
     if submenuVanilla then
-        -- Sequestro: reutiliza o submenu vanilla existente
         submenu = submenuVanilla
         opcaoMenuPai = opcaoVanillaEncontrada
-        -- NÃO sobrescreve iconTexture: vanilla já define o sprite correto do objeto
+        print("[LKS DEBUG Cooking] Passo 2: sequestrou submenu vanilla (opcoes=" .. tostring(submenu.options and #submenu.options or 0) .. ")")
     else
-        -- Fallback: cria submenu próprio (caso o vanilla não tenha criado um)
         opcaoMenuPai = menuContexto:addOptionOnTop(nomeObjetoTraduzido)
         submenu = ISContextMenu:getNew(menuContexto)
         menuContexto:addSubMenu(opcaoMenuPai, submenu)
+        print("[LKS DEBUG Cooking] Passo 2: criou submenu proprio (fallback)")
 
         -- No fallback, usa o sprite real do objeto via splitIcon()
         local spriteObjeto = objetoEletrico:getSprite()
@@ -399,22 +421,27 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     end
 
     -- =========================================================================
-    -- PASSO 3: REMOVER OPÇÃO VANILLA DE LIGAR/DESLIGAR DO SUBMENU
+    -- PASSO 3: LIMPAR OPÇÕES VANILLA DO SUBMENU
     -- =========================================================================
-    -- Remove apenas a opção de toggle do submenu vanilla (que substituiremos
-    -- pela nossa versão aprimorada com tooltips). A opção "Configurações" e
-    -- qualquer outra permanecem intactas.
-    --
-    -- Usamos `removeOptionByName` que é o método nativo do ISContextMenu para
-    -- remoção segura por nome exato — sem necessidade de manipulação manual
-    -- de índices da tabela `options`.
+    -- Para IsoStove/IsoMicrowave: remove apenas toggle (Ligar/Desligar).
+    -- Para IsoFireplace: o submenu vem do ISCampingMenu/ISBBQMenu com opções
+    -- próprias (Acender, Destruir para Virar Combustível, Informações, etc.).
+    -- Limpamos TUDO e reconstruímos do zero com nossas opções.
     -- =========================================================================
-    local textoLigarVanilla = getText("ContextMenu_TurnOn")
-    local textoDesligarVanilla = getText("ContextMenu_TurnOff")
-
-    if submenu and submenu.removeOptionByName then
-        pcall(function() submenu:removeOptionByName(textoLigarVanilla) end)
-        pcall(function() submenu:removeOptionByName(textoDesligarVanilla) end)
+    if submenu and submenu.options then
+        if tipoFogao == "antigo" then
+            -- Fogão antigo: NÃO limpa o submenu vanilla — as opções de
+            -- combustível sólido, acender e destruir já são gerenciadas
+            -- pelo ISCampingMenu/ISBBQMenu nativamente.
+            print("[LKS DEBUG Cooking] Passo 3: mantendo opcoes vanilla do submenu (tipo antigo, " .. #submenu.options .. " opcoes)")
+        else
+            local textoLigarVanilla = getText("ContextMenu_TurnOn")
+            local textoDesligarVanilla = getText("ContextMenu_TurnOff")
+            if submenu.removeOptionByName then
+                pcall(function() submenu:removeOptionByName(textoLigarVanilla) end)
+                pcall(function() submenu:removeOptionByName(textoDesligarVanilla) end)
+            end
+        end
     end
 
     -- =========================================================================
@@ -445,19 +472,21 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         verboApagar = getText("IGUI_LKS_Apagar") or "Apagar"
         iconeDesligado = "media/ui/LKS_Menu_Propano_Off.png"
     elseif tipoFogao == "antigo" then
-        verboAcender = getText("IGUI_LKS_Acender") or "Acender"
-        verboApagar = getText("IGUI_LKS_Apagar") or "Apagar"
-        iconeDesligado = "media/ui/LKS_Menu_Fuel_Off.png"
+        -- Fogão antigo: o vanilla já gerencia acender/apagar via ISCampingMenu.
+        -- Não injetamos nossas opções — apenas garantimos entrada única no menu.
+        print("[LKS DEBUG Cooking] Passo 4: tipo antigo - usando opcoes vanilla intactas")
     else
         verboAcender = getText("ContextMenu_TurnOn") or "Ligar"
         verboApagar = getText("ContextMenu_TurnOff") or "Desligar"
         iconeDesligado = "media/ui/LKS_Menu_Electricity_Off.png"
     end
 
+    if tipoFogao ~= "antigo" then
+
     if estaAtivo then
         -- Apagar/Desligar: comportamento diferenciado
         local opcaoApagar = submenu:addOptionOnTop(verboApagar, objetosMundo, function()
-            if ehFogao and (tipoFogao == "convencional" or tipoFogao == "antigo") then
+            if ehFogao and tipoFogao == "convencional" then
                 apagarFogaoPropano(objetoEletrico)
             elseif ehFogao then
                 ISWorldObjectContextMenu.onToggleStove(objetosMundo, objetoEletrico, jogadorNumero)
@@ -468,8 +497,8 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         opcaoApagar.iconTexture = getTexture("media/ui/LKS_Button_Power_Off.png")
     else
         if temEnergia then
-            if (tipoFogao == "convencional" or tipoFogao == "antigo") then
-                -- Fogão a combustão: submenu com fontes de calor do inventário
+            if tipoFogao == "convencional" then
+                -- Fogão convencional: submenu com fontes de calor do inventário
                 local fontesCalor = buscarFontesCalorInventario(jogador)
 
                 if #fontesCalor > 0 then
@@ -478,53 +507,12 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
                     local submenuIgnicao = ISContextMenu:getNew(submenu)
                     submenu:addSubMenu(opcaoAcender, submenuIgnicao)
 
-                    -- Para fogão antigo, busca tinder uma vez (evita repetição no loop)
-                    local materiaisCombustao = nil
-                    if tipoFogao == "antigo" then
-                        materiaisCombustao = buscarMateriaisCombustao(jogador)
-                        -- Tooltip no parent quando não há material inflamável
-                        if #materiaisCombustao == 0 then
-                            local tooltipPaiSemTinder = ISWorldObjectContextMenu.addToolTip()
-                            tooltipPaiSemTinder.description = getText("IGUI_LKS_RequerMaterialInflamavel") or "Requer material inflamável (papel, pano, álcool) para iniciar a combustão."
-                            opcaoAcender.toolTip = tooltipPaiSemTinder
-                        end
-                    end
-
                     for _, fonteCalorItem in ipairs(fontesCalor) do
-                        if tipoFogao == "antigo" then
-                            -- Fogão antigo: fonte de calor > submenu de materiais inflamáveis
-                            if #materiaisCombustao > 0 then
-                                local opcaoFonte = submenuIgnicao:addOption(
-                                    fonteCalorItem:getDisplayName(), objetosMundo, nil)
-                                opcaoFonte.iconTexture = fonteCalorItem:getTex()
-                                local submenuTinder = ISContextMenu:getNew(submenuIgnicao)
-                                submenuIgnicao:addSubMenu(opcaoFonte, submenuTinder)
-
-                                for _, materialItem in ipairs(materiaisCombustao) do
-                                    local opcaoMaterial = submenuTinder:addOption(
-                                        materialItem:getDisplayName(), objetosMundo, function()
-                                            acenderFogaoPropano(objetoEletrico, jogador)
-                                        end)
-                                    opcaoMaterial.iconTexture = materialItem:getTex()
-                                end
-                            else
-                                -- Tem fonte de calor mas sem material inflamável
-                                local opcaoFonte = submenuIgnicao:addOption(
-                                    fonteCalorItem:getDisplayName(), objetosMundo, nil)
-                                opcaoFonte.iconTexture = fonteCalorItem:getTex()
-                                opcaoFonte.notAvailable = true
-                                local tooltipSemTinder = ISWorldObjectContextMenu.addToolTip()
-                                tooltipSemTinder.description = getText("IGUI_LKS_RequerMaterialInflamavel") or "Requer material inflamável (papel, pano, álcool) para iniciar a combustão."
-                                opcaoFonte.toolTip = tooltipSemTinder
-                            end
-                        else
-                            -- Fogão convencional: fonte de calor acende direto (propano é volátil)
-                            local opcaoFonte = submenuIgnicao:addOption(
-                                fonteCalorItem:getDisplayName(), objetosMundo, function()
-                                    acenderFogaoPropano(objetoEletrico, jogador)
-                                end)
-                            opcaoFonte.iconTexture = fonteCalorItem:getTex()
-                        end
+                        local opcaoFonte = submenuIgnicao:addOption(
+                            fonteCalorItem:getDisplayName(), objetosMundo, function()
+                                acenderFogaoPropano(objetoEletrico, jogador)
+                            end)
+                        opcaoFonte.iconTexture = fonteCalorItem:getTex()
                     end
                 else
                     -- Sem fontes de calor no inventário
@@ -564,8 +552,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
 
             if tipoFogao == "convencional" then
                 tooltipErro.description = getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gás encanado ou botijão de gás conectado."
-            elseif tipoFogao == "antigo" then
-                tooltipErro.description = getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustível sólido (lenha, tábuas) no interior."
             elseif tipoFogao == "inducao" then
                 tooltipErro.description = getText("IGUI_LKS_RequerEletricidade") or "Requer eletricidade (rede elétrica ou gerador)."
             else
@@ -575,6 +561,8 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
             opcaoSemEnergia.toolTip = tooltipErro
         end
     end
+
+    end -- fim do guard tipoFogao ~= "antigo"
 
     -- =========================================================================
     -- PASSO 5: GARANTIR OPÇÃO "CONFIGURAÇÕES" E APLICAR ÍCONE
@@ -659,7 +647,7 @@ local function determinarEstadoFogaoPropano(fogao, jogador)
     end
 
     local tipoFogao = ClassificacaoSprites.obterTipoFogao(fogao)
-    if tipoFogao ~= "convencional" and tipoFogao ~= "antigo" then
+    if tipoFogao ~= "convencional" then
         return "eletricidade", nil
     end
 
@@ -670,9 +658,7 @@ local function determinarEstadoFogaoPropano(fogao, jogador)
 
     local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
     if not fonteEnergia.disponivel then
-        local motivo = tipoFogao == "convencional"
-            and (getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gás encanado ou botijão de gás conectado.")
-            or (getText("IGUI_LKS_RequerCombustivelSolido") or "Requer combustível sólido (lenha, tábuas) no interior.")
+        local motivo = getText("IGUI_LKS_RequerGasOuBotijao") or "Requer gás encanado ou botijão de gás conectado."
         return "sem_combustivel", motivo
     end
 
@@ -706,7 +692,7 @@ local function executarTogglePropano(fogao, jogador)
 
     if not temEletricidade and not estaAtivo then
         local tipoFogao = ClassificacaoSprites.obterTipoFogao(fogao)
-        if tipoFogao == "convencional" or tipoFogao == "antigo" then
+        if tipoFogao == "convencional" then
             local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
             if fonteEnergia.disponivel then
                 local fontesCalor = buscarFontesCalorInventario(jogador)

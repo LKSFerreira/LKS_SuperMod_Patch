@@ -11,7 +11,7 @@
 -- DATA DA ÚLTIMA MODIFICAÇÃO: 18/06/2026
 -- ============================================================================
 
-require "LKS_Cooking_SpriteClassification"
+require "cooking/LKS_Cooking_SpriteClassification"
 require "TimedActions/ISBaseTimedAction"
 
 local LKS_Icons = require("LKS_Icons")
