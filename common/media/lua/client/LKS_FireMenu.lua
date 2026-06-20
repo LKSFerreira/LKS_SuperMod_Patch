@@ -27,7 +27,20 @@ if not CampingMenu then
     return
 end
 
+-- Fix vanilla: DryFirestarterBlock é fuel mas não tinder (oversight)
+if campingLightFireType and not campingLightFireType["DryFirestarterBlock"] then
+    campingLightFireType["DryFirestarterBlock"] = 30/60.0
+end
+
 local referenciaHandlerOriginal = CampingMenu.doCampingMenu
+
+local TEX_INFO = "media/ui/LKS_Info.png"
+
+--- Mapa de tradução para nomes de tile que o vanilla não traduz em PT-BR.
+local TRADUCAO_TILE_NAMES = {
+    ["Cooking Pit"]        = "Braseiro",
+    ["Simple Cooking Pit"] = "Braseiro Simples",
+}
 
 -- ============================================================================
 -- DETECÇÃO DE TARGET DE FOGO
@@ -145,6 +158,144 @@ local function aplicarIconeRemoverFogueira(opcao)
 end
 
 -- ============================================================================
+-- MENU HIERÁRQUICO DE ACENDER (Fonte de Calor → Material Inflamável)
+-- ============================================================================
+
+--- Constrói o menu hierárquico "Acender" para objetos a lenha/fogo.
+---
+--- Fluxo: Acender > [Fonte de Calor] > [Material Inflamável]
+--- Requer pelo menos 1 fonte de calor E 1 material inflamável (ou petróleo).
+--- Se faltar algo, exibe dica informativa.
+---
+--- @param jogador IsoPlayer O jogador.
+--- @param submenu ISContextMenu O submenu de fogo onde adicionar a opção.
+--- @param objetosMundo table Os objetos do mundo.
+--- @param temCombustivel boolean Se o alvo já tem combustível.
+--- @param infosCombustivel table Resultado de getNearbyFuelInfo.
+--- @param alvo table O alvo do fogo (campfire Lua ou IsoObject).
+--- @param acaoPetroleo ISBaseTimedAction Ação de acender com petróleo.
+--- @param acaoTinder ISBaseTimedAction Ação de acender com tinder.
+--- @param acaoKindling ISBaseTimedAction Ação de acender com fricção.
+local function montarMenuAcender(jogador, submenu, objetosMundo, temCombustivel, infosCombustivel, alvo, acaoPetroleo, acaoTinder, acaoKindling)
+    local fontesCalor = infosCombustivel.starters or {}
+    local materiaisInflamaveis = infosCombustivel.tinder or {}
+    local petrol = infosCombustivel.petrol
+    local percedWood = infosCombustivel.percedWood
+    local stick = infosCombustivel.stick or infosCombustivel.branch
+
+    local temFonteCalor = #fontesCalor > 0
+    local temTinder = #materiaisInflamaveis > 0
+    local temPetrol = temCombustivel and petrol ~= nil
+    local temFriccao = percedWood ~= nil and stick ~= nil and temCombustivel
+
+    local temMetodoValido = (temFonteCalor and (temTinder or temPetrol)) or temFriccao
+
+    local rotuloAcender = getText("ContextMenu_Light_fire") or "Acender"
+
+    -- Sem nenhuma fonte de calor NEM fricção: opção desabilitada diretamente
+    if not temFonteCalor and not temFriccao then
+        local opcao = submenu:addOption(rotuloAcender, objetosMundo, nil)
+        definirIconeOpcao(opcao, "Base.Matches")
+        opcao.notAvailable = true
+        opcao.toolTip = ISWorldObjectContextMenu.addToolTip()
+        opcao.toolTip.description = getText("IGUI_LKS_RequerFonteCalor")
+        return
+    end
+
+    -- Tem fontes de calor mas sem material inflamável: mostra fontes + dica do que falta
+    if temFonteCalor and not temTinder and not temPetrol and not temFriccao then
+        local opcaoAcender = submenu:addOption(rotuloAcender, objetosMundo, nil)
+        definirIconeOpcao(opcaoAcender, "Base.Matches")
+        local submenuFontes = ISContextMenu:getNew(submenu)
+        submenu:addSubMenu(opcaoAcender, submenuFontes)
+
+        for _, fonteCalor in ipairs(fontesCalor) do
+            local opcaoFonte = submenuFontes:addOption(fonteCalor:getDisplayName(), objetosMundo, nil)
+            opcaoFonte.iconTexture = fonteCalor:getTex()
+            opcaoFonte.notAvailable = true
+            opcaoFonte.toolTip = ISWorldObjectContextMenu.addToolTip()
+            opcaoFonte.toolTip.description = getText("IGUI_LKS_RequerMaterialInflamavel")
+        end
+        return
+    end
+
+    -- Criar opção "Acender" com submenu de fontes de calor
+    local opcaoAcender = submenu:addOption(rotuloAcender, objetosMundo, nil)
+    definirIconeOpcao(opcaoAcender, "Base.Matches")
+    local submenuFontes = ISContextMenu:getNew(submenu)
+    submenu:addSubMenu(opcaoAcender, submenuFontes)
+
+    -- Ordenar fontes e materiais
+    table.sort(fontesCalor, function(a, b)
+        return not string.sort(a:getDisplayName(), b:getDisplayName())
+    end)
+    if temTinder then
+        table.sort(materiaisInflamaveis, function(a, b)
+            return not string.sort(a:getDisplayName(), b:getDisplayName())
+        end)
+    end
+
+    -- Para cada fonte de calor: submenu com materiais inflamáveis
+    for _, fonteCalor in ipairs(fontesCalor) do
+        local nomeFonte = fonteCalor:getDisplayName()
+
+        if temTinder or temPetrol then
+            local opcaoFonte = submenuFontes:addOption(nomeFonte, objetosMundo, nil)
+            opcaoFonte.iconTexture = fonteCalor:getTex()
+            local submenuTinder = ISContextMenu:getNew(submenuFontes)
+            submenuFontes:addSubMenu(opcaoFonte, submenuTinder)
+
+            -- Materiais inflamáveis (tinder)
+            for _, tinder in ipairs(materiaisInflamaveis) do
+                local rotuloTinder = tinder:getName()
+                local quantidade = infosCombustivel.itemCount[tinder:getName()] or 1
+                if quantidade > 1 then
+                    rotuloTinder = rotuloTinder .. " (" .. quantidade .. ")"
+                end
+                local duracao = ISCampingMenu.getFuelDurationForItem(tinder) or 0
+
+                local opcaoTinder = submenuTinder:addActionsOption(rotuloTinder,
+                    ISCampingMenu.onLightFromLiterature, tinder:getFullType(), fonteCalor, alvo, acaoTinder)
+                opcaoTinder.itemForTexture = tinder
+                opcaoTinder.toolTip = ISWorldObjectContextMenu.addToolTip()
+                opcaoTinder.toolTip.description = getText("IGUI_BBQ_FuelAmount",
+                    ISCampingMenu.timeString(luautils.round(duracao, 2)))
+            end
+
+            -- Gasolina como acelerante (se disponível e há combustível no alvo)
+            if temPetrol then
+                local opcaoPetrol = submenuTinder:addActionsOption(petrol:getName(),
+                    ISCampingMenu.onLightFromPetrol, fonteCalor, petrol, alvo, acaoPetroleo)
+                opcaoPetrol.itemForTexture = petrol
+            end
+        else
+            -- Fonte disponível mas sem material inflamável (feedback)
+            local opcaoFonte = submenuFontes:addOption(nomeFonte, objetosMundo, nil)
+            opcaoFonte.iconTexture = fonteCalor:getTex()
+            opcaoFonte.notAvailable = true
+            opcaoFonte.toolTip = ISWorldObjectContextMenu.addToolTip()
+            opcaoFonte.toolTip.description = getText("IGUI_LKS_RequerMaterialInflamavel")
+        end
+    end
+
+    -- Fricção (percedWood + stick) — método alternativo sem fonte de calor
+    if temFriccao then
+        if jogador:getStats():get(CharacterStat.ENDURANCE) > 0 then
+            local rotuloFriccao = percedWood:getName() .. " + " .. stick:getName()
+            local opcaoFriccao = submenuFontes:addActionsOption(rotuloFriccao,
+                ISCampingMenu.onLightFromKindle, percedWood, stick, alvo, acaoKindling)
+            opcaoFriccao.itemForTexture = percedWood
+        else
+            local opcaoFriccao = submenuFontes:addOption(percedWood:getName(), objetosMundo, nil)
+            opcaoFriccao.itemForTexture = percedWood
+            opcaoFriccao.notAvailable = true
+            opcaoFriccao.toolTip = ISWorldObjectContextMenu.addToolTip()
+            opcaoFriccao.toolTip.description = getText("Tooltip_lightFireNoEndurance")
+        end
+    end
+end
+
+-- ============================================================================
 -- CONSTRUÇÃO DO CABEÇALHO E SUBMENU
 -- ============================================================================
 
@@ -160,15 +311,34 @@ local function obterCabecalhoMenu(informacoesAlvo)
 
     if informacoesAlvo.tipo == "fogueira" then
         local rotulo = getText("IGUI_Campfire_Campfire") or "Campfire"
-        local icone = (ContainerButtonIcons and ContainerButtonIcons.campfire) or nil
-        return rotulo, icone
+        local isoObjeto = informacoesAlvo.alvo and informacoesAlvo.alvo.getIsoObject
+            and informacoesAlvo.alvo:getIsoObject()
+        if isoObjeto then
+            local spriteObjeto = isoObjeto:getSprite()
+            if spriteObjeto then
+                local texturaSplit = getTexture(spriteObjeto:getName())
+                if texturaSplit then
+                    return rotulo, texturaSplit:splitIcon()
+                end
+            end
+        end
+        return rotulo, (ContainerButtonIcons and ContainerButtonIcons.campfire) or nil
     end
 
     local objeto = informacoesAlvo.alvo
-    local rotulo = (objeto and objeto.getTileName and objeto:getTileName()) or (getText("ContextMenu_Fire") or "Fire")
+    local nomeOriginal = (objeto and objeto.getTileName and objeto:getTileName()) or (getText("ContextMenu_Fire") or "Fire")
+    local rotulo = TRADUCAO_TILE_NAMES[nomeOriginal] or nomeOriginal
 
     if informacoesAlvo.tipo == "tile" then
-        -- Ícone por container type
+        -- Sprite real do objeto via splitIcon()
+        local spriteObjeto = objeto and objeto.getSprite and objeto:getSprite()
+        if spriteObjeto then
+            local texturaSplit = getTexture(spriteObjeto:getName())
+            if texturaSplit then
+                return rotulo, texturaSplit:splitIcon()
+            end
+        end
+        -- Fallback: ícone por container type
         if ContainerButtonIcons and objeto.getContainer then
             local container = objeto:getContainer()
             local tipoContainer = container and container.getType and container:getType() or nil
@@ -264,9 +434,7 @@ CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apen
         -- Informações
         local opcaoInfo = submenu:addOption(getText("ContextMenu_CampfireInfo"), objetosMundo,
             CampingMenu.onDisplayInfo, jogador, objetoFogueira, alvo)
-        if ContainerButtonIcons and ContainerButtonIcons.campfire then
-            opcaoInfo.iconTexture = ContainerButtonIcons.campfire
-        end
+        opcaoInfo.iconTexture = getTexture(TEX_INFO)
 
         if distancia < 4 then
             opcaoInfo.toolTip = ISToolTip:new()
@@ -285,9 +453,8 @@ CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apen
             aplicarIconeApagar(opcaoApagar)
         else
             local temCombustivel = (alvo.fuelAmt or 0) > 0
-            CampingMenu.doLightFireOption(jogador, submenu, objetosMundo, temCombustivel, infosCombustivel, alvo,
+            montarMenuAcender(jogador, submenu, objetosMundo, temCombustivel, infosCombustivel, alvo,
                 ISLightFromPetrol, ISLightFromLiterature, ISLightFromKindle)
-            aplicarIconeAcender(submenu, objetosMundo)
         end
 
         -- Adicionar Combustível + Remover Fogueira
@@ -317,13 +484,7 @@ CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apen
         opcaoInfo = submenu:addOption(rotuloInfo, objetosMundo, function() end)
     end
 
-    if ContainerButtonIcons then
-        if ehPropano then
-            opcaoInfo.iconTexture = ContainerButtonIcons.barbecuepropane
-        else
-            opcaoInfo.iconTexture = ContainerButtonIcons.campfire
-        end
-    end
+    opcaoInfo.iconTexture = getTexture(TEX_INFO)
 
     if distancia < 4 then
         local textoEstado
@@ -380,9 +541,8 @@ CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apen
             local AcenderLiteratura = rawget(_G, "ISBBQLightFromLiterature") or ISLightFromLiterature
             local AcenderKindling = rawget(_G, "ISBBQLightFromKindle") or ISLightFromKindle
 
-            CampingMenu.doLightFireOption(jogador, submenu, objetosMundo, temCombustivel, infosCombustivel, alvo,
+            montarMenuAcender(jogador, submenu, objetosMundo, temCombustivel, infosCombustivel, alvo,
                 AcenderPetroleo, AcenderLiteratura, AcenderKindling)
-            aplicarIconeAcender(submenu, objetosMundo)
         end
 
         -- Adicionar Combustível

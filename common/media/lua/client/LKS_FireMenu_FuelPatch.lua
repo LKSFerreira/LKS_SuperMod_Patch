@@ -60,6 +60,40 @@ local function buscarItemPorId(containers, idItem)
     return nil
 end
 
+--- Monta lista de IDs de TODOS os itens de combustível válidos do jogador.
+--- @param jogador IsoPlayer O jogador.
+--- @return table listaIds Lista de IDs numéricos de todos os combustíveis.
+local function montarListaIdsTodosCombustiveis(jogador)
+    if not jogador then return {} end
+
+    local containers = obterContainersJogador(jogador)
+    if not containers then return {} end
+
+    local listaIds = {}
+    local listaTemporaria = ArrayList.new()
+
+    for indice = 0, containers:size() - 1 do
+        local container = containers:get(indice)
+        if container and container.getAllEval then
+            container:getAllEval(ISCampingMenu.isValidFuel, listaTemporaria)
+
+            for indiceItem = 0, listaTemporaria:size() - 1 do
+                local item = listaTemporaria:get(indiceItem)
+                if item then
+                    local id = item.getID and item:getID()
+                    if id then
+                        listaIds[#listaIds + 1] = id
+                    end
+                end
+            end
+
+            listaTemporaria:clear()
+        end
+    end
+
+    return listaIds
+end
+
 --- Monta lista de IDs de itens que correspondem ao mesmo fullType e nome do item representativo.
 --- @param jogador IsoPlayer O jogador.
 --- @param itemRepresentativo InventoryItem O item usado como representante no menu.
@@ -226,7 +260,9 @@ function ISCampingMenu.doAddFuelOption(contexto, objetosMundo, combustivelAtual,
             totalItens = totalItens + quantidade
         end
         if totalItens > 1 then
-            opcao = submenuCombustivel:addActionsOption(getText("ContextMenu_AllWithCount", totalItens), ISCampingMenu.onAddAllFuel, alvo, acaoTemporizada, combustivelAtual)
+            local listaIdsTodos = montarListaIdsTodosCombustiveis(jogador)
+            opcao = submenuCombustivel:addActionsOption(getText("ContextMenu_AllWithCount", totalItens), ISCampingMenu.onAddMultipleFuelByIds, alvo, listaIdsTodos, acaoTemporizada, combustivelAtual)
+            opcao.iconTexture = getTexture("media/ui/LKS_Heat_On.png")
             opcao.toolTip = ISWorldObjectContextMenu.addToolTip()
             opcao.toolTip.description = getText("IGUI_BBQ_FuelAmount", ISCampingMenu.timeString(duracaoTotal))
             if (combustivelAtual + duracaoTotal) > getCampingFuelMax() then

@@ -1,3 +1,5 @@
 {
-    "ContextMenu_InstallLightswitch": "Install Light Switch"
+    "ContextMenu_InstallLightswitch": "Install Light Switch",
+    "ContextMenu_DestroyForFuel": "Destroy for Fuel",
+    "ContextMenu_No_LightingMethod": "No Lighting Method Available"
 }
