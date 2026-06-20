@@ -229,6 +229,7 @@ end
 -- HANDLER PRINCIPAL (substitui ISCampingMenu.doCampingMenu)
 -- ============================================================================
 
+---@diagnostic disable-next-line: duplicate-set-field
 CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apenasTeste)
     print("[LKS DEBUG FireMenu] doCampingMenu chamado - apenasTeste=" .. tostring(apenasTeste))
     if apenasTeste and ISWorldObjectContextMenu.Test then return true end

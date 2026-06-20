@@ -29,6 +29,7 @@
   },
   "diagnostics": {
     "globals": [
+      "ArrayList",
       "Building",
       "Container_ClothingDryer",
       "Container_ClothingWasher",
@@ -56,6 +57,7 @@
       "ModData",
       "NR_OvenPanel",
       "Perks",
+      "ScriptManager",
       "State",
       "Translator",
       "UIFont",
