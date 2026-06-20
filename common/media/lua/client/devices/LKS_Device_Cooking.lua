@@ -291,7 +291,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     local ehMicroondas = instanceof(objetoEletrico, "IsoMicrowave")
     local ehFireplace = instanceof(objetoEletrico, "IsoFireplace")
 
-    print("[LKS DEBUG Cooking] construirMenuContexto chamado - ehFogao=" .. tostring(ehFogao) .. " ehMicroondas=" .. tostring(ehMicroondas) .. " ehFireplace=" .. tostring(ehFireplace))
 
     local chaveConfiguracao = nil
     if ehFogao then
@@ -325,7 +324,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
         tipoFogao = ClassificacaoSprites.obterTipoFogao(objetoEletrico)
     end
 
-    print("[LKS DEBUG Cooking] tipoFogao=" .. tostring(tipoFogao) .. " nomeObjeto=" .. tostring(nomeObjetoTraduzido))
 
     -- Detecta fonte de energia usando o sistema unificado
     local jogador = getSpecificPlayer(jogadorNumero)
@@ -340,7 +338,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
             fonteEnergia = SistemaPropano.verificarFonteEnergia(objetoEletrico, jogador, tipoFogao)
         end
         temEnergia = fonteEnergia.disponivel
-        print("[LKS DEBUG Cooking] fonteEnergia.tipo=" .. tostring(fonteEnergia.tipo) .. " disponivel=" .. tostring(fonteEnergia.disponivel))
     else
         -- Micro-ondas: mantém lógica original (só eletricidade)
         if containerInventario and containerInventario:isPowered() then
@@ -369,23 +366,19 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     local submenuVanilla = nil
     local indicesParaRemover = {}
 
-    print("[LKS DEBUG Cooking] Passo 1: buscando opcoes vanilla com nome='" .. tostring(nomeObjetoTraduzido) .. "' total_opcoes=" .. tostring(#menuContexto.options))
 
     for indice, opcao in ipairs(menuContexto.options) do
         if opcao.name == nomeObjetoTraduzido and opcao.subOption then
             if not opcaoVanillaEncontrada then
                 opcaoVanillaEncontrada = opcao
                 submenuVanilla = menuContexto:getSubMenu(opcao.subOption)
-                print("[LKS DEBUG Cooking] Passo 1: sequestrou opcao vanilla indice=" .. indice)
             else
                 table.insert(indicesParaRemover, indice)
-                print("[LKS DEBUG Cooking] Passo 1: marcou duplicata para remocao indice=" .. indice)
             end
         end
     end
 
     -- Remove entradas duplicadas do vanilla (de trás para frente para não invalidar índices)
-    print("[LKS DEBUG Cooking] Passo 1: removendo " .. #indicesParaRemover .. " duplicata(s)")
     for idx = #indicesParaRemover, 1, -1 do
         table.remove(menuContexto.options, indicesParaRemover[idx])
     end
@@ -403,12 +396,10 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     if submenuVanilla then
         submenu = submenuVanilla
         opcaoMenuPai = opcaoVanillaEncontrada
-        print("[LKS DEBUG Cooking] Passo 2: sequestrou submenu vanilla (opcoes=" .. tostring(submenu.options and #submenu.options or 0) .. ")")
     else
         opcaoMenuPai = menuContexto:addOptionOnTop(nomeObjetoTraduzido)
         submenu = ISContextMenu:getNew(menuContexto)
         menuContexto:addSubMenu(opcaoMenuPai, submenu)
-        print("[LKS DEBUG Cooking] Passo 2: criou submenu proprio (fallback)")
 
         -- No fallback, usa o sprite real do objeto via splitIcon()
         local spriteObjeto = objetoEletrico:getSprite()
@@ -433,7 +424,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
             -- Fogão antigo: NÃO limpa o submenu vanilla — as opções de
             -- combustível sólido, acender e destruir já são gerenciadas
             -- pelo ISCampingMenu/ISBBQMenu nativamente.
-            print("[LKS DEBUG Cooking] Passo 3: mantendo opcoes vanilla do submenu (tipo antigo, " .. #submenu.options .. " opcoes)")
         else
             local textoLigarVanilla = getText("ContextMenu_TurnOn")
             local textoDesligarVanilla = getText("ContextMenu_TurnOff")
@@ -474,7 +464,6 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     elseif tipoFogao == "antigo" then
         -- Fogão antigo: o vanilla já gerencia acender/apagar via ISCampingMenu.
         -- Não injetamos nossas opções — apenas garantimos entrada única no menu.
-        print("[LKS DEBUG Cooking] Passo 4: tipo antigo - usando opcoes vanilla intactas")
     else
         verboAcender = getText("ContextMenu_TurnOn") or "Ligar"
         verboApagar = getText("ContextMenu_TurnOff") or "Desligar"

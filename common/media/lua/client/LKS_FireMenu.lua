@@ -134,7 +134,7 @@ end
 -- ============================================================================
 
 local function aplicarIconeAcender(contexto, objetosMundo)
-    local rotulo = getText("ContextMenu_Light_fire") or "Light Fire"
+    local rotulo = getText("ContextMenu_Light_fire") or "Acender"
     local opcao = buscarOpcaoNoContexto(contexto, objetosMundo, rotulo)
     if opcao then definirIconeOpcao(opcao, "Base.Matches") end
 end
@@ -148,9 +148,25 @@ local function aplicarIconePropano(opcao)
 end
 
 local function aplicarIconeDestruirParaCombustivel(contexto, objetosMundo)
-    local rotulo = getText("ContextMenu_DestroyForFuel") or "Destroy for Fuel"
+    local rotulo = getText("ContextMenu_DestroyForFuel") or "Transformar em Combustível"
+    -- Busca opção com ou sem submenu (notAvailable não cria submenu)
     local opcao = buscarOpcaoNoContexto(contexto, objetosMundo, rotulo)
-    if opcao then definirIconeOpcao(opcao, "Base.FirewoodBundle") end
+    if not opcao then
+        for indice = #contexto.options, 1, -1 do
+            local op = contexto.options[indice]
+            if type(op) == "table" and op.name == rotulo and op.target == objetosMundo then
+                opcao = op
+                break
+            end
+        end
+    end
+    if not opcao then return end
+
+    if opcao.notAvailable then
+        opcao.iconTexture = getTexture("media/ui/LKS_Fuel_Disabled.png")
+    else
+        definirIconeOpcao(opcao, "Base.FirewoodBundle")
+    end
 end
 
 local function aplicarIconeRemoverFogueira(opcao)
@@ -306,11 +322,11 @@ end
 --- @return Texture|nil icone Textura do ícone.
 local function obterCabecalhoMenu(informacoesAlvo)
     if not informacoesAlvo then
-        return (getText("ContextMenu_Fire") or "Fire"), nil
+        return (getText("ContextMenu_Fire") or "Fogo"), nil
     end
 
     if informacoesAlvo.tipo == "fogueira" then
-        local rotulo = getText("IGUI_Campfire_Campfire") or "Campfire"
+        local rotulo = getText("IGUI_Campfire_Campfire") or "Fogueira"
         local isoObjeto = informacoesAlvo.alvo and informacoesAlvo.alvo.getIsoObject
             and informacoesAlvo.alvo:getIsoObject()
         if isoObjeto then
@@ -326,7 +342,7 @@ local function obterCabecalhoMenu(informacoesAlvo)
     end
 
     local objeto = informacoesAlvo.alvo
-    local nomeOriginal = (objeto and objeto.getTileName and objeto:getTileName()) or (getText("ContextMenu_Fire") or "Fire")
+    local nomeOriginal = (objeto and objeto.getTileName and objeto:getTileName()) or (getText("ContextMenu_Fire") or "Fogo")
     local rotulo = TRADUCAO_TILE_NAMES[nomeOriginal] or nomeOriginal
 
     if informacoesAlvo.tipo == "tile" then
@@ -401,7 +417,6 @@ end
 
 ---@diagnostic disable-next-line: duplicate-set-field
 CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apenasTeste)
-    print("[LKS DEBUG FireMenu] doCampingMenu chamado - apenasTeste=" .. tostring(apenasTeste))
     if apenasTeste and ISWorldObjectContextMenu.Test then return true end
     local jogador = getSpecificPlayer(jogadorNumero)
     if not jogador or (jogador.getVehicle and jogador:getVehicle()) then return end
@@ -412,14 +427,12 @@ CampingMenu.doCampingMenu = function(jogadorNumero, contexto, objetosMundo, apen
         return
     end
 
-    print("[LKS DEBUG FireMenu] alvo encontrado - tipo=" .. tostring(informacoesAlvo.tipo) .. " ehPropano=" .. tostring(informacoesAlvo.ehPropano))
 
     if apenasTeste then
         return ISWorldObjectContextMenu.setTest()
     end
 
     local submenu = criarSubmenuFogo(contexto, objetosMundo, informacoesAlvo)
-    print("[LKS DEBUG FireMenu] submenu criado - total opcoes no contexto=" .. tostring(#contexto.options))
     local alvo = informacoesAlvo.alvo
     local combustivelAtual = informacoesAlvo.combustivelAtual or 0
     local infosCombustivel = CampingMenu.getNearbyFuelInfo(jogador)
@@ -561,11 +574,8 @@ do
     if ISBBQMenuRef then
         local funcaoOriginal = ISBBQMenuRef.OnFillWorldObjectContextMenu
         ISBBQMenuRef.OnFillWorldObjectContextMenu = function(...)
-            print("[LKS DEBUG FireMenu] ISBBQMenu.OnFillWorldObjectContextMenu CHAMADO (deveria estar neutralizado!)")
         end
-        print("[LKS DEBUG FireMenu] ISBBQMenu.OnFillWorldObjectContextMenu neutralizado (era " .. tostring(funcaoOriginal) .. ")")
     else
-        print("[LKS DEBUG FireMenu] ISBBQMenu NAO encontrado no momento da carga")
     end
 end
 
@@ -581,10 +591,8 @@ local function limparDuplicatasFireMenu(jogadorNumero, contexto, objetosMundo, a
     if apenasTeste then return end
     if not contexto or not contexto.options then return end
 
-    print("[LKS DEBUG FireMenu] limparDuplicatas - total opcoes=" .. #contexto.options)
     for indice, opcao in ipairs(contexto.options) do
         if type(opcao) == "table" then
-            print("[LKS DEBUG FireMenu]   opcao[" .. indice .. "] name='" .. tostring(opcao.name) .. "' subOption=" .. tostring(opcao.subOption ~= nil))
         end
     end
 
@@ -597,7 +605,6 @@ local function limparDuplicatasFireMenu(jogadorNumero, contexto, objetosMundo, a
             if nome then
                 if nomesVistos[nome] then
                     table.insert(indicesParaRemover, indice)
-                    print("[LKS DEBUG FireMenu]   DUPLICATA detectada: '" .. nome .. "' no indice " .. indice)
                 else
                     nomesVistos[nome] = true
                 end
@@ -605,7 +612,6 @@ local function limparDuplicatasFireMenu(jogadorNumero, contexto, objetosMundo, a
         end
     end
 
-    print("[LKS DEBUG FireMenu] removendo " .. #indicesParaRemover .. " duplicata(s)")
     for idx = #indicesParaRemover, 1, -1 do
         table.remove(contexto.options, indicesParaRemover[idx])
     end
