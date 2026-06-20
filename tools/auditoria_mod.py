@@ -1048,7 +1048,7 @@ def main():
     )
     parser_docapi.add_argument(
         "--saida",
-        default=os.path.join(diretorio_raiz_padrao, "documents", "referencia_api_interna_lks.md"),
+        default=os.path.join(diretorio_raiz_padrao, ".metadocs", "referencia_api_interna_lks.md"),
         help="Caminho do arquivo Markdown de saída."
     )
 
@@ -1082,4 +1082,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -23,7 +23,7 @@
       ".metadocs",
       "scratch",
       "tools",
-      "documents"
+      "docs"
     ],
     "checkThirdParty": false
   },

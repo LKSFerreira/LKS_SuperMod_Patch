@@ -13,34 +13,29 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 
 - **Mecânica de Fogões e Fornos (em progresso)**: Recategorização dos fogões em 3 tipos (Convencional/Antigo/Indução) com mecânicas de propano, combustível sólido, eletricidade, qualidade de comida e botijões. Design em `.metadocs/feat/mecanica_fogoes_fornos.md`, pesquisa em `docs/pesquisa_fogoes_fase1.md`. Itens implementados, menu de contexto funcional. Pendente: teste funcional de cozimento pós-corte de propano, consumo de propano do botijão, preenchimento de sprite classification.
 - **Implementação Nativa do Mod de Cheats**: Absorver nativamente o mod de cheats independente (spawner de itens, forçar estados elétricos/hidráulicos, validar mecânicas). Mod ainda não incorporado ao LKS SuperMod Patch.
-- **Botão de Ajuda (?) na Interface de Energia**: Ver dívida técnica abaixo.
 - **Biodigestor e Gás Renovável**: Mecânica independente de longo prazo. Construção craftável que converte resíduos orgânicos em biogás para restaurar o fornecimento de propano pós-corte. Requer Farming + Carpintaria. Será documentada em arquivo de design próprio quando priorizada.
 
-## Dívidas Técnicas
-
-- [x] **Tradução da Categoria de Recipientes**: Corrigir a categoria nativa exibida para itens que comportam fluidos. O jogo exibe genericamente *"Recipiente de Água"*. A proposta é ajustar a tradução (de forma estática e consistente) para exibir *"Recipiente de Líquido"* para todos esses recipientes, independente do fluido atual.
+## TODO de Features
 
 - [ ] **Botão de Ajuda (?) na Interface**: Criar um botão com o ícone "?" na barra da janela de informações de energia. Ao clicar, exibir uma explicação didática da mecânica de compartilhamento de carga de múltiplos geradores e das regras de controle de temperatura (ex: ligar aquecimento no inverno e standby/snowflake no verão para economizar combustível).
 
-- [ ] **Atenção à Compatibilidade com [B42] Useful Barrels**: O criador de *Generator Powered Buildings* (Beathoven) pode ter reaproveitado lógica/arquivos do mod *[B42] Useful Barrels* (particularmente nas mecânicas de barris/combustível). Ao traduzir ou alterar o *Useful Barrels* no futuro, deve-se auditar possíveis colisões de escopo, arquivos clonados ou hooks conflitantes para evitar falhas ou quebras em ambos os sistemas.
-
 - [ ] **Ícones Personalizados do Menu de Botijão de Gás**: Criar ícones PNG dedicados para as opções de menu de contexto de botijão. Atualmente reutiliza `LKS_Connect.png` (Instalar/Trocar) e `LKS_Disconnect.png` (Desinstalar), que são ícones genéricos do sistema elétrico. Desenhar ícones temáticos de gás/botijão para diferenciação visual.
-
-- [ ] **Energização por Tile Afeta Todos os Objetos**: `chunk:addGeneratorPos()` usado para manter fogão a propano aceso energiza o TILE inteiro (não só o fogão). Se houver TV, rádio ou lâmpada no mesmo tile, ficam energizados junto. Na prática, fogões raramente compartilham tile com eletrônicos, mas é um efeito colateral documentado. Solução definitiva requer API Java para energizar por objeto (inexistente em B42).
 
 - [ ] **Mapeamento Completo de Propriedades de CraftRecipe (ZedScript)**: A Indie Stone não documenta oficialmente todas as propriedades e valores válidos de `craftRecipe` (ex: `timedAction`, `Tags`, `flags`, `mode`). Realizar engenharia reversa nos scripts vanilla para catalogar e documentar em YAML todas as propriedades aceitas, valores válidos de `timedAction` (com descrição da animação de cada um), `Tags` de estação de craft, `flags` de items e `mode` de consumo. Salvar em `docs/data/` no mesmo formato de `propriedades_sprite_objetos_pz.yaml`.
 
-- [x] **Roadmap e Histórico Desatualizados**: Os commits recentes do sprint de Fogões/Propano (sistema de propano, qualidade de comida, modo bateria para indução, botijão, receitas, itens elétricos) não estão refletidos no roadmap nem no histórico. Atualizar ambos os arquivos com o progresso parcial da feature "Mecânica de Fogões e Fornos".
+## Bugs, Riscos e Limitações Conhecidas
+
+- [ ] **Atenção à Compatibilidade com [B42] Useful Barrels**: O criador de *Generator Powered Buildings* (Beathoven) pode ter reaproveitado lógica/arquivos do mod *[B42] Useful Barrels* (particularmente nas mecânicas de barris/combustível). Ao traduzir ou alterar o *Useful Barrels* no futuro, deve-se auditar possíveis colisões de escopo, arquivos clonados ou hooks conflitantes para evitar falhas ou quebras em ambos os sistemas.
+
+- [ ] **Energização por Tile Afeta Todos os Objetos**: `chunk:addGeneratorPos()` usado para manter fogão a propano aceso energiza o TILE inteiro (não só o fogão). Se houver TV, rádio ou lâmpada no mesmo tile, ficam energizados junto. Na prática, fogões raramente compartilham tile com eletrônicos, mas é um efeito colateral documentado. Solução definitiva requer API Java para energizar por objeto (inexistente em B42).
+
+- [ ] **Driver de Culinária Não Trata IsoFireplace Corretamente**: `LKS_Device_Cooking.lua` registra `IsoFireplace` em `classesJava` mas `construirMenuContexto()` só verifica `instanceof(..., "IsoStove")`. IsoFireplace entra no fluxo mas cai no branch de micro-ondas (só eletricidade). Problemas decorrentes: (1) `acenderFogaoPropano()` é chamado para fogão antigo — executa `addGeneratorPos` + `ISToggleStoveAction` desnecessariamente, pois IsoFireplace tem APIs próprias de combustível sólido; (2) `apagarFogaoPropano()` executa `removeGeneratorPos` + `setActivated(false)` em vez da lógica vanilla de extinguir; (3) `verificarFonteEnergia()` retorna `disponivel = true` incondicionalmente para tipo "antigo" sem verificar se há combustível no IsoFireplace. Resolver ao implementar a mecânica dedicada do fogão antigo (Fase 3 do design).
+
+## Dívidas Técnicas
 
 - [ ] **Arquivos Lua Fora da Hierarquia Documentada**: `LKS_Cooking_Quality.lua`, `LKS_Cooking_PropanoSystem.lua` e `LKS_Cooking_SpriteClassification.lua` estão na raiz de `shared/` ao invés de em subdiretório temático. A arquitetura documenta `core/`, `data/`, `utils/`, `actions/`. Avaliar criação de `shared/cooking/` ou redistribuição nos subdiretórios existentes.
 
-- [x] **Markdown Solto na Raiz do Repositório**: `persona_prompt.md`, `prompt_crriar_editar_imagens_assets.md` (typo no nome) e `verificar_problemas_compatibilidades.md` estão na raiz sem organização. Migrar para `.metadocs/` ou `documents/` conforme o conteúdo.
-
 - [ ] **Sem Manifesto de Dependências Python**: Nenhum `pyproject.toml` ou inline script dependencies nos 6 scripts de `tools/`. Ambiente não é reproduzível por terceiros via `uv`. Adicionar manifesto ou PEP 723 inline metadata.
-
-- [x] **`README.MD` com Extensão Maiúscula**: O arquivo na raiz usa `.MD` ao invés da convenção padrão `.md`. Renomear para `README.md`.
-
-- [ ] **Driver de Culinária Não Trata IsoFireplace Corretamente**: `LKS_Device_Cooking.lua` registra `IsoFireplace` em `classesJava` mas `construirMenuContexto()` só verifica `instanceof(..., "IsoStove")`. IsoFireplace entra no fluxo mas cai no branch de micro-ondas (só eletricidade). Problemas decorrentes: (1) `acenderFogaoPropano()` é chamado para fogão antigo — executa `addGeneratorPos` + `ISToggleStoveAction` desnecessariamente, pois IsoFireplace tem APIs próprias de combustível sólido; (2) `apagarFogaoPropano()` executa `removeGeneratorPos` + `setActivated(false)` em vez da lógica vanilla de extinguir; (3) `verificarFonteEnergia()` retorna `disponivel = true` incondicionalmente para tipo "antigo" sem verificar se há combustível no IsoFireplace. Resolver ao implementar a mecânica dedicada do fogão antigo (Fase 3 do design).
 
 ## Concluído
 
@@ -59,7 +54,7 @@ Use este arquivo como fonte de verdade do andamento do projeto ou estudo.
 - [x] **Ferramentas Python e Documentação (15/06/2026)**: Melhorias em `LKS_Tools.py`, criação de `.github/copilot-instructions.md` e `configurar_terminal.py` para corrigir Shift+Enter no Antigravity IDE e MinTTY.
 - [x] **Refactor Cirúrgico do Driver de Culinária (16/06/2026)**: Sequestro do submenu vanilla e filtragem cirúrgica de itens em `LKS_Device_Cooking.lua`.
 - [x] **Suíte de Desenvolvimento Unificada — LKS_Debug_Tool (16–17/06/2026)**: Ferramenta de depuração própria (F12) com sistema de abas escalável: Lua Reloader (recarga cirúrgica de scripts), Inspetor de Menu de Contexto e Inspetor de Objetos com tooltips dinâmicos via `LKS_Debug_TooltipData.lua` (303 propriedades de sprite mapeadas). Traduções PT-BR/EN e correções de layout. Não relacionada ao mod de cheats externo.
-- [x] **Consolidação de Documentação (17/06/2026)**: Migração de `mecanicas/` para `documents/`, documentação de 303 propriedades de sprite e mapeamento de ferramentas/materiais.
+- [x] **Consolidação de Documentação (17/06/2026)**: Migração de `mecanicas/` para `docs/`, documentação de 303 propriedades de sprite e mapeamento de ferramentas/materiais.
 - [x] **Sprint de Fogões — Itens e Sistema de Propano (17–18/06/2026)**: Implementação de 9 itens (Fogão de Indução, Botijões 15kg/45kg, Acendedor Improvisado, Bobina, Inversor, Transformador, Revista e Manual), sistema de propano encanado com corte por dia, fonte de calor manual, modo bateria para indução, sistema de qualidade de comida e integração IsoFireplace.
 - [x] **Sprint de Fogões — Menu de Contexto de Botijão (18/06/2026)**: Menu de instalar/trocar/desinstalar botijão com dupla validação (fogão↔botijão), tooltip estilo Desmontar (sprite grande + colunas `<SETX>`), ícones via `splitIcon()`, nomes via `getMoveableDisplayName()`. Reutilização integral da infra vanilla.
 - [x] **Infraestrutura de Documentação de API (18/06/2026)**: Comando `documentar-api` no auditoria_mod.py (extração automática de 785 funções EmmyLua), referência curada de padrões vanilla PZ (`referencia_padroes_vanilla_pz.md`), organização de markdown soltos da raiz.

@@ -18,9 +18,9 @@ Gera os arquivos 'console_sanitizado.txt' (log limpo) e 'console_erros.txt'
 
 COMO USAR:
 - Execução Padrão (utiliza o log oficial detectado no sistema do usuário):
-    python tools/sanitiza_log.py
+    python tools/filtrar_console_pz.py
 - Informando um arquivo de log customizado:
-    python tools/sanitiza_log.py <caminho_console.txt> [<caminho_saida_sanitizado.txt>]
+    python tools/filtrar_console_pz.py <caminho_console.txt> [<caminho_saida_sanitizado.txt>]
 ================================================================================
 """
 

@@ -74,7 +74,7 @@ python tools/LKS_Tools.py -a           # Auditar imagens órfãs
 
 ---
 
-## 4. `sanitiza_log.py` — Higienizador de logs do jogo
+## 4. `filtrar_console_pz.py` — Filtrador de logs do jogo
 
 **Propósito:** Filtra o `console.txt` do PZ removendo ruídos de outros mods para isolar logs, mensagens de debug e erros do LKS SuperMod Patch. Gera `console_sanitizado.txt` e `console_erros.txt`.
 
@@ -83,8 +83,8 @@ python tools/LKS_Tools.py -a           # Auditar imagens órfãs
 - Para isolar stack traces específicos do LKS
 
 ```bash
-python tools/sanitiza_log.py                          # Detecta console.txt automaticamente
-python tools/sanitiza_log.py <console.txt> [<saida>]  # Informando caminho manual
+python tools/filtrar_console_pz.py                          # Detecta console.txt automaticamente
+python tools/filtrar_console_pz.py <console.txt> [<saida>]  # Informando caminho manual
 ```
 
 ---
@@ -117,7 +117,7 @@ python tools/configurar_terminal.py
 
 ---
 
-## 7. `sanitizar_logs_lua.py` — Sanitizador de acentos em logs Lua
+## 7. `normaliza_utf8_para_ascii_lua.py` — Sanitizador de acentos em logs Lua
 
 **Propósito:** Substitui caracteres acentuados PT-BR por equivalentes ASCII **apenas** em strings diretas de log/debug (chamadas ao `Registrador`, `Logger` e `print`). Preserva integralmente strings aninhadas em `getText()`, textos de UI e traduções.
 
@@ -126,8 +126,8 @@ python tools/configurar_terminal.py
 - Quando o console do PZ exibir caracteres quebrados (`constru  o`, `lumin rias`)
 
 ```bash
-python tools/sanitizar_logs_lua.py                # Dry-run (mostra substituições sem aplicar)
-python tools/sanitizar_logs_lua.py --aplicar      # Aplica as substituições nos arquivos
+python tools/normaliza_utf8_para_ascii_lua.py                # Dry-run (mostra substituições sem aplicar)
+python tools/normaliza_utf8_para_ascii_lua.py --aplicar      # Aplica as substituições nos arquivos
 ```
 
 ---
@@ -139,7 +139,7 @@ python tools/sanitizar_logs_lua.py --aplicar      # Aplica as substituições no
 | `gerar_luarc.py` | `python tools/gerar_luarc.py` | A cada update do PZ ou setup novo |
 | `auditoria_mod.py` | `python tools/auditoria_mod.py validar-sintaxe` | Antes de cada commit Lua |
 | `LKS_Tools.py` | `python tools/LKS_Tools.py` | Ao trabalhar com assets |
-| `sanitiza_log.py` | `python tools/sanitiza_log.py` | Ao depurar erros |
+| `filtrar_console_pz.py` | `python tools/filtrar_console_pz.py` | Ao depurar erros |
 | `atualizar_dicionario_tilesets.py` | `python tools/atualizar_dicionario_tilesets.py` | Raro (update do PZ) |
 | `configurar_terminal.py` | `python tools/configurar_terminal.py` | Uma vez por máquina |
-| `sanitizar_logs_lua.py` | `python tools/sanitizar_logs_lua.py --aplicar` | Após adicionar logs com acentos |
+| `normaliza_utf8_para_ascii_lua.py` | `python tools/normaliza_utf8_para_ascii_lua.py --aplicar` | Após adicionar logs com acentos |

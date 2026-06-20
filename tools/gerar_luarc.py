@@ -116,7 +116,7 @@ DIRETORIOS_IGNORADOS = [
     ".metadocs",
     "scratch",
     "tools",
-    "documents",
+    "docs",
 ]
 
 # Regex compilados

@@ -13,9 +13,9 @@ NÃO TOCA em strings aninhadas em getText(), traduções, ou strings visíveis a
 
 COMO USAR:
 - Dry-run (mostra o que mudaria sem aplicar):
-    python tools/sanitizar_logs_lua.py
+    python tools/normaliza_utf8_para_ascii_lua.py
 - Aplicar mudanças:
-    python tools/sanitizar_logs_lua.py --aplicar
+    python tools/normaliza_utf8_para_ascii_lua.py --aplicar
 ================================================================================
 """
 
