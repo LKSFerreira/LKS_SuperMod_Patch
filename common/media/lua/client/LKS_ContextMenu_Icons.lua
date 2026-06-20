@@ -85,6 +85,26 @@ local function injetarIconesPegar(jogadorIndice, menuContexto, objetosMundo, tes
             opcao.iconTexture = texturaGrab
         end
     end
+
+    -- Injeta ícone "Andar até"
+    local textoAndar = getText("ContextMenu_Walk_to") or "Andar até"
+    local opcaoAndar = menuContexto:getOptionFromName(textoAndar)
+    if opcaoAndar and not opcaoAndar.iconTexture then
+        local texturaAndar = getTexture("media/ui/LKS_Menu_AndarAte.png")
+        if texturaAndar then
+            opcaoAndar.iconTexture = texturaAndar
+        end
+    end
+
+    -- Injeta ícone "Jardinagem"
+    local textoJardinagem = getText("ContextMenu_Gardening") or "Jardinagem"
+    local opcaoJardinagem = menuContexto:getOptionFromName(textoJardinagem)
+    if opcaoJardinagem and not opcaoJardinagem.iconTexture then
+        local texturaJardinagem = getTexture("media/ui/LKS_Menu_Jardinagem.png")
+        if texturaJardinagem then
+            opcaoJardinagem.iconTexture = texturaJardinagem
+        end
+    end
 end
 
 Events.OnGameStart.Add(function()
