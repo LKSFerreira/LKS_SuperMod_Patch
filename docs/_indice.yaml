@@ -77,6 +77,14 @@ api_engine:
       e sistema de eventos (OnGameStart, EveryOneMinute, OnFillWorldObjectContextMenu).
     tags: [jogador, inventario, traducao, getText, eventos, DisplayName, pericia]
 
+  - arquivo: pz_sistema_traducao.md
+    titulo: Sistema de Tradução — ItemName.json e Arquivos de Idioma
+    descricao: >
+      Padrão correto para tradução de nomes de itens (ItemName.json),
+      formato de keys (fullType sem prefixo), erros comuns (colocar em IG_UI.json),
+      ordem de resolução do engine, referência de outros mods.
+    tags: [traducao, ItemName, getText, getDisplayName, locale, idioma, i18n]
+
   - arquivo: pz_isoven_ui.md
     titulo: ISOvenUI — Janela Vanilla do Fogão
     descricao: >
