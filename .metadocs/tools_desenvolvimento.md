@@ -119,7 +119,7 @@ python tools/configurar_terminal.py
 
 ## 7. `sanitizar_logs_lua.py` — Sanitizador de acentos em logs Lua
 
-**Propósito:** Substitui caracteres acentuados PT-BR por equivalentes ASCII **apenas** em strings de log/debug (chamadas ao `Registrador` e `print` com prefixo `[LKS`). Preserva integralmente fallbacks de `getText()`, strings de UI e traduções.
+**Propósito:** Substitui caracteres acentuados PT-BR por equivalentes ASCII **apenas** em strings diretas de log/debug (chamadas ao `Registrador`, `Logger` e `print`). Preserva integralmente strings aninhadas em `getText()`, textos de UI e traduções.
 
 **Quando usar:**
 - Após adicionar novos logs com acentos PT-BR

@@ -314,7 +314,7 @@ function LKS_EletricidadeConstrucao_DisconnectBuilding:complete()
     end
     
     if DeveDizerAoPersonagem(AmbienteExecucao) then
-        self.character:Say(getText("IGUI_DisconnectedFromBuilding") or "Desconectado do edifício")
+        self.character:Say(getText("IGUI_DisconnectedFromBuilding") or "Desconectado da construção")
     end
     
     return true

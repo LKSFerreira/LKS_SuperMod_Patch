@@ -543,7 +543,7 @@ function LKS_EletricidadeConstrucao_ConnectBuilding:complete()
     local maximoGeradores = (LKS_EletricidadeConstrucao.Constants and LKS_EletricidadeConstrucao.Constants.BUILDING 
                           and LKS_EletricidadeConstrucao.Constants.BUILDING.MAX_GENERATORS_PER_BUILDING) or 10
     local mensagem = string.format("%s (%d/%d)", 
-        getText("IGUI_ConnectedToBuilding") or "Conectado ao edifício",
+        getText("IGUI_ConnectedToBuilding") or "Conectado à construção",
         quantidadeConectados, maximoGeradores)
         
     if DeveDizerAoPersonagem(AmbienteExecucao) then

@@ -8,8 +8,8 @@ Versão: 1.0 (Project Zomboid Build 42)
 
 PROPÓSITO:
 Substitui caracteres acentuados PT-BR por equivalentes ASCII APENAS em strings
-de log/debug (Registrador.Info/Warn/Error, print com tags [LKS]).
-NÃO TOCA em fallbacks de getText(), traduções, ou strings visíveis ao jogador.
+diretas de log/debug (Registrador.Info/Warn/Error, Logger.*, print, error).
+NÃO TOCA em strings aninhadas em getText(), traduções, ou strings visíveis ao jogador.
 
 COMO USAR:
 - Dry-run (mostra o que mudaria sem aplicar):
@@ -50,80 +50,108 @@ MAPA_ACENTOS = str.maketrans({
     'ç': 'c', 'Ç': 'C',
 })
 
-# Padrões que identificam linhas de LOG (onde sanitizar)
-PADROES_LOG = [
-    re.compile(r'Registrador\.(Info|Warn|Error|Debug)\s*\('),
-    re.compile(r'Logger\.(Info|Warn|Error|Debug)\s*\('),
-    re.compile(r'LKS_EletricidadeConstrucao\.(Warn|Info|Error|Debug)\s*\('),
-    re.compile(r'LKS_EletricidadeConstrucao\.Core\.Logger\.(Info|Warn|Error|Debug)\s*\('),
-    re.compile(r'string\.format\s*\('),
-    re.compile(r'error\s*\('),
-    re.compile(r'\.Print\s*\('),
-    re.compile(r'print\s*\(\s*["\'].*\[LKS'),
-    re.compile(r'print\s*\(\s*["\']\[LKS'),
-]
+# Funções aninhadas que devem preservar o texto original.
+FUNCOES_PROTEGIDAS = {
+    "addOption",
+    "addOptionOnTop",
+    "getText",
+    "setName",
+    "toolTip",
+}
 
-# Padrões que identificam strings PROTEGIDAS (NUNCA sanitizar)
-PADROES_PROTEGIDOS = [
-    re.compile(r'getText\s*\(.*\)\s+or\s+["\']'),
-    re.compile(r'\.(description|name)\s*='),
-    re.compile(r'addOption\s*\('),
-    re.compile(r'addOptionOnTop\s*\('),
-    re.compile(r'toolTip'),
-    re.compile(r'setName\s*\('),
+# Chamadas que podem iniciar um trecho de log.
+PADROES_INICIO_LOG = [
+    re.compile(r'Registrador\.(Info|Warn|Error|Debug)\Z'),
+    re.compile(r'Logger\.(Info|Warn|Error|Debug)\Z'),
+    re.compile(r'LKS_EletricidadeConstrucao\.(Warn|Info|Error|Debug)\Z'),
+    re.compile(r'LKS_EletricidadeConstrucao\.Core\.Logger\.(Info|Warn|Error|Debug)\Z'),
+    re.compile(r'error\Z'),
+    re.compile(r'\.Print\Z'),
+    re.compile(r'print\Z'),
 ]
 
 
-def linha_eh_log(linha: str) -> bool:
-    """Verifica se a linha contém chamada de log/debug."""
-    for padrao in PADROES_LOG:
-        if padrao.search(linha):
+def token_eh_inicio_log(nome_funcao: str) -> bool:
+    """Verifica se um token corresponde a uma chamada que inicia log."""
+    for padrao in PADROES_INICIO_LOG:
+        if padrao.fullmatch(nome_funcao):
             return True
     return False
 
 
-def linha_eh_protegida(linha: str) -> bool:
-    """Verifica se a linha contém strings visíveis ao jogador."""
-    for padrao in PADROES_PROTEGIDOS:
-        if padrao.search(linha):
-            return True
-    return False
-
-
-CARACTERES_ACENTUADOS = set('áàãâÁÀÃÂéêÉÊíÍóõôÓÕÔúüÚÜçÇ')
-
-
-def tem_acentos(texto: str) -> bool:
-    """Verifica se o texto contém caracteres acentuados PT-BR."""
-    return any(c in CARACTERES_ACENTUADOS for c in texto)
-
-
-def sanitizar_strings_log(linha: str) -> str:
-    """Substitui acentos PT-BR por ASCII nas strings da linha de log."""
+def sanitizar_segmento_log(segmento: str, pilha_funcoes: list[str]) -> tuple[str, list[str]]:
+    """Processa um trecho de log, preservando chamadas protegidas aninhadas."""
     resultado = []
+    token_funcao = []
     dentro_string = False
-    delimitador = None
-    inicio_string = 0
+    delimitador = ""
+    string_atual = []
+    sanitizar_string_atual = False
+    indice = 0
+    em_log = bool(pilha_funcoes)
 
-    for i, caractere in enumerate(linha):
-        if not dentro_string:
+    while indice < len(segmento):
+        caractere = segmento[indice]
+
+        if dentro_string:
+            string_atual.append(caractere)
+            if caractere == delimitador:
+                barras_anteriores = 0
+                cursor = indice - 1
+                while cursor >= 0 and segmento[cursor] == "\\":
+                    barras_anteriores += 1
+                    cursor -= 1
+
+                if barras_anteriores % 2 == 0:
+                    if sanitizar_string_atual:
+                        conteudo = "".join(string_atual[1:-1]).translate(MAPA_ACENTOS)
+                        resultado.append(delimitador)
+                        resultado.append(conteudo)
+                        resultado.append(delimitador)
+                    else:
+                        resultado.extend(string_atual)
+
+                    dentro_string = False
+                    delimitador = ""
+                    sanitizar_string_atual = False
+                    string_atual = []
+        else:
             if caractere in ('"', "'"):
                 dentro_string = True
                 delimitador = caractere
-                inicio_string = i
-        else:
-            if caractere == delimitador and (i == 0 or linha[i - 1] != '\\'):
-                # Fim da string — sanitiza o conteúdo
-                conteudo = linha[inicio_string + 1:i]
-                conteudo_sanitizado = conteudo.translate(MAPA_ACENTOS)
-                resultado.append(linha[:inicio_string + 1] if not resultado else '')
-                resultado.append(conteudo_sanitizado)
-                resultado.append(delimitador)
-                linha = linha[i + 1:]
-                dentro_string = False
-                return ''.join(resultado) + sanitizar_strings_log(linha)
+                sanitizar_string_atual = em_log and (
+                    not pilha_funcoes or pilha_funcoes[-1] not in FUNCOES_PROTEGIDAS
+                )
+                string_atual = [caractere]
+            else:
+                resultado.append(caractere)
 
-    return ''.join(resultado) + linha if resultado else linha
+                if caractere.isalnum() or caractere in "._:":
+                    token_funcao.append(caractere)
+                elif caractere == "(":
+                    nome_funcao = "".join(token_funcao).strip()
+                    if em_log:
+                        pilha_funcoes.append(nome_funcao)
+                    elif token_eh_inicio_log(nome_funcao):
+                        em_log = True
+                        pilha_funcoes = [nome_funcao]
+                    token_funcao = []
+                elif caractere == ")":
+                    if pilha_funcoes:
+                        pilha_funcoes.pop()
+                    if not pilha_funcoes:
+                        em_log = False
+                    token_funcao = []
+                else:
+                    if not caractere.isspace():
+                        token_funcao = []
+
+        indice += 1
+
+    if dentro_string:
+        resultado.extend(string_atual)
+
+    return "".join(resultado), pilha_funcoes
 
 
 def processar_arquivo(caminho: str, aplicar: bool) -> tuple[int, list[str]]:
@@ -140,35 +168,17 @@ def processar_arquivo(caminho: str, aplicar: bool) -> tuple[int, list[str]]:
     substituicoes = 0
     mudancas = []
     linhas_modificadas = []
-    dentro_de_chamada_log = False
+    pilha_funcoes: list[str] = []
 
     for numero, linha in enumerate(linhas, 1):
-        eh_log = linha_eh_log(linha)
+        linha_nova, pilha_funcoes = sanitizar_segmento_log(linha, pilha_funcoes)
 
-        if eh_log:
-            dentro_de_chamada_log = True
-        elif dentro_de_chamada_log:
-            # Linha de continuação: só mantém se ainda tem parênteses abertos
-            # (linha indentada com string ou vírgula = continuação)
-            texto_limpo = linha.strip()
-            if not texto_limpo or texto_limpo.startswith("--"):
-                dentro_de_chamada_log = False
-            elif texto_limpo.startswith(")") or texto_limpo.startswith("end"):
-                dentro_de_chamada_log = False
+        if linha_nova != linha:
+            substituicoes += 1
+            mudancas.append(f"  L{numero}: {linha.rstrip()}")
+            mudancas.append(f"     → {linha_nova.rstrip()}")
 
-        linha_tratavel = eh_log or dentro_de_chamada_log
-
-        if linha_tratavel and not linha_eh_protegida(linha) and tem_acentos(linha):
-            linha_nova = sanitizar_strings_log(linha)
-            if linha_nova != linha:
-                substituicoes += 1
-                mudancas.append(f"  L{numero}: {linha.rstrip()}")
-                mudancas.append(f"     → {linha_nova.rstrip()}")
-                linhas_modificadas.append(linha_nova)
-            else:
-                linhas_modificadas.append(linha)
-        else:
-            linhas_modificadas.append(linha)
+        linhas_modificadas.append(linha_nova)
 
     if aplicar and substituicoes > 0:
         with open(caminho, 'w', encoding='utf-8', newline='') as arquivo:
@@ -183,7 +193,7 @@ def main():
     diretorio_lua = os.path.join(diretorio_raiz, "common", "media", "lua")
 
     parser = argparse.ArgumentParser(
-        description="Sanitiza acentos PT-BR em strings de log Lua (preserva UI)."
+        description="Sanitiza acentos PT-BR apenas em strings diretas de logs Lua."
     )
     parser.add_argument(
         "--aplicar",

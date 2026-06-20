@@ -385,7 +385,7 @@ function ContextMenu.Construir(numeroJogador, contexto, objetosMundo, modoTeste)
                 elseif percentualCondicao <= 0 then
                     dicaContexto:setName(getText("IGUI_Generator_Broken") or "Gerador Quebrado")
                 else
-                    dicaContexto:setName(getText("IGUI_Generator_CannotActivate") or "Não é Possível Ativar")
+                    dicaContexto:setName(getText("IGUI_Generator_CannotActivate") or "Não é possível ativar")
                 end
                 opcaoLigar.toolTip = dicaContexto
             end
@@ -469,7 +469,7 @@ function ContextMenu.Construir(numeroJogador, contexto, objetosMundo, modoTeste)
                 opcaoConectar.notAvailable = true
                 local dicaContexto = ISInventoryPaneContextMenu.addToolTip()
                 dicaContexto:setName(getText("IGUI_ConnectToBuilding") or "Conectar à Construção")
-                dicaContexto.description = getText("IGUI_ConnectRequiresKnowledge") or "Requer a receita de Gerador ou Elétrica Nível 3"
+                dicaContexto.description = getText("IGUI_ConnectRequiresKnowledge") or "Requer a receita de Gerador ou Eletricidade Nível 3"
                 opcaoConectar.toolTip = dicaContexto
             elseif not proximoConstrucao then
                 opcaoConectar.notAvailable = true

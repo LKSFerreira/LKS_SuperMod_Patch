@@ -289,7 +289,7 @@ function LKS_DebugToolWindow:new(posicaoX, posicaoY)
     local objeto = ISCollapsableWindow:new(posicaoX, posicaoY, JANELA_LARGURA, JANELA_ALTURA)
     setmetatable(objeto, self)
     self.__index = self
-    objeto.title = getText("IGUI_LKS_Debug_WindowTitle") or "LKS Ferramenta de Debug"
+    objeto.title = getText("IGUI_LKS_Debug_WindowTitle") or "Ferramenta de Debug LKS"
     objeto.moveWithMouse = true
     objeto.resizable = true
     objeto.drawFrame = true
@@ -358,7 +358,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
 
     local botaoModsHabilitados = ISButton:new(
         margemEsquerda, posicaoY, larguraBotaoMods, alturaLinha,
-        getText("IGUI_LKS_Debug_EnabledMods") or "Mods Habilitados", painel, function()
+        getText("IGUI_LKS_Debug_EnabledMods") or "Mods habilitados", painel, function()
             abaRecarregar.alternarPainelMods(self, painel)
         end)
     botaoModsHabilitados:initialise()
@@ -404,7 +404,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     entradaFiltro:instantiate()
     entradaFiltro:setClearButton(true)
     entradaFiltro:setText("")
-    entradaFiltro:setPlaceholderText(getText("IGUI_LKS_Debug_FilterPlaceholder") or "filtrar por nome de arquivo...")
+    entradaFiltro:setPlaceholderText(    getText("IGUI_LKS_Debug_FilterPlaceholder") or "Filtrar por nome de arquivo...")
     entradaFiltro.backgroundColor = tema.fundoInput
     entradaFiltro.borderColor = tema.bordaInput
 
@@ -431,7 +431,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
 
     local botaoRecarregarTodos = ISButton:new(
         margemEsquerda, posicaoY, larguraBotao, alturaBotao,
-        getText("IGUI_LKS_Debug_ReloadAll") or "Recarregar Todos", painel, function()
+        getText("IGUI_LKS_Debug_ReloadAll") or "Recarregar todos", painel, function()
             abaRecarregar.recarregarTodos(self, painel)
         end)
     botaoRecarregarTodos:initialise()
@@ -442,7 +442,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     local botaoRecarregarMarcados = ISButton:new(
         margemEsquerda + larguraBotao + espacamentoBotao,
         posicaoY, larguraBotao, alturaBotao,
-        getText("IGUI_LKS_Debug_ReloadSelected") or "Recarregar Marcados", painel, function()
+        getText("IGUI_LKS_Debug_ReloadSelected") or "Recarregar marcados", painel, function()
             abaRecarregar.recarregarMarcados(self, painel)
         end)
     botaoRecarregarMarcados:initialise()
@@ -453,7 +453,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     local botaoLimparFiltro = ISButton:new(
         margemEsquerda + (larguraBotao + espacamentoBotao) * 2,
         posicaoY, larguraBotao, alturaBotao,
-        getText("IGUI_LKS_Debug_ClearFilter") or "Limpar Filtro", painel, function()
+        getText("IGUI_LKS_Debug_ClearFilter") or "Limpar filtro", painel, function()
             self.entradaFiltro:setText("")
             self.filtroTexto = ""
             abaRecarregar.atualizarLista(self, painel)
@@ -500,7 +500,7 @@ function abaRecarregar.criar(self, painel, posicaoY)
     rotuloStatus.anchorTop = false
     painel:adicionarWidgetAba(rotuloStatus)
     self.rotuloStatus = rotuloStatus
-    abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReadyStatus") or "Pronto. Selecione arquivos e clique Recarregar Marcados.")
+    abaRecarregar.definirStatus(self, getText("IGUI_LKS_Debug_ReadyStatus") or "Pronto. Selecione arquivos e clique em Recarregar marcados.")
 
     -- Popula a lista inicial
     abaRecarregar.inicializarMods(self)
@@ -1053,7 +1053,7 @@ end
 -- ============================================================================
 
 local abaMenuContexto = {
-    nome = getText("IGUI_LKS_Debug_TabContextMenu") or "Menu Contexto",
+    nome = getText("IGUI_LKS_Debug_TabContextMenu") or "Menu de Contexto",
     ultimoMenuCapturado = nil,
     ultimoMenuVanilla = nil,
     ultimosObjetos = nil,
@@ -1256,7 +1256,7 @@ end
 -- ============================================================================
 
 local abaInspetorObjeto = {
-    nome = getText("IGUI_LKS_Debug_TabObjectInspector") or "Inspetor Objeto",
+    nome = getText("IGUI_LKS_Debug_TabObjectInspector") or "Inspetor de Objeto",
     ultimoObjeto = nil,
     propriedadesCapturadas = {},
 }
@@ -1416,7 +1416,7 @@ function abaInspetorObjeto.capturarObjeto(self, objeto)
     end
     if objeto.getCondition then
         local ok, val = pcall(function() return objeto:getCondition() end)
-        if ok then table.insert(estado, { chave = getText("IGUI_LKS_Debug_Condition") or "Condicao", valor = tostring(val) }) end
+        if ok then table.insert(estado, { chave = getText("IGUI_LKS_Debug_Condition") or "Condição", valor = tostring(val) }) end
     end
 
     if #estado > 0 then

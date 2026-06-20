@@ -1926,7 +1926,7 @@ function LKS_EletricidadeConstrucao_GeneratorInfoWindow:render()
             drawLabel = string.gsub(drawLabel, ":%s*$", "")
             self:drawText(drawLabel .. ":", x0, y + 5, 1, 1, 1, 0.80, FONT_S)
 
-            local unitsStr = getText("IGUI_LKS_EletricidadeConstrucao_UnitsPerGen") or "unidades por gerador"
+            local unitsStr = getText("IGUI_LKS_EletricidadeConstrucao_UnitsPerGen") or "Unidades por gerador"
             self:drawText(string.format("%.1f " .. unitsStr, d.powerDraw), x0 + barCol, y + 5, 0.78, 0.95, 0.78, 1,
                 FONT_S)
             y = y + LINE_H
@@ -1987,8 +1987,8 @@ function LKS_EletricidadeConstrucao_GeneratorInfoWindow:render()
         if d.strain >= 100 then
             self._overlTex = self._overlTex or getTexture(OVERL_TEX_PATH)
             local wt = #self.allGenerators <= 1 and
-                (getText("IGUI_StrainWarning_Overload_Single") or "SOBRECARGA - Risco de fogo e explosão no gerador !") or
-                (getText("IGUI_StrainWarning_Overload_Multiple") or "SOBRECARGA - Risco de fogo e explosão nos geradores !!!")
+                (getText("IGUI_StrainWarning_Overload_Single") or "SOBRECARGA - Risco de fogo e explosão no gerador!") or
+                (getText("IGUI_StrainWarning_Overload_Multiple") or "SOBRECARGA - Risco de fogo e explosão nos geradores!!!")
 
             if self._overlTex then
                 self:drawTextureScaled(self._overlTex, x0, iconY, 16, 16, 1, 1, 1, 1)
@@ -2004,7 +2004,7 @@ function LKS_EletricidadeConstrucao_GeneratorInfoWindow:render()
         self._heatOffTex = self._heatOffTex or getTexture(HEAT_OFF_PATH)
 
         if not self._heatingHasData then
-            self:drawText(getText("IGUI_LKS_EletricidadeConstrucao_HeatingNA") or "Sem Dados do termostato", x0, y + 5, 0.55, 0.55, 0.55, 1,
+            self:drawText(getText("IGUI_LKS_EletricidadeConstrucao_HeatingNA") or "Sem dados do termostato", x0, y + 5, 0.55, 0.55, 0.55, 1,
                 FONT_S)
             y                    = y + LINE_H
             self._heatOnBtnArea  = nil; self._heatOffBtnArea = nil; self._heatMinusArea = nil; self._heatPlusArea = nil

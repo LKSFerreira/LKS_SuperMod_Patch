@@ -51,9 +51,9 @@ ferramentas:
   - arquivo: normaliza_utf8_para_ascii_lua.py
     titulo: Normalizador UTF-8→ASCII em Logs Lua
     descricao: >
-      Substitui acentos PT-BR por ASCII em strings de log/debug no
-      código-fonte Lua (Logger.*, print [LKS], string.format, error).
-      Preserva strings visíveis ao jogador (getText, tooltip, addOption).
+      Substitui acentos PT-BR por ASCII apenas em strings diretas de log/debug
+      no código-fonte Lua (Logger.*, print, error), preservando strings
+      aninhadas em getText() e chamadas visíveis ao jogador.
     comandos:
       dry_run: python tools/normaliza_utf8_para_ascii_lua.py
       aplicar: python tools/normaliza_utf8_para_ascii_lua.py --aplicar

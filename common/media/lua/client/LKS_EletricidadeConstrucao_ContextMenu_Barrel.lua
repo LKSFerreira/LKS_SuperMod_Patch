@@ -402,7 +402,7 @@ Events.OnFillWorldObjectContextMenu.Add(function(numeroJogador, contexto, objeto
             objetosMundo,
             function()
                 if not podeVincular then
-                    jogador:Say(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhum edifício energizado por perto")
+                    jogador:Say(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhuma construção energizada por perto")
                     return
                 end
                 ISTimedActionQueue.add(
@@ -414,7 +414,7 @@ Events.OnFillWorldObjectContextMenu.Add(function(numeroJogador, contexto, objeto
             local dicaContexto = ISToolTip:new()
             dicaContexto:initialise()
             dicaContexto:setVisible(false)
-            dicaContexto:setName(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhum edifício energizado por perto")
+            dicaContexto:setName(getText("IGUI_LKS_EletricidadeConstrucao_BarrelNoBuildingNearby") or "Nenhuma construção energizada por perto")
             opcao.toolTip = dicaContexto
         end
     end
