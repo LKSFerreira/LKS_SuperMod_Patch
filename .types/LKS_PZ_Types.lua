@@ -13,9 +13,6 @@
 -- CLASSES DO ENGINE JAVA (Project Zomboid Build 42)
 -- ============================================================================
 
----@class ArrayList
----@field [any] any
-
 ---@class ISBaseTimedAction
 ---@field [any] any
 
