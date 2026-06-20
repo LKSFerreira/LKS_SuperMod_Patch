@@ -21,44 +21,45 @@ local textosGrab = {}
 --- Popula os textos de grab após o jogo carregar as traduções.
 local function popularTextosGrab()
     textosGrab = {
-        getText("ContextMenu_Grab") or "Grab",
-        getText("ContextMenu_Grab_one") or "Grab one",
-        getText("ContextMenu_Grab_half") or "Grab half",
-        getText("ContextMenu_Grab_all") or "Grab all",
-        getText("ContextMenu_GeneratorTake") or "Take Generator",
+        getText("ContextMenu_Grab") or "Pegar",
+        getText("ContextMenu_Grab_one") or "Pegar um",
+        getText("ContextMenu_Grab_half") or "Pegar metade",
+        getText("ContextMenu_Grab_all") or "Pegar tudo",
+        getText("ContextMenu_GeneratorTake") or "Pegar gerador",
     }
 end
 
 --- Remove entradas de botijão do submenu "Pegar" vanilla.
+--- Itera opções verificando target por fullType (independente de tradução).
 ---@param menuContexto ISContextMenu
 local function removerBotijoesDoGrabVanilla(menuContexto)
-    local textoGrab = getText("ContextMenu_Grab") or "Grab"
+    local textoGrab = getText("ContextMenu_Grab") or "Pegar"
     local opcaoGrab = menuContexto:getOptionFromName(textoGrab)
     if not opcaoGrab then return end
 
     if opcaoGrab.subOption then
         local submenuGrab = menuContexto:getSubMenu(opcaoGrab.subOption)
-        if submenuGrab then
-            -- Remove por nome traduzido (mesmo approach do gerador)
-            pcall(function() submenuGrab:removeOptionByName(getText("ItemName_Base.PropaneTank") or "Propane Tank") end)
-            pcall(function() submenuGrab:removeOptionByName(getText("ItemName_LKS_Propano.LKS_Botijao15kg") or "Gas Tank 15kg") end)
-            pcall(function() submenuGrab:removeOptionByName(getText("ItemName_LKS_Propano.LKS_Botijao45kg") or "Gas Tank 45kg") end)
-            -- Fallbacks em caso de DisplayName cru
-            pcall(function() submenuGrab:removeOptionByName("Propane Tank") end)
-            pcall(function() submenuGrab:removeOptionByName("Gas Tank 15kg") end)
-            pcall(function() submenuGrab:removeOptionByName("Gas Tank 45kg") end)
-            pcall(function() submenuGrab:removeOptionByName("Botijão de Gás") end)
-            pcall(function() submenuGrab:removeOptionByName("Botijão de Gás 15kg") end)
-            pcall(function() submenuGrab:removeOptionByName("Botijão de Gás 45kg") end)
-
+        if submenuGrab and submenuGrab.options then
+            for indice = #submenuGrab.options, 1, -1 do
+                local opcaoFilha = submenuGrab.options[indice]
+                if opcaoFilha and opcaoFilha.target then
+                    local alvo = opcaoFilha.target
+                    if instanceof(alvo, "IsoWorldInventoryObject") and alvo:getItem() then
+                        if IDS_BOTIJAO_REMOVER[alvo:getItem():getFullType()] then
+                            table.remove(submenuGrab.options, indice)
+                            submenuGrab.numOptions = submenuGrab.numOptions - 1
+                        end
+                    end
+                end
+            end
             -- Se o submenu ficou vazio, remove "Pegar" inteiro
             if submenuGrab.numOptions and submenuGrab.numOptions <= 1 then
                 menuContexto:removeOptionByName(textoGrab)
             end
         end
     else
-        -- "Pegar" sem submenu — verifica se o nome é de botijão
-        pcall(function() menuContexto:removeOptionByName(textoGrab) end)
+        -- "Pegar" sem submenu — pode ser clique direto num botijão
+        -- Não removemos cegamente; o CAMINHO 2 do menu LKS já trata
     end
 end
 
