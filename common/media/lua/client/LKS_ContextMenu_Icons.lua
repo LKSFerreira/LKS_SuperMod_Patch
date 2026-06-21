@@ -96,13 +96,30 @@ local function injetarIconesPegar(jogadorIndice, menuContexto, objetosMundo, tes
         end
     end
 
-    -- Injeta ícone "Jardinagem"
+    -- Injeta ícone "Jardinagem" + ícone no submenu "Cavar buraco com as mãos"
     local textoJardinagem = getText("ContextMenu_Gardening") or "Jardinagem"
     local opcaoJardinagem = menuContexto:getOptionFromName(textoJardinagem)
-    if opcaoJardinagem and not opcaoJardinagem.iconTexture then
-        local texturaJardinagem = getTexture("media/ui/LKS_Menu_Jardinagem.png")
-        if texturaJardinagem then
-            opcaoJardinagem.iconTexture = texturaJardinagem
+    if opcaoJardinagem then
+        if not opcaoJardinagem.iconTexture then
+            local texturaJardinagem = getTexture("media/ui/LKS_Menu_Jardinagem.png")
+            if texturaJardinagem then
+                opcaoJardinagem.iconTexture = texturaJardinagem
+            end
+        end
+
+        -- Busca no submenu de Jardinagem
+        if opcaoJardinagem.subOption then
+            local submenuJardinagem = menuContexto:getSubMenu(opcaoJardinagem.subOption)
+            if submenuJardinagem then
+                local textoCavar = getText("ContextMenu_DigWithHands") or "Cavar buraco com as mãos"
+                local opcaoCavar = submenuJardinagem:getOptionFromName(textoCavar)
+                if opcaoCavar and not opcaoCavar.iconTexture then
+                    local texturaCavar = getTexture("media/ui/LKS_Menu_CavarMaos.png")
+                    if texturaCavar then
+                        opcaoCavar.iconTexture = texturaCavar
+                    end
+                end
+            end
         end
     end
 end

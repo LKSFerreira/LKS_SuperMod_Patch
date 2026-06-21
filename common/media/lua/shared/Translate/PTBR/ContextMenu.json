@@ -12,5 +12,7 @@
     "ContextMenu_Fuel_Full": "Capacidade máxima de combustível atingida.",
     "ContextMenu_Fuel_Full2": "Sem Espaço para Combustível",
     "ContextMenu_Fuel_Full3": "Espaço Insuficiente",
-    "ContextMenu_Half": "Metade"
+    "ContextMenu_Half": "Metade",
+    "ContextMenu_DigWithHands": "Cavar buraco com as mãos",
+    "ContextMenu_DigWithHandsTT": "Pode machucar as mãos!"
 }
