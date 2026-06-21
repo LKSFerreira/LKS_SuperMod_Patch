@@ -9,7 +9,7 @@
 -- Este mod só é possível graças a todos os modders que vieram antes de mim.
 -- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
--- ARQUIVO: LKS_FireMenu.lua
+-- ARQUIVO: LKS_Menu_Fire_FuelSolid.lua
 -- EXTENSÃO: LKS SuperMod Patch (Menu Unificado de Fogo)
 -- OBJETIVO: Handler unificado de menu de contexto para fogueiras, lareiras,
 --           fogões a lenha e churrasqueiras. Substitui ISCampingMenu.doCampingMenu
@@ -23,7 +23,7 @@ require "Camping/ISCampingMenu"
 
 local CampingMenu = ISCampingMenu
 if not CampingMenu then
-    print("[LKS PATCH - LKS_FireMenu.lua] ERRO: ISCampingMenu nao disponivel")
+    print("[LKS PATCH - LKS_Menu_Fire_FuelSolid.lua] ERRO: ISCampingMenu nao disponivel")
     return
 end
 
@@ -619,4 +619,4 @@ end
 
 Events.OnFillWorldObjectContextMenu.Add(limparDuplicatasFireMenu)
 
-print("[LKS PATCH - LKS_FireMenu.lua] Menu unificado de fogo carregado (substitui ISCampingMenu + ISBBQMenu)")
+print("[LKS PATCH - LKS_Menu_Fire_FuelSolid.lua] Menu unificado de fogo carregado (substitui ISCampingMenu + ISBBQMenu)")

@@ -16,8 +16,8 @@ nativamente pelo LKS SuperMod Patch para eliminar a dependência do mod original
 
 | Arquivo | Responsabilidade |
 |---------|-----------------|
-| `LKS_FireMenu.lua` | Handler unificado de menu (substitui ISCampingMenu + ISBBQMenu) |
-| `LKS_FireMenu_FuelPatch.lua` | Patch de `doAddFuelOption` com handlers independentes |
+| `LKS_Menu_Fire_FuelSolid.lua` | Handler unificado de menu (substitui ISCampingMenu + ISBBQMenu) |
+| `LKS_Menu_Fire_FuelSolid_Patch.lua` | Patch de `doAddFuelOption` com handlers independentes |
 
 ### Mecânica de Substituição
 

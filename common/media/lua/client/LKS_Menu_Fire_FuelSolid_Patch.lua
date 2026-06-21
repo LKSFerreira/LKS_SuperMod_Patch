@@ -9,7 +9,7 @@
 -- Este mod só é possível graças a todos os modders que vieram antes de mim.
 -- Um agradecimento especial ao autor por sua contribuição incrível à comunidade!
 -- ============================================================================
--- ARQUIVO: LKS_FireMenu_FuelPatch.lua
+-- ARQUIVO: LKS_Menu_Fire_FuelSolid_Patch.lua
 -- EXTENSÃO: LKS SuperMod Patch (Patch de Combustível)
 -- OBJETIVO: Substitui ISCampingMenu.doAddFuelOption com handlers próprios que
 --           não dependem da variável local fuelItemList do ISCampingMenu.lua.
@@ -237,4 +237,4 @@ function ISCampingMenu.doAddFuelOption(contexto, objetosMundo, combustivelAtual,
     return true
 end
 
-print("[LKS PATCH - LKS_FireMenu_FuelPatch.lua] Patch de combustivel carregado")
+print("[LKS PATCH - LKS_Menu_Fire_FuelSolid_Patch.lua] Patch de combustivel carregado")
