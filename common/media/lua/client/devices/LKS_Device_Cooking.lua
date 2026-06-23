@@ -487,10 +487,34 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
     else
         if temEnergia then
             if tipoFogao == "convencional" then
-                -- Fogão convencional: submenu com fontes de calor do inventário
+                -- Fogão convencional com combustível (propano)
                 local fontesCalor = buscarFontesCalorInventario(jogador)
+                local precisaIgnicaoManual = fonteEnergia.requerIgnicaoManual
 
-                if #fontesCalor > 0 then
+                if not precisaIgnicaoManual then
+                    -- Ignição elétrica disponível: acender direto sem fonte de calor
+                    local opcaoAcender = submenu:addOptionOnTop(verboAcender, objetosMundo, nil)
+                    opcaoAcender.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
+                    local submenuIgnicao = ISContextMenu:getNew(submenu)
+                    submenu:addSubMenu(opcaoAcender, submenuIgnicao)
+
+                    -- Ignição elétrica (automática)
+                    local opcaoEletrica = submenuIgnicao:addOption(
+                        getText("IGUI_LKS_IgnicaoEletrica") or "Ignição Elétrica", objetosMundo, function()
+                            acenderFogaoPropano(objetoEletrico, jogador)
+                        end)
+                    opcaoEletrica.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
+
+                    -- Fontes de calor manuais (alternativa)
+                    for _, fonteCalorItem in ipairs(fontesCalor) do
+                        local opcaoFonte = submenuIgnicao:addOption(
+                            fonteCalorItem:getDisplayName(), objetosMundo, function()
+                                acenderFogaoPropano(objetoEletrico, jogador)
+                            end)
+                        opcaoFonte.iconTexture = fonteCalorItem:getTex()
+                    end
+                elseif #fontesCalor > 0 then
+                    -- Sem eletricidade mas com fontes de calor manuais
                     local opcaoAcender = submenu:addOptionOnTop(verboAcender, objetosMundo, nil)
                     opcaoAcender.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")
                     local submenuIgnicao = ISContextMenu:getNew(submenu)
@@ -504,7 +528,7 @@ function LKS_Device_Cooking.construirMenuContexto(jogadorNumero, menuContexto, o
                         opcaoFonte.iconTexture = fonteCalorItem:getTex()
                     end
                 else
-                    -- Sem fontes de calor no inventário
+                    -- Sem eletricidade E sem fontes de calor
                     local opcaoAcender = submenu:addOptionOnTop(verboAcender, objetosMundo, nil)
                     opcaoAcender.notAvailable = true
                     opcaoAcender.iconTexture = getTexture("media/ui/LKS_Button_Power_On.png")

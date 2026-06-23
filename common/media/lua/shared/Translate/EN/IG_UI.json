@@ -170,6 +170,7 @@
     "IGUI_LKS_Informacoes": "Information",
     "IGUI_LKS_PropanoRestante": "Propane remaining:",
     "IGUI_LKS_ConectadoAFogao": "Connected to a stove",
+    "IGUI_LKS_IgnicaoEletrica": "Electric Ignition",
 
     "IGUI_Oven_Celsius": "°C",
     "IGUI_Oven_Fahrenheit": "°F"
