@@ -3,6 +3,7 @@ console_sanitizado.txt
 console_erros.txt
 scratch/*.py
 testes_markdown.md
+output/
 
 # Logs
 logs
