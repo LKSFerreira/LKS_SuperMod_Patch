@@ -675,9 +675,12 @@ local function determinarEstadoFogaoPropano(fogao, jogador)
         return "sem_combustivel", motivo
     end
 
-    local fontesCalor = buscarFontesCalorInventario(jogador)
-    if #fontesCalor == 0 then
-        return "sem_calor", getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor."
+    -- Se tem eletricidade, ignição automática — não precisa de fonte de calor manual
+    if fonteEnergia.requerIgnicaoManual then
+        local fontesCalor = buscarFontesCalorInventario(jogador)
+        if #fontesCalor == 0 then
+            return "sem_calor", getText("IGUI_LKS_RequerFonteCalor") or "Requer uma fonte de calor."
+        end
     end
 
     return "off", nil
@@ -699,25 +702,33 @@ local function executarTogglePropano(fogao, jogador)
         return true
     end
 
-    local containerFogao = fogao:getContainer()
-    local temEletricidade = containerFogao and containerFogao:isPowered() or false
-    local estaAtivo = fogao.Activated and fogao:Activated() or false
-
-    if not temEletricidade and not estaAtivo then
-        local tipoFogao = ClassificacaoSprites.obterTipoFogao(fogao)
-        if tipoFogao == "convencional" then
-            local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
-            if fonteEnergia.disponivel then
-                local fontesCalor = buscarFontesCalorInventario(jogador)
-                if #fontesCalor > 0 then
-                    acenderFogaoPropano(fogao, jogador)
-                end
-            end
-            return true
-        end
+    local tipoFogao = ClassificacaoSprites.obterTipoFogao(fogao)
+    if tipoFogao ~= "convencional" then
+        return false
     end
 
-    return false
+    local estaAtivo = fogao.Activated and fogao:Activated() or false
+    if estaAtivo then
+        return false
+    end
+
+    local fonteEnergia = SistemaPropano.verificarFonteEnergia(fogao, jogador, tipoFogao)
+    if not fonteEnergia.disponivel then
+        return true
+    end
+
+    -- Com eletricidade: ignição automática (sem exigir fonte de calor)
+    if not fonteEnergia.requerIgnicaoManual then
+        acenderFogaoPropano(fogao, jogador)
+        return true
+    end
+
+    -- Sem eletricidade: requer fonte de calor manual
+    local fontesCalor = buscarFontesCalorInventario(jogador)
+    if #fontesCalor > 0 then
+        acenderFogaoPropano(fogao, jogador)
+    end
+    return true
 end
 
 local function aplicarPatchUIFogao()
