@@ -15,9 +15,11 @@
 
 --- Duracao dos ciclos em minutos in-game.
 local DURACAO_CICLO = {
-    lavadora = 60,
-    secadora = 45,
-    cicloAutomatico = 105,
+    lavadoraBase = 60,
+    lavadoraPorKg = 4,
+    secadoraBase = 30,
+    secadoraPorKg = 2,
+    pesoBase = 6,
 }
 
 --- Chaves de modData usadas pelo sistema.
@@ -133,27 +135,72 @@ local function determinarTipoMaquina(objeto)
     return nil
 end
 
---- Determina a duracao do ciclo baseado no tipo e modo.
+--- Calcula o peso total dos itens dentro do container.
+--- @param container ItemContainer O container da maquina.
+--- @return number pesoTotal Peso total em kg.
+local function calcularPesoContainer(container)
+    if not container then return 0 end
+    local itens = container:getItems()
+    if not itens then return 0 end
+
+    local pesoTotal = 0
+    for indice = 0, itens:size() - 1 do
+        local item = itens:get(indice)
+        if item then
+            pesoTotal = pesoTotal + item:getActualWeight()
+        end
+    end
+    return pesoTotal
+end
+
+--- Calcula duracao de lavagem baseado no peso.
+--- Base: 60min ate 6kg, +4min por kg excedente.
+--- @param pesoTotal number Peso total dos itens em kg.
+--- @return number duracaoMinutos Duracao em minutos in-game.
+local function calcularDuracaoLavagem(pesoTotal)
+    local excedente = math.max(0, pesoTotal - DURACAO_CICLO.pesoBase)
+    return DURACAO_CICLO.lavadoraBase + (excedente * DURACAO_CICLO.lavadoraPorKg)
+end
+
+--- Calcula duracao de secagem baseado no peso.
+--- Base: 30min ate 6kg, +2min por kg excedente.
+--- @param pesoTotal number Peso total dos itens em kg.
+--- @return number duracaoMinutos Duracao em minutos in-game.
+local function calcularDuracaoSecagem(pesoTotal)
+    local excedente = math.max(0, pesoTotal - DURACAO_CICLO.pesoBase)
+    return DURACAO_CICLO.secadoraBase + (excedente * DURACAO_CICLO.secadoraPorKg)
+end
+
+--- Determina a duracao do ciclo baseado no tipo, modo e peso dos itens.
 --- @param objeto IsoObject O objeto da maquina.
 --- @param modData table O modData do objeto.
 --- @return number duracaoMinutos Duracao em minutos in-game.
 local function obterDuracaoCiclo(objeto, modData)
-    if modData[MODDATA.cicloAutomatico] then
-        return DURACAO_CICLO.cicloAutomatico
-    end
+    local container = objeto:getContainer()
+    local pesoTotal = calcularPesoContainer(container)
 
     local tipo = determinarTipoMaquina(objeto)
-    if tipo == "secadora" then
-        return DURACAO_CICLO.secadora
-    elseif tipo == "combo" then
-        if objeto:isModeWasher() then
-            return DURACAO_CICLO.lavadora
+    local faseAtual = modData[MODDATA.faseAtual]
+
+    if modData[MODDATA.cicloAutomatico] then
+        if faseAtual == "secagem" then
+            return calcularDuracaoSecagem(pesoTotal)
         else
-            return DURACAO_CICLO.secadora
+            return calcularDuracaoLavagem(pesoTotal)
         end
     end
 
-    return DURACAO_CICLO.lavadora
+    if tipo == "secadora" then
+        return calcularDuracaoSecagem(pesoTotal)
+    elseif tipo == "combo" then
+        if objeto:isModeWasher() then
+            return calcularDuracaoLavagem(pesoTotal)
+        else
+            return calcularDuracaoSecagem(pesoTotal)
+        end
+    end
+
+    return calcularDuracaoLavagem(pesoTotal)
 end
 
 -- ============================================================================
@@ -161,6 +208,7 @@ end
 -- ============================================================================
 
 --- Processa lavagem: remove sangue, sujeira, aplica umidade.
+--- Itens com getItemAfterCleaning() sao substituidos pela versao limpa.
 --- @param container ItemContainer O container da maquina.
 --- @return number penalidadeTotal Penalidade acumulada por itens inadequados.
 local function processarLavagem(container)
@@ -168,36 +216,60 @@ local function processarLavagem(container)
     local itens = container:getItems()
     if not itens then return 0 end
 
-    for indice = 0, itens:size() - 1 do
+    local itensParaRemover = {}
+    local itensParaAdicionar = {}
+
+    for indice = itens:size() - 1, 0, -1 do
         local item = itens:get(indice)
-        if not item then goto continuar end
+        if item then
+            penalidadeTotal = penalidadeTotal + calcularPenalidadeItem(item)
 
-        penalidadeTotal = penalidadeTotal + calcularPenalidadeItem(item)
-
-        if instanceof(item, "Clothing") or instanceof(item, "InventoryContainer") then
-            local tipoSangue = item:getBloodClothingType()
-            if tipoSangue then
-                local partesCobertas = BloodClothingType.getCoveredParts(tipoSangue)
-                if partesCobertas then
-                    for j = 0, partesCobertas:size() - 1 do
-                        item:setBlood(partesCobertas:get(j), 0)
-                        item:setDirt(partesCobertas:get(j), 0)
+            if item.getItemAfterCleaning and item:getItemAfterCleaning() then
+                local novoTipo = item:getItemAfterCleaning()
+                table.insert(itensParaRemover, item)
+                table.insert(itensParaAdicionar, novoTipo)
+                print("[LKS_Laundry] Substituindo: " .. tostring(item:getDisplayName()) .. " -> " .. tostring(novoTipo))
+            else
+                if instanceof(item, "Clothing") or instanceof(item, "InventoryContainer") then
+                    local tipoSangue = item:getBloodClothingType()
+                    if tipoSangue then
+                        local partesCobertas = BloodClothingType.getCoveredParts(tipoSangue)
+                        if partesCobertas then
+                            for j = 0, partesCobertas:size() - 1 do
+                                item:setBlood(partesCobertas:get(j), 0)
+                                item:setDirt(partesCobertas:get(j), 0)
+                            end
+                        end
                     end
+                    if item.setDirtiness then
+                        item:setDirtiness(0)
+                    end
+                    if item.setWetness then
+                        item:setWetness(100)
+                    end
+                    print("[LKS_Laundry] Lavado (Clothing): " .. tostring(item:getDisplayName()))
+                end
+
+                if item.setBloodLevel then
+                    item:setBloodLevel(0)
+                end
+
+                if item.synchWithVisual then
+                    item:synchWithVisual()
                 end
             end
-            if item.setDirtiness then
-                item:setDirtiness(0)
-            end
-            if item.setWetness then
-                item:setWetness(100)
-            end
         end
+    end
 
-        if item.setBloodLevel then
-            item:setBloodLevel(0)
+    -- Executar substituicoes (itens com getItemAfterCleaning)
+    for _, item in ipairs(itensParaRemover) do
+        container:Remove(item)
+    end
+    for _, novoTipo in ipairs(itensParaAdicionar) do
+        local novoItem = container:AddItem(novoTipo)
+        if novoItem and novoItem.setWetness then
+            novoItem:setWetness(100)
         end
-
-        ::continuar::
     end
 
     return penalidadeTotal
@@ -213,15 +285,12 @@ local function processarSecagem(container)
 
     for indice = 0, itens:size() - 1 do
         local item = itens:get(indice)
-        if not item then goto continuar end
-
-        penalidadeTotal = penalidadeTotal + calcularPenalidadeItem(item)
-
-        if item.setWetness then
-            item:setWetness(0)
+        if item then
+            penalidadeTotal = penalidadeTotal + calcularPenalidadeItem(item)
+            if item.setWetness then
+                item:setWetness(0)
+            end
         end
-
-        ::continuar::
     end
 
     return penalidadeTotal
@@ -334,59 +403,52 @@ end
 local function monitorarMaquinasAtivas()
     for jogadorIndice = 0, getNumActivePlayers() - 1 do
         local jogador = getSpecificPlayer(jogadorIndice)
-        if not jogador or not jogador:isAlive() then goto proximoJogador end
+        if jogador and jogador:isAlive() then
+            local posX = math.floor(jogador:getX())
+            local posY = math.floor(jogador:getY())
+            local posZ = math.floor(jogador:getZ())
+            local tempoAtual = obterTempoAtualMinutos()
 
-        local posX = jogador:getX()
-        local posY = jogador:getY()
-        local posZ = jogador:getZ()
-        local tempoAtual = obterTempoAtualMinutos()
+            local raio = 7
+            for tilePosX = posX - raio, posX + raio do
+                for tilePosY = posY - raio, posY + raio do
+                    local quadrado = getCell():getGridSquare(tilePosX, tilePosY, posZ)
+                    if quadrado then
+                        local objetos = quadrado:getObjects()
+                        if objetos then
+                            for indice = 0, objetos:size() - 1 do
+                                local objeto = objetos:get(indice)
+                                if objeto then
+                                    local tipo = determinarTipoMaquina(objeto)
+                                    if tipo and objeto:isActivated() then
+                                        local modData = objeto:getModData()
+                                        if modData then
+                                            if not modData[MODDATA.timestampInicio] then
+                                                registrarInicioCiclo(objeto)
+                                            else
+                                                local duracaoCiclo = obterDuracaoCiclo(objeto, modData)
+                                                local condicao = obterCondicao(modData)
+                                                if condicao < 25 then
+                                                    duracaoCiclo = duracaoCiclo * 1.5
+                                                elseif condicao < 50 then
+                                                    duracaoCiclo = duracaoCiclo * 1.25
+                                                end
 
-        local raio = 7
-        for tilePosX = posX - raio, posX + raio do
-            for tilePosY = posY - raio, posY + raio do
-                local quadrado = getCell():getGridSquare(tilePosX, tilePosY, posZ)
-                if not quadrado then goto proximoTile end
-
-                local objetos = quadrado:getObjects()
-                if not objetos then goto proximoTile end
-
-                for indice = 0, objetos:size() - 1 do
-                    local objeto = objetos:get(indice)
-                    if not objeto then goto proximoObjeto end
-
-                    local tipo = determinarTipoMaquina(objeto)
-                    if not tipo then goto proximoObjeto end
-                    if not objeto:isActivated() then goto proximoObjeto end
-
-                    local modData = objeto:getModData()
-                    if not modData then goto proximoObjeto end
-
-                    if not modData[MODDATA.timestampInicio] then
-                        registrarInicioCiclo(objeto)
-                        goto proximoObjeto
+                                                local tempoDecorrido = tempoAtual - modData[MODDATA.timestampInicio]
+                                                print("[LKS_Laundry] Monitorando: tipo=" .. tostring(tipo) .. " decorrido=" .. string.format("%.1f", tempoDecorrido) .. "/" .. string.format("%.1f", duracaoCiclo) .. " min")
+                                                if tempoDecorrido >= duracaoCiclo then
+                                                    processarCicloCompleto(objeto, modData, jogador)
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
                     end
-
-                    local duracaoCiclo = obterDuracaoCiclo(objeto, modData)
-                    local condicao = obterCondicao(modData)
-                    if condicao < 25 then
-                        duracaoCiclo = duracaoCiclo * 1.5
-                    elseif condicao < 50 then
-                        duracaoCiclo = duracaoCiclo * 1.25
-                    end
-
-                    local tempoDecorrido = tempoAtual - modData[MODDATA.timestampInicio]
-                    if tempoDecorrido >= duracaoCiclo then
-                        processarCicloCompleto(objeto, modData, jogador)
-                    end
-
-                    ::proximoObjeto::
                 end
-
-                ::proximoTile::
             end
         end
-
-        ::proximoJogador::
     end
 end
 

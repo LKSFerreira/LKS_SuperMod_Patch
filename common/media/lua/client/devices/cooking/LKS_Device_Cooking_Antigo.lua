@@ -234,4 +234,6 @@ LKS_Device_Cooking_Antigo.acenderFogaoAntigo = acenderFogaoAntigo
 LKS_Device_Cooking_Antigo.apagarFogaoAntigo = apagarFogaoAntigo
 LKS_Device_Cooking_Antigo.verificarCombustivelSolido = verificarCombustivelSolido
 
+print("[LKS PATCH - LKS_Device_Cooking_Antigo.lua] Carregado com sucesso!")
+
 return LKS_Device_Cooking_Antigo

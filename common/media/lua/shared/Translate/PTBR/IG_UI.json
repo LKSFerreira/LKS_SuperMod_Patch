@@ -212,6 +212,7 @@
   "IGUI_LKS_Laundry_MaquinaQuebrada": "Esta máquina está quebrada...",
   "IGUI_LKS_Laundry_CicloAutomatico": "Ciclo Automático",
   "IGUI_LKS_Laundry_SemItens": "Nenhum item dentro da máquina.",
+  "IGUI_LKS_Laundry_AutoTooltip": "Ciclo Automático: lava e seca em sequência sem intervenção.",
 
   "IGUI_Oven_Celsius": "°C",
   "IGUI_Oven_Fahrenheit": "°F"

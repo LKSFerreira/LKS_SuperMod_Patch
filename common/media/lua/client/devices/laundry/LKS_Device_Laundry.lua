@@ -266,6 +266,7 @@ function LKS_Device_Laundry.construirMenuContexto(jogadorNumero, menuContexto, o
                 end
                 ISWorldObjectContextMenu.onToggleComboWasherDryer(jogadorObjeto, objetoEletrico)
             end)
+            opcaoCicloAuto.iconTexture = getTexture("media/ui/LKS_Menu_Ciclo_Automatico.png")
             if not temItens then
                 opcaoCicloAuto.notAvailable = true
                 opcaoCicloAuto.toolTip = ISWorldObjectContextMenu.addToolTip()
