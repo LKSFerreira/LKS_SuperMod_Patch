@@ -168,6 +168,14 @@ pesquisa:
       da Loot Window, estado atual do LKS e hipóteses de bug.
     tags: [lavadora, secadora, combo, lavagem, secagem, IsoClothingWasher, IsoClothingDryer, pesquisa]
 
+  - arquivo: pz_mecanica_lavadoras_secadoras.md
+    titulo: Mecânica de Lavadoras e Secadoras — Documentação da Implementação LKS
+    descricao: >
+      Motor de ciclo Lua complementar (EveryOneMinute), duração por peso,
+      processamento de itens (3 caminhos), sistema de condição, Ciclo
+      Automático no Combo, modData utilizados, limitações.
+    tags: [lavadora, secadora, combo, ciclo, condicao, peso, autoburn]
+
   - arquivo: pz_combustivel_solido_e_materiais.md
     titulo: Combustível Sólido e Materiais — Referência Técnica
     descricao: >

@@ -1,0 +1,102 @@
+# ===========================================================================
+# Memórias do Copilot — Backup e Referência
+# ===========================================================================
+#
+# Exportado de: https://github.com/settings/copilot/memory
+# Data: 24/06/2026
+# Total: 18 memórias (4 removidas por redundância/vagueza)
+#
+# REMOVIDAS:
+#   - "Teste de funcionalidade store_memory" (teste descartável)
+#   - "LKS SuperMod Patch absorbs/phagocytizes..." (redundante com fagocitação de mods)
+#   - "LKS SuperMod Patch focuses on mechanics/gameplay..." (vago demais)
+#   - "Em relatórios com vários pontos, itens enumerados" (redundante com TDAH+TEA)
+#
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# COMUNICAÇÃO E PERFIL
+# ---------------------------------------------------------------------------
+
+comunicacao:
+  - fact: "O usuário tem TDAH + TEA (graus leves). Preferir: comunicação direta, decisões sem ambiguidade, ação imediata, organização visual clara. Cobrança firme é o estilo dele, não agressividade."
+    subject: comunicação
+
+  - fact: "O usuário prefere que o raciocínio interno (chain of thought / thinking) também seja em PT-BR, não apenas as respostas."
+    subject: comunicação
+
+  - fact: "Shift+Enter multiline não funciona no terminal do usuário. Usar backslash (\\) para quebra de linha."
+    subject: terminal
+
+# ---------------------------------------------------------------------------
+# GIT E VERSIONAMENTO
+# ---------------------------------------------------------------------------
+
+git:
+  - fact: "NUNCA fazer git commit automaticamente. Commits só devem ser executados quando o usuário solicitar explicitamente."
+    subject: git workflow
+
+# ---------------------------------------------------------------------------
+# PROJETO — CONVENÇÕES
+# ---------------------------------------------------------------------------
+
+convencoes:
+  - fact: "Documentação de referência externa usa docs/. Documentação interna do desenvolvimento usa .metadocs/."
+    subject: estrutura
+
+  - fact: "Sempre consultar _indice.yaml PRIMEIRO ao buscar documentação: docs/_indice.yaml, .metadocs/_indice.yaml, tools/_indice.yaml."
+    subject: documentação
+
+  - fact: "Em roadmap/backlog, usar 'dívida técnica' só para débitos técnicos reais; features não implementadas devem ir para TODO de feat."
+    subject: terminologia
+
+  - fact: "Na fagocitação de mods, todo arquivo Lua incorporado deve ter cabeçalho de créditos com emoji, nome do mod original, autor, ID Workshop e link Steam."
+    subject: fagocitação
+
+  - fact: "Todo fallback de getText() no código Lua deve ser em PT-BR. Traduções devem existir tanto em PTBR quanto EN nos arquivos Translate."
+    subject: tradução
+
+  - fact: "No código e documentação interna, usar 'Propano'. Na tradução/UI visível ao jogador em PT-BR, manter 'Gás' (ex: 'Botijão de Gás')."
+    subject: terminologia
+
+  - fact: "Mecânicas ultra-realistas são ruins até para jogadores que buscam realismo. Manter simplificação lúdica."
+    subject: game design
+
+# ---------------------------------------------------------------------------
+# PROJETO — VALIDAÇÃO E FERRAMENTAS
+# ---------------------------------------------------------------------------
+
+ferramentas:
+  - fact: "Validar sintaxe Lua com: python tools/auditoria_mod.py validar-sintaxe"
+    subject: testes
+
+  - fact: "Para corrigir double-encoding UTF-8 em lote, usar abordagem de peneira: encode como latin-1 e decode como UTF-8."
+    subject: encoding
+
+  - fact: "A extensão ZedScripts do VS Code precisa do caminho do PZ em 'Search Directories' para validar timedAction e block references."
+    subject: linter
+
+# ---------------------------------------------------------------------------
+# PZ ENGINE — REFERÊNCIA TÉCNICA
+# ---------------------------------------------------------------------------
+
+pz_engine:
+  - fact: "No PZ B42, tradução de nomes de itens usa ItemName.json com keys = fullType (ex: 'Module.ItemName': 'Nome'). NÃO usar prefixo 'ItemName_'."
+    subject: tradução PZ
+
+  - fact: "DisplayName É obrigatório nos scripts de item do PZ B42 apesar de deprecated. Sem ele, getDisplayName() retorna ID cru."
+    subject: scripts PZ
+
+  - fact: "Para detectar IsoWorldInventoryObject no chão, extrair referência da opção vanilla 'Posicionamento 3D Estendido'. O item está em opcao.target (NÃO param1)."
+    subject: detecção PZ
+
+  - fact: "Para manter IsoStove ligado sem rede elétrica, usar chunk:addGeneratorPos(x,y,z). Faz isPowered() retornar true. Remover com removeGeneratorPos()."
+    subject: energização PZ
+
+# ---------------------------------------------------------------------------
+# ESTUDO PESSOAL
+# ---------------------------------------------------------------------------
+
+estudo:
+  - fact: "O usuário quer estudar serialização binária Java (como o PZ usa no blob data do players.db)."
+    subject: estudo
