@@ -191,4 +191,5 @@ walkthroughs:
       - walkthrough/traducao_recipientes.md
       - walkthrough/visual_termostato.md
       - walkthrough/reformulacao_combustivel_solido.md
+      - walkthrough/organizador_itens.md
     tags: [walkthrough, entrega, feature, documentacao-pos-entrega]

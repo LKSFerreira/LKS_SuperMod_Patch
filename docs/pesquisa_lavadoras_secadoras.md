@@ -175,23 +175,22 @@ O vanilla registra handlers na Loot Window para cada tipo de máquina:
 ### O que o vanilla aceita (lavagem manual em pia)
 
 ```lua
--- ISWorldObjectContextMenu, linha ~1808
+-- ISWashClothing:complete() — aceita QUALQUER item
 if instanceof(item, "Clothing") or instanceof(item, "InventoryContainer") then
-    -- Verifica sangue por parte do corpo (BloodClothingType)
-    -- Verifica sujeira geral (getDirtiness)
+    -- Lava por partes do corpo (BloodClothingType)
+    -- Remove sujeira geral (setDirtiness(0))
+    -- Aplica wetness (setWetness(100))
 else
-    -- Verifica sangue geral (getBloodLevel)
+    -- Qualquer outro item: apenas setBloodLevel(0)
 end
 ```
 
-O vanilla aceita:
-- `Clothing` — roupas com BloodClothingType
-- `InventoryContainer` — mochilas, bolsas (têm BloodClothingType)
-- Itens genéricos com `getBloodLevel() > 0` (bandagens sujas etc.)
+O vanilla aceita na lavagem manual:
+- `Clothing` — roupas (lava sangue por parte + sujeira + aplica umidade)
+- `InventoryContainer` — mochilas, bolsas (mesmo tratamento de Clothing)
+- **Qualquer item com `getBloodLevel() > 0`** — armas, ferramentas, tudo (apenas remove sangue)
 
-### O que o vanilla NÃO aceita na lavagem manual
-- Ferramentas, armas (mesmo sujas de sangue) — não há opção no menu
-- Sapatos, pochetes, mochilas — depende se têm `BloodClothingType`
+**Confirmado:** Armas, ferramentas e qualquer item sujo de sangue PODE ser lavado manualmente na pia no vanilla. O menu é construído pelo Java e inclui todos os itens com sangue/sujeira.
 
 ---
 
