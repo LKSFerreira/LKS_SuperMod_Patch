@@ -1,0 +1,289 @@
+# ===========================================================================
+# Índice de Agentes — .agents/
+# ===========================================================================
+#
+# PROPÓSITO:
+#   Índice para recuperação eficiente de regras, skills, workflows e templates
+#   por agentes LLM. Consulte ANTES de reler arquivos — evita leituras
+#   desnecessárias e acelera a localização de diretrizes.
+#
+# ESCOPO:
+#   Configuração comportamental do agente: regras obrigatórias, skills
+#   (capacidades acionáveis), workflows (procedimentos passo-a-passo)
+#   e templates reutilizáveis. NÃO inclui documentação técnica do engine
+#   (ver docs/_indice.yaml) nem registro de entregas (ver .metadocs/_indice.yaml).
+#
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-24
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# REGRAS (obrigações comportamentais — lidas conforme trigger)
+# ---------------------------------------------------------------------------
+
+regras:
+  - arquivo: rules/code.md
+    trigger: always_on
+    titulo: Padrões de Código e Arquitetura
+    descricao: >
+      Clean Code, SRP, Guard Clauses, idioma pt-BR para código de autoria
+      própria, proibição de abreviações, encoding UTF-8, sem código morto.
+    tags: [clean-code, nomenclatura, ptbr, arquitetura, srp]
+
+  - arquivo: rules/workflow.md
+    trigger: always_on
+    titulo: Fluxo de Trabalho do Projeto
+    descricao: >
+      Princípios operacionais: diagnosticar antes de alterar, planejar antes
+      de executar, implementar só o escopo pedido, validar com testes/lint.
+    tags: [workflow, diagnostico, planejamento, validacao]
+
+  - arquivo: rules/git.md
+    trigger: model_decision
+    titulo: Regras de Git e Versionamento
+    descricao: >
+      Commits atômicos, NUNCA commitar sem solicitação explícita, proibido
+      git add . com mudanças heterogêneas, mensagens seguem skill cria_commit.
+    tags: [git, commit, versionamento, atomico]
+
+  - arquivo: rules/lua.md
+    trigger: model_decision
+    titulo: Regras Específicas para Lua
+    descricao: >
+      EmmyLua annotations obrigatórias, tipagem estática via anotações,
+      nomenclatura pt-BR descritiva, escopo local, prefixo LKS_,
+      compatibilidade com Kahlua (Lua 5.1 sem goto/labels).
+    tags: [lua, emmylua, kahlua, tipagem, nomenclatura, pz]
+
+  - arquivo: rules/python.md
+    trigger: model_decision
+    titulo: Regras Específicas para Python
+    descricao: >
+      Gerenciador exclusivo uv (nunca pip/poetry), tipagem moderna 3.10+,
+      docstrings RST Sphinx, linting com Ruff.
+    tags: [python, uv, tipagem, ruff, docstrings]
+
+  - arquivo: rules/java.md
+    trigger: model_decision
+    titulo: Convenções Java
+    descricao: >
+      JDK 17+/21+, recursos modernos (Records, var, Text Blocks, Switch
+      Expressions), estrutura de projeto puro e Spring Boot.
+    tags: [java, jdk, spring-boot, records]
+
+  - arquivo: rules/javascript.md
+    trigger: model_decision
+    titulo: Convenções JavaScript/TypeScript
+    descricao: >
+      Node.js 20.x+, detecção de package manager via lockfile,
+      ESLint/Prettier, testes e formatação.
+    tags: [javascript, typescript, nodejs, eslint, prettier]
+
+  - arquivo: rules/perfil_execucao.md
+    trigger: manual
+    titulo: Perfil de Execução Rigorosa
+    descricao: >
+      Perfil opcional para agentes multiagente. Define hierarquia de
+      prioridade (plataforma > AGENTS.md > skills > pedido do usuário)
+      e contrato de execução estrita.
+    tags: [perfil, rigoroso, multiagente, prioridade]
+
+# ---------------------------------------------------------------------------
+# SKILLS (capacidades acionáveis — invocadas por comando ou contexto)
+# ---------------------------------------------------------------------------
+
+skills:
+  - diretorio: skills/sincroniza_contexto/
+    gatilho: /sincroniza_contexto
+    titulo: Sincronização de Contexto
+    descricao: >
+      Auditoria do estado do projeto, escuta de demandas, verificação
+      de git status, roadmap e pendências. Usado ao iniciar novo chat.
+    tags: [contexto, auditoria, sincronizacao, novo-chat]
+
+  - diretorio: skills/cria_commit/
+    gatilho: /cria_commit (ou pedido explícito de commit)
+    titulo: Criação de Commits
+    descricao: >
+      Padrão rigoroso de commits atômicos com emoji + tipo + descrição.
+      Segmentação por escopo lógico, nunca mistura feat com docs.
+    tags: [commit, git, emoji, atomico, segmentacao]
+
+  - diretorio: skills/cria_pr/
+    gatilho: /cria_pr
+    titulo: Criação de Pull Requests
+    descricao: >
+      Gera texto descritivo e estético de PRs baseado em template
+      obrigatório. Foco em formatação impecável.
+    tags: [pr, pull-request, template, formatacao]
+
+  - diretorio: skills/fecha_feature/
+    gatilho: /fecha_feature
+    titulo: Fechamento de Feature
+    descricao: >
+      Promove artefato de feat/ para walkthrough/, atualiza historico.md
+      e roadmap.md. Dois fluxos: promoção planejada ou ad-hoc.
+    tags: [feature, walkthrough, promocao, historico, documentacao]
+
+  - diretorio: skills/diagnosticos/
+    gatilho: contextual (erros de build/lint/runtime)
+    titulo: Diagnósticos
+    descricao: >
+      Investiga erros de build, lint, runtime e configuração antes de
+      propor correções. Análise antes de ação.
+    tags: [diagnostico, erro, build, lint, runtime, debug]
+
+  - diretorio: skills/testes/
+    gatilho: contextual (validação necessária)
+    titulo: Testes
+    descricao: >
+      Planeja e executa validações automatizadas ou manuais adequadas
+      à stack do projeto (auditoria Lua, Ruff, etc).
+    tags: [testes, validacao, auditoria, lua, python]
+
+  - diretorio: skills/revisao_codigo/
+    gatilho: contextual (code review solicitado)
+    titulo: Revisão de Código
+    descricao: >
+      Revisa alterações com foco em bugs, regressões, segurança,
+      arquitetura e lacunas de teste.
+    tags: [revisao, code-review, bugs, seguranca, arquitetura]
+
+  - diretorio: skills/banco_dados/
+    gatilho: contextual (mudanças de DB)
+    titulo: Banco de Dados
+    descricao: >
+      Planeja e valida mudanças de banco, queries, migrações e seeds
+      com foco em segurança e reversibilidade.
+    tags: [banco, database, migracao, query, seed]
+
+  - diretorio: skills/dependencias/
+    gatilho: contextual (gerenciamento de pacotes)
+    titulo: Dependências
+    descricao: >
+      Gerencia dependências, runtimes e pacotes respeitando a stack
+      e o ambiente do projeto (uv para Python, npm para JS).
+    tags: [dependencias, pacotes, uv, npm, runtime]
+
+  - diretorio: skills/variaveis_ambiente/
+    gatilho: contextual (configuração de env)
+    titulo: Variáveis de Ambiente
+    descricao: >
+      Orienta criação e manutenção de variáveis de ambiente, secrets
+      e arquivos .env.example.
+    tags: [env, variaveis, secrets, dotenv, configuracao]
+
+  - diretorio: skills/busca_web/
+    gatilho: contextual (informação externa necessária)
+    titulo: Busca Web
+    descricao: >
+      Orienta uso de pesquisa web para informações atuais, documentação
+      oficial e validação de fatos instáveis.
+    tags: [web, pesquisa, documentacao, validacao]
+
+  - diretorio: skills/frontend_js/
+    gatilho: contextual (implementação frontend)
+    titulo: Frontend JavaScript
+    descricao: >
+      Orienta implementação frontend JS/TS com foco em layout,
+      acessibilidade, estado e experiência de uso.
+    tags: [frontend, javascript, typescript, layout, acessibilidade]
+
+  - diretorio: skills/inicia_projeto/
+    gatilho: /inicia_projeto
+    titulo: Inicialização de Projeto
+    descricao: >
+      Gera contexto inicial de um projeto ou estudo recém-criado.
+      Scaffolding, estrutura de pastas, configurações base.
+    tags: [init, projeto, scaffolding, estrutura]
+
+  - diretorio: skills/autoria_skill/
+    gatilho: contextual (criar/melhorar skills)
+    titulo: Autoria de Skills
+    descricao: >
+      Cria ou melhora skills reutilizáveis em .agents/skills/ com
+      escopo claro e instruções acionáveis.
+    tags: [skill, autoria, meta, reutilizavel]
+
+# ---------------------------------------------------------------------------
+# WORKFLOWS (procedimentos passo-a-passo — redirecionam para skills)
+# ---------------------------------------------------------------------------
+
+workflows:
+  - arquivo: workflows/commit.md
+    titulo: Workflow de Versionamento
+    descricao: >
+      Redireciona para skill cria_commit. Mantido como ponto de entrada
+      para compatibilidade com chamadas legadas.
+    redireciona_para: skills/cria_commit/
+    tags: [commit, versionamento, redirect]
+
+  - arquivo: workflows/fecha_feature.md
+    titulo: Workflow de Fechamento de Feature
+    descricao: >
+      Redireciona para skill fecha_feature. Promoção de feat/ para
+      walkthrough/ e sincronização de histórico.
+    redireciona_para: skills/fecha_feature/
+    tags: [feature, fechamento, redirect]
+
+  - arquivo: workflows/init.md
+    titulo: Workflow de Inicialização
+    descricao: >
+      Redireciona para skill inicia_projeto. Scaffolding inicial.
+    redireciona_para: skills/inicia_projeto/
+    tags: [init, projeto, redirect]
+
+  - arquivo: workflows/novo_chat.md
+    titulo: Workflow de Novo Chat
+    descricao: >
+      Redireciona para skill sincroniza_contexto. Sincronização ao
+      abrir nova conversa.
+    redireciona_para: skills/sincroniza_contexto/
+    tags: [chat, sincronizacao, redirect]
+
+  - arquivo: workflows/pull_requests.md
+    titulo: Workflow de Pull Requests
+    descricao: >
+      Redireciona para skill cria_pr. Geração de texto descritivo de PR.
+    redireciona_para: skills/cria_pr/
+    tags: [pr, pull-request, redirect]
+
+  - arquivo: workflows/walkthrough.md
+    titulo: Workflow de Walkthrough
+    descricao: >
+      Redireciona para skill fecha_feature. Documentação pós-entrega.
+    redireciona_para: skills/fecha_feature/
+    tags: [walkthrough, documentacao, redirect]
+
+# ---------------------------------------------------------------------------
+# TEMPLATES (arquivos-base reutilizáveis)
+# ---------------------------------------------------------------------------
+
+templates:
+  - diretorio: templates/skills/
+    conteudo:
+      - diretorio: _template_simples/
+        titulo: Template Simples de Skill
+        descricao: >
+          Estrutura mínima para criar uma nova skill: SKILL.md com
+          propósito, pré-requisitos, instruções e guardrails.
+        tags: [template, skill, simples, scaffolding]
+
+      - diretorio: _template_avancado/
+        titulo: Template Avançado de Skill
+        descricao: >
+          Estrutura completa com exemplos, múltiplos fluxos, integrações
+          e regras de validação detalhadas.
+        tags: [template, skill, avancado, scaffolding]
+
+# ---------------------------------------------------------------------------
+# REFERÊNCIA GERAL
+# ---------------------------------------------------------------------------
+
+referencia:
+  - arquivo: tools.md
+    titulo: Referência de Ferramentas do Agente
+    descricao: >
+      Expectativas independentes de plataforma para uso de ferramentas:
+      busca (ripgrep), edição (patch estruturado), leitura, execução.
+      Princípios e categorias de ferramentas disponíveis.
+    tags: [ferramentas, ripgrep, edicao, leitura, execucao, referencia]
