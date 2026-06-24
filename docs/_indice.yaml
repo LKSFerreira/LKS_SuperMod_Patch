@@ -158,6 +158,16 @@ pesquisa:
       Pesquisa concluída em 18/06/2026.
     tags: [fogao, IsoStove, IsoFireplace, ISKnob, pesquisa, culinaria]
 
+  - arquivo: pesquisa_lavadoras_secadoras.md
+    titulo: Pesquisa — Lavadoras, Secadoras e Combo (Mecânica Interna)
+    descricao: >
+      Investigação completa do sistema de lavagem/secagem do PZ B42.
+      Descoberta: processamento é 100% Java (TimedActions apenas toggle).
+      APIs de limpeza (setBlood, setDirt, setDirtiness, setWetness),
+      ISWashClothing (lavagem manual em pia), classes Java, handlers
+      da Loot Window, estado atual do LKS e hipóteses de bug.
+    tags: [lavadora, secadora, combo, lavagem, secagem, IsoClothingWasher, IsoClothingDryer, pesquisa]
+
   - arquivo: pz_combustivel_solido_e_materiais.md
     titulo: Combustível Sólido e Materiais — Referência Técnica
     descricao: >
