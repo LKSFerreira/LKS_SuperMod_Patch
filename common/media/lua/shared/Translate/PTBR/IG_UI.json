@@ -190,6 +190,18 @@
   "IGUI_LKS_ConectadoAFogao": "Conectado a um fogão",
   "IGUI_LKS_IgnicaoEletrica": "Ignição Elétrica",
 
+  "IGUI_LKS_Organizer_GuardarItens": "Guardar Itens",
+  "IGUI_LKS_Organizer_Favoritar": "Favoritar para Guardar Itens",
+  "IGUI_LKS_Organizer_Desfavoritar": "Desfavoritar",
+  "IGUI_LKS_Organizer_NenhumFavorito": "Nenhum container favoritado. Clique com botao direito em um container e selecione Favoritar.",
+  "IGUI_LKS_Organizer_NenhumItem": "Nenhum item para guardar nos containers favoritados.",
+  "IGUI_LKS_Organizer_Tooltip": "Transfere itens automaticamente para containers favoritados que ja possuem o mesmo tipo.",
+  "IGUI_LKS_Organizer_ContainerInacessivel": "Container inacessivel, pulando...",
+  "IGUI_LKS_Organizer_Favoritos_Tooltip": "Ver containers favoritados",
+  "IGUI_LKS_Organizer_Favoritos_Botao": "Favoritos",
+  "IGUI_LKS_Organizer_Favoritos_Titulo": "Containers Favoritados",
+  "IGUI_LKS_Organizer_Favoritos_Instrucao": "Para remover: clique direito no container e selecione Desfavoritar.",
+
   "IGUI_Oven_Celsius": "°C",
   "IGUI_Oven_Fahrenheit": "°F"
 }

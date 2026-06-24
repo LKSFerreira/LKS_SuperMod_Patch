@@ -172,6 +172,18 @@
     "IGUI_LKS_ConectadoAFogao": "Connected to a stove",
     "IGUI_LKS_IgnicaoEletrica": "Electric Ignition",
 
+    "IGUI_LKS_Organizer_GuardarItens": "Store Items",
+    "IGUI_LKS_Organizer_Favoritar": "Favorite for Item Storage",
+    "IGUI_LKS_Organizer_Desfavoritar": "Unfavorite",
+    "IGUI_LKS_Organizer_NenhumFavorito": "No containers favorited. Right-click a container and select Favorite.",
+    "IGUI_LKS_Organizer_NenhumItem": "No items to store in favorited containers.",
+    "IGUI_LKS_Organizer_Tooltip": "Auto-transfer items to favorited containers that already have the same type.",
+    "IGUI_LKS_Organizer_ContainerInacessivel": "Container unreachable, skipping...",
+    "IGUI_LKS_Organizer_Favoritos_Tooltip": "View favorited containers",
+    "IGUI_LKS_Organizer_Favoritos_Botao": "Favorites",
+    "IGUI_LKS_Organizer_Favoritos_Titulo": "Favorited Containers",
+    "IGUI_LKS_Organizer_Favoritos_Instrucao": "To remove: right-click the container and select Unfavorite.",
+
     "IGUI_Oven_Celsius": "°C",
     "IGUI_Oven_Fahrenheit": "°F"
 }
