@@ -4,15 +4,17 @@
 #
 # Exportado de: https://github.com/settings/copilot/memory
 # Data: 24/06/2026
-# Total: 18 memórias (4 removidas por redundância/vagueza)
-#
-# REMOVIDAS:
-#   - "Teste de funcionalidade store_memory" (teste descartável)
-#   - "LKS SuperMod Patch absorbs/phagocytizes..." (redundante com fagocitação de mods)
-#   - "LKS SuperMod Patch focuses on mechanics/gameplay..." (vago demais)
-#   - "Em relatórios com vários pontos, itens enumerados" (redundante com TDAH+TEA)
+# Total: 21 memórias (sincronizado com remoto)
 #
 # ===========================================================================
+
+# ---------------------------------------------------------------------------
+# DEBUG E LOGS
+# ---------------------------------------------------------------------------
+
+debug:
+  - fact: "O log do PZ está em C:\\Users\\LKSFERREIRA\\Zomboid\\console.txt — acessível diretamente sem o usuário precisar colar."
+    subject: debug PZ
 
 # ---------------------------------------------------------------------------
 # COMUNICAÇÃO E PERFIL
@@ -35,6 +37,14 @@ comunicacao:
 git:
   - fact: "NUNCA fazer git commit automaticamente. Commits só devem ser executados quando o usuário solicitar explicitamente."
     subject: git workflow
+
+# ---------------------------------------------------------------------------
+# PROJETO — CONVENÇÕES LUA
+# ---------------------------------------------------------------------------
+
+convencoes_lua:
+  - fact: "Todo arquivo Lua do mod deve ter um print de carregamento no final (ex: print(\"[LKS PATCH - NomeArquivo.lua] Carregado com sucesso!\")). Sem exceção."
+    subject: convenção Lua
 
 # ---------------------------------------------------------------------------
 # PROJETO — CONVENÇÕES
