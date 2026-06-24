@@ -20,6 +20,7 @@
 -- ============================================================================
 
 require "Camping/ISCampingMenu"
+require "cooking/LKS_Fire_FuelClassifier"
 
 local CampingMenu = ISCampingMenu
 if not CampingMenu then

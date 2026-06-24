@@ -184,6 +184,11 @@
     "IGUI_LKS_Organizer_Favoritos_Titulo": "Favorited Containers",
     "IGUI_LKS_Organizer_Favoritos_Instrucao": "To remove: right-click the container and select Unfavorite.",
 
+    "IGUI_LKS_SemItensParaConverter": "Nothing here that can be burned...",
+    "IGUI_LKS_PenalidadeEficiencia": "Should have prepared the material first...",
+    "IGUI_LKS_CaminhoInacessivel": "Can't reach there...",
+    "IGUI_LKS_GrupoOutros": "Other",
+
     "IGUI_Oven_Celsius": "°C",
     "IGUI_Oven_Fahrenheit": "°F"
 }

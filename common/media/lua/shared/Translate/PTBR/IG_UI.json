@@ -202,6 +202,11 @@
   "IGUI_LKS_Organizer_Favoritos_Titulo": "Containers Favoritados",
   "IGUI_LKS_Organizer_Favoritos_Instrucao": "Para remover: clique direito no container e selecione Desfavoritar.",
 
+  "IGUI_LKS_SemItensParaConverter": "Não tem nada aqui que dê para queimar...",
+  "IGUI_LKS_PenalidadeEficiencia": "Deveria ter preparado o material antes...",
+  "IGUI_LKS_CaminhoInacessivel": "Não consigo chegar lá...",
+  "IGUI_LKS_GrupoOutros": "Outros",
+
   "IGUI_Oven_Celsius": "°C",
   "IGUI_Oven_Fahrenheit": "°F"
 }
