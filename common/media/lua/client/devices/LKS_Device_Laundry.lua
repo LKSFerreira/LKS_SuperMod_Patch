@@ -249,6 +249,29 @@ function LKS_Device_Laundry.construirMenuContexto(jogadorNumero, menuContexto, o
             ISWorldObjectContextMenu.onSetComboWasherDryerMode(jogadorObjeto, objetoEletrico, objetoEletrico:isModeWasher() and "dryer" or "washer")
         end)
         opcaoModo.iconTexture = objetoEletrico:isModeWasher() and (ContainerButtonIcons.clothingdryer or getTexture("media/ui/Container_ClothingDryer.png")) or (ContainerButtonIcons.clothingwasher or getTexture("media/ui/Container_ClothingWasher.png"))
+
+        -- Ciclo Automatico: lava + seca sem intervencao
+        if not estaAtivo and temEnergia and temAgua then
+            local containerMaquina = objetoEletrico:getContainer()
+            local temItens = containerMaquina and not containerMaquina:isEmpty()
+            local rotuloCicloAuto = getText("IGUI_LKS_Laundry_CicloAutomatico") or "Ciclo Automatico"
+            local opcaoCicloAuto = submenu:addOption(rotuloCicloAuto, objetosMundo, function()
+                local modData = objetoEletrico:getModData()
+                if modData then
+                    modData["LKS_Laundry_AutoCycle"] = true
+                    modData["LKS_Laundry_Phase"] = "lavagem"
+                end
+                if ehComboLavadoraSecadora and not objetoEletrico:isModeWasher() then
+                    ISWorldObjectContextMenu.onSetComboWasherDryerMode(jogadorObjeto, objetoEletrico, "washer")
+                end
+                ISWorldObjectContextMenu.onToggleComboWasherDryer(jogadorObjeto, objetoEletrico)
+            end)
+            if not temItens then
+                opcaoCicloAuto.notAvailable = true
+                opcaoCicloAuto.toolTip = ISWorldObjectContextMenu.addToolTip()
+                opcaoCicloAuto.toolTip.description = getText("IGUI_LKS_Laundry_SemItens") or "Nenhum item dentro da maquina."
+            end
+        end
     end
 end
 

@@ -189,6 +189,12 @@
     "IGUI_LKS_CaminhoInacessivel": "Can't reach there...",
     "IGUI_LKS_GrupoOutros": "Other",
 
+    "IGUI_LKS_Laundry_CicloCompleto": "The machine is done.",
+    "IGUI_LKS_Laundry_DanoDetectado": "Something didn't sound right inside the machine...",
+    "IGUI_LKS_Laundry_MaquinaQuebrada": "This machine is broken...",
+    "IGUI_LKS_Laundry_CicloAutomatico": "Auto Cycle",
+    "IGUI_LKS_Laundry_SemItens": "No items inside the machine.",
+
     "IGUI_Oven_Celsius": "°C",
     "IGUI_Oven_Fahrenheit": "°F"
 }
