@@ -11,7 +11,7 @@
 #   mecânicas do jogo, descobertas sobre Kahlua/Lua/Java.
 #   NÃO inclui documentação do nosso desenvolvimento (ver .metadocs/_indice.yaml).
 #
-# ÚLTIMA ATUALIZAÇÃO: 2026-06-23
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-24
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
@@ -157,6 +157,24 @@ pesquisa:
       ISKnob, ISOvenUI, BBQ, StoveToggle, fluxo de dados vanilla.
       Pesquisa concluída em 18/06/2026.
     tags: [fogao, IsoStove, IsoFireplace, ISKnob, pesquisa, culinaria]
+
+  - arquivo: pz_combustivel_solido_e_materiais.md
+    titulo: Combustível Sólido e Materiais — Referência Técnica
+    descricao: >
+     Mapeamento completo de meios de fogo com combustível sólido (7 objetos),
+     tabela de combustíveis hardcoded e procedural (camping_fuel.lua),
+     sistemas de material do PZ (sprites, FabricType, Tags, FireFuelRatio),
+     diferenças entre CCampfireSystem e isFireInteractionObject.
+    tags: [combustivel, fogo, material, campfire, fireplace, bbq, FabricType, IsFireFuel]
+
+  - arquivo: pz_mecanica_combustivel_solido.md
+    titulo: Mecânica de Combustível Sólido — Documentação da Implementação LKS
+    descricao: >
+     Documentação completa da mecânica reformulada: classificação invertida
+     (tudo queima exceto exclusões), sistema de eficiência (umidade + penalidade),
+     processamento recursivo de containers, agrupamento do menu por categoria,
+     handler da Loot Window, AutoBurn, limitação Java de renderização.
+    tags: [combustivel, classificador, eficiencia, umidade, penalidade, recursivo, autoburn]
 
 # ---------------------------------------------------------------------------
 # MODS EXTERNOS (referência de mods de outros autores)
