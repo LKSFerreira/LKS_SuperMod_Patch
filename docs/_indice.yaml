@@ -11,7 +11,7 @@
 #   mecânicas do jogo, descobertas sobre Kahlua/Lua/Java.
 #   NÃO inclui documentação do nosso desenvolvimento (ver .metadocs/_indice.yaml).
 #
-# ÚLTIMA ATUALIZAÇÃO: 2026-06-20
+# ÚLTIMA ATUALIZAÇÃO: 2026-06-23
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
@@ -100,6 +100,14 @@ api_engine:
       walkAdj + enfileiramento, dropar item com offset direcional,
       ações específicas do Combo Washer Dryer.
     tags: [TimedAction, ISBaseTimedAction, animacao, walkAdj, combo-washer]
+
+  - arquivo: pz_organizador_itens.md
+    titulo: Organizador de Itens — Gerenciamento Automático de Inventário
+    descricao: >
+      Sistema de favoritar containers e guardar itens automaticamente.
+      Scan 50x50 multi-andar, correspondência por fullType, ISWalkToTimedAction +
+      ISInventoryTransferAction, overlay de estrela, bags no chão, limitações.
+    tags: [organizador, inventario, favoritar, container, transferencia, ISWalkTo, modData]
 
   - arquivo: pz_moddata_bidirecional.md
     titulo: Moddata Bidirecional — Vínculo entre Objetos

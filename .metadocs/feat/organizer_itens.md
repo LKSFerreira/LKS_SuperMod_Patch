@@ -479,9 +479,35 @@ Itens para guardar: 7
 
 ## Checklist de Validação (Antes de Implementar)
 
-- [ ] O sistema de handlers vanilla (`ISInventoryWindowContainerControls.AddHandler`) aceita handlers de mods sem conflito?
-- [ ] O monkey patch no `addContainerButton` da Loot Window não conflita com o existente no `LKS_ApplianceManager`?
-- [ ] O `modData` no IsoObject pai persiste corretamente em save/load?
-- [ ] A fila de `ISTimedActionQueue` com múltiplos `walkAdj` + `ISInventoryTransferAction` funciona sem race conditions?
-- [ ] Containers de veículo suportam `getParent():getModData()` da mesma forma?
-- [ ] O handler `shouldBeVisible()` reage corretamente quando favoritos mudam em tempo real?
+Pontos que **só podem ser confirmados com teste in-game** — tratados como dívida técnica a resolver durante a implementação:
+
+- [ ] **Enfileiramento de `ISPathFindAction` + `ISInventoryTransferAction`:** Validar se o `ISTimedActionQueue` executa sequencialmente múltiplos pathfinds intercalados com transferências (walkA → depositA → walkB → depositB). Se não, criar TimedAction custom com callback chain.
+- [ ] **Persistência de `modData` em mobília:** Confirmar que `objeto:getModData()["LKS_ContainerFavorito"]` persiste em save/load para estantes, armários, guarda-roupas (já funciona para fogões/botijões no sistema de propano — alta probabilidade de funcionar).
+- [ ] **Chunks carregados no raio 50x50:** Validar se `getCell():getGridSquare(x, y, z)` retorna nil para tiles fora dos chunks carregados e se isso é tratado graciosamente.
+- [ ] **Containers de veículo:** Verificar se `getModData()` funciona em `VehiclePart` da mesma forma (Fase 4).
+
+---
+
+## Diretriz de Depuração (Debug Prints)
+
+Durante toda a implementação da Fase 1, incluir prints de debug **detalhados** para facilitar acompanhamento via `console.txt`. Formato padrão:
+
+```lua
+print("[LKS_Organizer] <contexto>: <informacao>")
+```
+
+Exemplos esperados no console durante execução:
+
+```
+[LKS_Organizer] Scan iniciado: raio 25, jogador em (4521, 3102, 0)
+[LKS_Organizer] Container favoritado encontrado: armario em (4518, 3099, 0) — 3 tipos correspondentes
+[LKS_Organizer] Container favoritado encontrado: freezer em (4525, 3105, 0) — 1 tipo correspondente
+[LKS_Organizer] Total: 2 containers, 7 itens para guardar
+[LKS_Organizer] Enfileirando: pathfind ate (4518, 3099, 0)
+[LKS_Organizer] Enfileirando: transferir 3x Base.RawChicken para armario
+[LKS_Organizer] Enfileirando: pathfind ate (4525, 3105, 0)
+[LKS_Organizer] Enfileirando: transferir 1x Base.Screwdriver para freezer
+[LKS_Organizer] Fila completa: 4 acoes enfileiradas
+```
+
+> **Regra:** Os prints de debug serão removidos apenas na fase de polimento final (Fase 2), após validar todos os fluxos. Durante desenvolvimento, eles são obrigatórios em: scan, correspondência, enfileiramento, pathfind start/complete/fail, transferência start/complete.
