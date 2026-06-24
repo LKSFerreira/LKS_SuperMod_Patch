@@ -126,6 +126,7 @@ planos:
       - "Plano de Implementação - Melhorias de Eletricidade e Visuais para Secadora e Lavadora de Roupas.md"
       - "Plano de Implementação - Refatoração do Fridges Off para Driver de Dispositivo (LKS_Device_Refrigeration).md"
       - "Plano de Implementação - Suporte Completo de Ícones de Inventário para Lavanderia.md"
+      - "Plano de Implementação - Reformulação do Sistema de Combustível Sólido.md"
     tags: [plano, implementacao, historico]
 
 # ---------------------------------------------------------------------------
@@ -189,4 +190,5 @@ walkthroughs:
       - walkthrough/renderizacao_fluidos.md
       - walkthrough/traducao_recipientes.md
       - walkthrough/visual_termostato.md
+      - walkthrough/reformulacao_combustivel_solido.md
     tags: [walkthrough, entrega, feature, documentacao-pos-entrega]
