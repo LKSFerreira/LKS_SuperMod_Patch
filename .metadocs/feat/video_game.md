@@ -22,7 +22,7 @@ Transformar o item vanilla `Base.VideoGame` (Eletrônico, 0.8kg) em um dispositi
 - **Reduz estresse** (Moodle: Stress)
 - **Reduz depressão** (Moodle: Unhappiness)
 - Taxa de redução proporcional ao tempo jogando
-- No estresse/depressão MÁXIMO → zerar em **6 horas** de uso contínuo
+- No estresse/depressão MÁXIMO → zerar em **3 horas** de uso contínuo
 
 ---
 
@@ -45,7 +45,7 @@ Transformar o item vanilla `Base.VideoGame` (Eletrônico, 0.8kg) em um dispositi
   - Estresse E depressão chegarem a zero, OU
   - Bateria acabar, OU
   - Jogador cancelar (mover-se, clicar)
-- **Tempo máximo para zerar moodles máximos:** 6 horas
+- **Tempo máximo para zerar moodles máximos:** 3 horas
 
 ### Modo 2: Minijogos Manuais (Interativo)
 
@@ -139,13 +139,13 @@ O vanilla já tem `ISReadABookAction` que reduz tédio. Poderia servir como refe
 |-----------|-------|
 | Baterias necessárias | 2 |
 | Duração total (baterias cheias) | 2 horas in-game |
-| Tempo para zerar estresse máximo (automático) | 6 horas |
-| Tempo para zerar depressão máxima (automático) | 6 horas |
+| Tempo para zerar estresse máximo (automático) | 3 horas |
+| Tempo para zerar depressão máxima (automático) | 3 horas |
 | Redução por fase (minijogo) — Estresse | A balancear |
 | Redução por fase (minijogo) — Depressão | A balancear |
 | Bônus por fone de ouvido | A definir (mais imersão = mais redução?) |
 
-**Implicação do custo:** Como baterias duram 2h e zerar moodles leva 6h, o jogador precisa de **3 pares de baterias** (6 pilhas) para zerar completamente no modo automático. Isso torna baterias um recurso valioso e incentiva o modo minijogos (que dá recompensa por fase, não por tempo).
+**Implicação do custo:** Como baterias duram 2h e zerar moodles leva 3h, o jogador precisa de **2 pares de baterias** (4 pilhas) para zerar completamente no modo automático. Isso torna baterias um recurso valioso e incentiva o modo minijogos (que dá recompensa por fase, não por tempo).
 
 ---
 

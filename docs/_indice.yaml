@@ -194,6 +194,17 @@ pesquisa:
      handler da Loot Window, AutoBurn, limitação Java de renderização.
     tags: [combustivel, classificador, eficiencia, umidade, penalidade, recursivo, autoburn]
 
+  - arquivo: pesquisa_videogame_funcional.md
+    titulo: Pesquisa — Videogame Funcional (ISRadioWindow, Bateria, VHS, Animações, NeatUI)
+    descricao: >
+      Investigação completa para implementação do videogame funcional:
+      arquitetura ISRadioWindow (módulos empilhados), sistema de bateria
+      (RWMPower, ISBatteryStatusDisplay, drain), sistema VHS/mídia (conceito
+      de cartuchos), animações (CharacterActionAnims.Read), mods de UI
+      instalados (NeatUI_Framework, Neat_Rocco), item vanilla Base.VideoGame,
+      variáveis de balanceamento e abordagens de implementação.
+    tags: [videogame, ISRadioWindow, bateria, VHS, animacao, NeatUI, moodle, estresse]
+
 # ---------------------------------------------------------------------------
 # MODS EXTERNOS (referência de mods de outros autores)
 # ---------------------------------------------------------------------------
