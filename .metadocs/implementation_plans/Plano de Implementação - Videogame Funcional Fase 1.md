@@ -4,7 +4,7 @@
 
 Transformar o conceito de videogame portátil em um dispositivo funcional no LKS SuperMod Patch.
 Na Fase 1, o jogador pode ligar o videogame, equipá-lo nas duas mãos e jogar automaticamente
-(animação idle), reduzindo estresse e depressão com consumo de bateria.
+(animação idle), reduzindo estresse e depressão com consumo de bateria, e gerando som de jogo, podendo atrair zumbis próximo. (max 5 tiles)
 
 **Base de pesquisa:** `docs/pesquisa_videogame_funcional.md`
 **Design doc:** `.metadocs/feat/video_game.md`
@@ -13,15 +13,19 @@ Na Fase 1, o jogador pode ligar o videogame, equipá-lo nas duas mãos e jogar a
 
 ## Escopo da Fase 1
 
-| Incluso | Excluído (futuro) |
-|---------|-------------------|
-| Item funcional LKS + vanilla "Com Defeito" | Minijogos (Cobrinha, Pong) |
+| Incluso | Futuramente |
+|---------|-------------|
+| Item funcional LKS + vanilla "Com Defeito" | Minijogos (Cobrinha, Pong, Pac-man, Tetris, Top-Gear, entre outros) |
 | Janela NR_BasePanel com seções | Cartuchos funcionais |
-| 2 slots de bateria com drain | Sistema de condição/reparo |
-| Toggle Ligar/Desligar | Sons/efeitos sonoros |
+| 2 slots de bateria com drain (2 pilhas no total) | Sistema de condição/reparo |
+| Toggle Ligar/Desligar | Sons/efeitos sonoros audíveis pelo jogador (bleeps de jogo) |
 | Modo automático (TimedAction + EveryOneMinute) | Leaderboard ativo |
 | Redução de estresse e depressão | Animação customizada |
-| Bônus com fone de ouvido | Sentado em cadeira |
+| Atração de zumbis pelo som (raio 5 tiles) | Sentado em cadeira, sofás, chão, camas |
+| Enquanto joga campo de visão -80% | Balanceamento futuro caso valores sejam pouco ou muito |
+| Bônus fone: +20% eficiência moodles | — |
+| Bônus fone: +25% economia de bateria | — |
+| Bônus fone: anula atração de zumbis (som não vaza) | — |
 | Slot de cartucho (UI desabilitada) | — |
 | Config centralizado de balanceamento | — |
 
@@ -64,7 +68,7 @@ common/media/
 1. Criar `lks_videogame_items.txt`:
    - Item `LKS_Videogame` (módulo `LKS_Propano`):
      - `RequiresEquipBothHands = TRUE`
-     - `Weight = 0.8`
+     - `Weight = 1`
      - `DisplayCategory = Electronics`
      - `Icon = VideoGame` (reutiliza ícone vanilla)
      - `WorldStaticModel = VideoGame`
@@ -79,7 +83,10 @@ common/media/
      - Duração de bateria (2h)
      - Número de baterias (2)
      - Taxa de redução por minuto
-     - Multiplicador de fone (eficiência + economia)
+     - Bônus fone — eficiência moodles (+20%)
+     - Bônus fone — economia de bateria (+25%)
+     - Redução de campo de visão (-80%)
+     - Raio de atração de zumbis (5 tiles)
      - ReadType da animação
 
 3. Adicionar traduções em PTBR e EN
@@ -90,7 +97,7 @@ common/media/
 
 ### Etapa 2: Janela do Dispositivo (UI)
 
-**Objetivo:** Criar a janela NR_BasePanel do videogame.
+**Objetivo:** Criar a janela NR_BasePanel do videogame. UI e UX impecáveis, simulando um gameboy ou estilo de game portável. Tela, botões, teclas, mouse totalmente funcionais para os modos manuais.
 
 **Tarefas:**
 1. Criar `LKS_Videogame_Window.lua` herdando de `NR_BasePanel`:
@@ -152,7 +159,7 @@ common/media/
 
 ### Etapa 4: Modo Automático (TimedAction + Moodles)
 
-**Objetivo:** Implementar a ação de "jogar" que reduz estresse e depressão.
+**Objetivo:** Implementar a ação de "jogar" que reduz estresse e depressão, limita campo de visão e atrai zumbis.
 
 **Tarefas:**
 1. Criar `LKS_Videogame_Action.lua` (ISBaseTimedAction):
@@ -161,19 +168,24 @@ common/media/
      - `setAnimVariable("ReadType", "book")`
      - `setOverrideHandModels(nil, self.item)`
      - Captura stats atuais (estresse, depressão)
+     - Reduz campo de visão do jogador em 80% (restaurar no stop)
    - `update()`:
      - A cada tick: reduz estresse e depressão pela taxa configurada
      - Verifica se baterias ainda têm carga (senão, forceComplete)
      - Verifica se item ainda está equipado
+     - Emite som que atrai zumbis em raio de 5 tiles
    - `stop()`:
      - Condição de parada: moodles zerados OU bateria acabou OU jogador moveu
+     - Restaura campo de visão original
    - `perform()`:
-     - Cleanup final (salva estado)
+     - Cleanup final (salva estado, restaura visão)
    - Duração: `maxTime = -1` (infinita, para até condição de stop)
 
 2. Integrar com fone de ouvido:
    - Verificar `player:getInventory():containsTypeEvalRecurse("Headphones")` ou `"Earbuds"`
-   - Se equipado: aplicar `BONUS_FONE_MULTIPLICADOR` na taxa de redução
+   - Se equipado: +20% na taxa de redução de moodles
+   - Se equipado: +25% economia no consumo de bateria
+   - Se equipado: anula atração de zumbis (som não vaza)
 
 3. Context menu: opção "Jogar Videogame" quando item equipado + baterias inseridas
 
