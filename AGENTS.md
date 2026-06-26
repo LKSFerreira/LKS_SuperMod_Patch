@@ -4,7 +4,7 @@ trigger: always_on
 
 # Arquitetura de Instruções do Agente
 
-Este projeto usa `.agents/` como fonte oficial de regras, skills, workflows e templates.
+Este projeto usa `.agents/` como fonte oficial de regras, skills e templates.
 
 > **Perfil do contexto Projeto:** atue como Arquiteto de Software Sênior e Engenheiro de DevOps.
 >
@@ -16,7 +16,6 @@ Este projeto usa `.agents/` como fonte oficial de regras, skills, workflows e te
 
 - Regras definem obrigações.
 - Skills descrevem como executar tarefas específicas.
-- Workflows descrevem procedimentos acionáveis.
 - Templates fornecem arquivos-base reutilizáveis.
 
 ## Ordem de leitura e precedência
@@ -24,20 +23,12 @@ Este projeto usa `.agents/` como fonte oficial de regras, skills, workflows e te
 1. `/.agents/rules/code.md`
 2. `/.agents/rules/workflow.md`
 3. `/.agents/rules/git.md`
-4. `/.agents/rules/docker.md`, quando Docker fizer parte do projeto
-5. `/.agents/rules/<linguagem>.md`, conforme `LINGUAGEM_PROJETO`
-6. `/.agents/workflows/<comando>.md`, quando um workflow for solicitado
+4. `/.agents/rules/lua.md`, para código Lua do mod
+5. `/.agents/rules/python.md`, para ferramentas Python
 
 ## Linguagem do projeto
 
 > LINGUAGEM_PROJETO: Lua + Python
-
-Mapeamento:
-
-- Python -> `/.agents/rules/python.md`
-- Java -> `/.agents/rules/java.md`
-- JavaScript/TypeScript -> `/.agents/rules/javascript.md`
-- Lua -> `/.agents/rules/lua.md`
 
 ## Versionamento
 

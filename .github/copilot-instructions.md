@@ -101,4 +101,10 @@ O mod segue um padrão rigoroso de localização (documentado em `.metadocs/padr
 
 - Commits atômicos, solicitados explicitamente pelo usuário.
 - Nunca usar `git add .` com mudanças heterogêneas.
-- Mensagens seguem padrão definido em `.agents/skills/cria_commit/`.
+- Mensagens seguem padrão definido em `.agents/skills/commit/`.
+
+## Skills disponíveis
+
+Ao receber `/commit`, `/pr`, `/sync`, `/init`, `/diag`, `/find`, etc., leia o SKILL.md em `.agents/skills/<comando>/`.
+
+Referência rápida: `/commit`, `/pr`, `/sync`, `/init`, `/tests`, `/review`, `/deps`, `/db`, `/env`, `/diag`, `/feat`, `/front`, `/skill`, `/find`, `/web`.

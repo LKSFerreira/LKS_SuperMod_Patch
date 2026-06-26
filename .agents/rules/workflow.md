@@ -11,6 +11,7 @@ trigger: always_on
 - Implemente apenas o escopo solicitado.
 - Valide com testes, build, lint ou auditoria estática quando aplicável.
 - Preserve mudanças existentes que possam ter sido feitas pelo usuário.
+- Não simule execução: se precisar validar, execute o comando real ou declare que não foi possível.
 
 ## Etapas
 
