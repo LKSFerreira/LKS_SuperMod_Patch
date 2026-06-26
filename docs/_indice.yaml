@@ -194,6 +194,15 @@ pesquisa:
      handler da Loot Window, AutoBurn, limitação Java de renderização.
     tags: [combustivel, classificador, eficiencia, umidade, penalidade, recursivo, autoburn]
 
+  - arquivo: pz_mecanica_videogame_funcional.md
+    titulo: Mecânica de Videogame Portátil — Documentação da Implementação LKS
+    descricao: >
+      Dispositivo portátil funcional com interface modular (ISCollapsableWindow),
+      sistema de bateria dual com drain simultâneo, volume controlável (0-100%)
+      com multiplicadores de buff/consumo/zumbis, fone de ouvido com bônus,
+      TimedAction infinita, animação de tela CRT, slot de cartucho (futuro).
+    tags: [videogame, bateria, volume, moodle, estresse, depressao, fone, cartucho]
+
   - arquivo: pesquisa_videogame_funcional.md
     titulo: Pesquisa — Videogame Funcional (ISRadioWindow, Bateria, VHS, Animações, NeatUI)
     descricao: >
