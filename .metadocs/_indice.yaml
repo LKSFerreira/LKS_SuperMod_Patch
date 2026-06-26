@@ -195,4 +195,5 @@ walkthroughs:
       - walkthrough/organizador_itens.md
       - walkthrough/motor_ciclo_lavanderia.md
       - walkthrough/videogame_funcional.md
+      - walkthrough/patch_bateria_zerada.md
     tags: [walkthrough, entrega, feature, documentacao-pos-entrega]

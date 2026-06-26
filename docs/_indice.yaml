@@ -203,6 +203,14 @@ pesquisa:
       TimedAction infinita, animação de tela CRT, slot de cartucho (futuro).
     tags: [videogame, bateria, volume, moodle, estresse, depressao, fone, cartucho]
 
+  - arquivo: pz_mecanica_bateria_zerada.md
+    titulo: Mecânica — Devolução de Bateria com 0% (Patch Global)
+    descricao: >
+      Monkey-patch de ISDeviceBatteryAction:invoke() para garantir que
+      baterias com 0% de carga sejam devolvidas ao inventário ao invés de
+      sumirem. Afeta todos os dispositivos com bateria (Walkie-Talkie, TV, etc).
+    tags: [bateria, patch, ISDeviceBatteryAction, inventario, devolucao]
+
   - arquivo: pesquisa_videogame_funcional.md
     titulo: Pesquisa — Videogame Funcional (ISRadioWindow, Bateria, VHS, Animações, NeatUI)
     descricao: >
