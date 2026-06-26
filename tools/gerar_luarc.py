@@ -148,6 +148,7 @@ PADROES_TIPO_ENGINE = [
     re.compile(r"^Item[A-Z]"),       # ItemContainer, ItemTag
     re.compile(r"^Inventory[A-Z]"),  # InventoryItem, InventoryContainer
     re.compile(r"^Kahlua[A-Z]"),     # KahluaTable
+    re.compile(r"^RWM[A-Z]"),        # RWMPanel, RWMElement (Radio/Walkie Modular UI)
     re.compile(r"^Texture$"),        # Texture
     re.compile(r"^ArrayList$"),      # ArrayList
     re.compile(r"^Container_"),      # Container_Fridge, etc.

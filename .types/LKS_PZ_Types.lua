@@ -25,9 +25,6 @@
 ---@class ISContextMenu
 ---@field [any] any
 
----@class ISDeviceBatteryAction
----@field [any] any
-
 ---@class ISHotbar
 ---@field [any] any
 
@@ -71,6 +68,9 @@
 ---@field [any] any
 
 ---@class KahluaTable
+---@field [any] any
+
+---@class RWMPanel
 ---@field [any] any
 
 ---@class Texture

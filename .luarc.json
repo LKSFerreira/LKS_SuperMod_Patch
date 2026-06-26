@@ -10,9 +10,9 @@
   },
   "workspace": {
     "library": [
-      "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/shared",
-      "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/client",
-      "C:/Users/LKSFERREIRA/Downloads/ProjectZomboid/media/lua/server",
+      "C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid/media/lua/shared",
+      "C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid/media/lua/client",
+      "C:/Program Files (x86)/Steam/steamapps/common/ProjectZomboid/media/lua/server",
       "C:/Users/LKSFERREIRA/Zomboid/mods/LKS_SuperMod_Patch/.types"
     ],
     "ignoreDir": [
