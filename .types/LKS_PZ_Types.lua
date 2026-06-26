@@ -16,7 +16,28 @@
 ---@class ISBaseTimedAction
 ---@field [any] any
 
+---@class ISButton
+---@field [any] any
+
+---@class ISCollapsableWindow
+---@field [any] any
+
 ---@class ISContextMenu
+---@field [any] any
+
+---@class ISDeviceBatteryAction
+---@field [any] any
+
+---@class ISHotbar
+---@field [any] any
+
+---@class ISInventoryWindowControlHandler_LKS_Favoritos
+---@field [any] any
+
+---@class ISInventoryWindowControlHandler_LKS_GuardarItens
+---@field [any] any
+
+---@class ISLootWindowObjectControlHandler_LKS_Favoritar
 ---@field [any] any
 
 ---@class ISToolTip

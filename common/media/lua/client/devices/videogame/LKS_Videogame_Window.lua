@@ -157,7 +157,7 @@ end
 ---@return boolean
 function LKS_Videogame_Window:temBateriaDisponivel()
     local modData = self.itemVideogame:getModData()
-    return ((modData["LKS_VG_bateria1_carga"] or 0) > 0) and ((modData["LKS_VG_bateria2_carga"] or 0) > 0)
+    return ((tonumber(modData["LKS_VG_bateria1_carga"]) or 0) > 0) and ((tonumber(modData["LKS_VG_bateria2_carga"]) or 0) > 0)
 end
 
 -- ============================================================================
@@ -386,16 +386,15 @@ function LKS_VG_PainelEnergia:createChildren()
     print("[LKS PATCH - Videogame] PainelEnergia: createChildren iniciado")
     local posicaoY = UI_BORDER_SPACING
     local jogador = self.janelaVG.character
-    local offsetX = 0
 
     -- === BATERIA 1: [LED] [DropBox] [Barra %] ===
     self.led1 = ISLedLight:new(UI_BORDER_SPACING + 1, posicaoY + (BUTTON_HGT - UI_BORDER_SPACING * 2) / 2,
         UI_BORDER_SPACING * 2, UI_BORDER_SPACING * 2)
     self.led1:initialise()
     self.led1:setLedColor(1, 0, 1, 0)
-    self.led1:setLedColorOff(1, 0, 0.3, 0)
+    self.led1:setLedColorOff(1, 0, 0.15, 0)
     self:addChild(self.led1)
-    offsetX = self.led1:getX() + self.led1:getWidth()
+    local offsetX = self.led1:getX() + self.led1:getWidth()
 
     self.drop1 = ISItemDropBox:new(offsetX + UI_BORDER_SPACING, posicaoY, BUTTON_HGT, BUTTON_HGT, false, self,
         LKS_VG_PainelEnergia.addBat1, LKS_VG_PainelEnergia.removeBat1, LKS_VG_PainelEnergia.verifyBat, nil)
@@ -408,19 +407,20 @@ function LKS_VG_PainelEnergia:createChildren()
     offsetX = self.drop1:getX() + self.drop1:getWidth()
 
     self.barra1 = ISBatteryStatusDisplay:new(offsetX + UI_BORDER_SPACING, posicaoY,
-        self.width - (offsetX + UI_BORDER_SPACING * 2), BUTTON_HGT, true)
+        self.width - (offsetX + UI_BORDER_SPACING * 2), BUTTON_HGT, false)
     self.barra1:initialise()
     self.barra1:createChildren()
+    self.barra1.update = function(selfBarra) ISPanel.update(selfBarra) end
     self:addChild(self.barra1)
 
     posicaoY = posicaoY + BUTTON_HGT + 2
 
-    -- === BATERIA 2: [LED] [DropBox] [Barra %] + [DropBox Fone] no final ===
+    -- === BATERIA 2: [LED] [DropBox] [Barra %] ===
     self.led2 = ISLedLight:new(UI_BORDER_SPACING + 1, posicaoY + (BUTTON_HGT - UI_BORDER_SPACING * 2) / 2,
         UI_BORDER_SPACING * 2, UI_BORDER_SPACING * 2)
     self.led2:initialise()
     self.led2:setLedColor(1, 0, 1, 0)
-    self.led2:setLedColorOff(1, 0, 0.3, 0)
+    self.led2:setLedColorOff(1, 0, 0.15, 0)
     self:addChild(self.led2)
 
     self.drop2 = ISItemDropBox:new(self.drop1:getX(), posicaoY, BUTTON_HGT, BUTTON_HGT, false, self,
@@ -432,9 +432,10 @@ function LKS_VG_PainelEnergia:createChildren()
     self.drop2:setToolTip(true, getText("IGUI_LKS_VG_ArrasteBateria"))
     self:addChild(self.drop2)
 
-    self.barra2 = ISBatteryStatusDisplay:new(self.barra1:getX(), posicaoY, self.barra1:getWidth(), BUTTON_HGT, true)
+    self.barra2 = ISBatteryStatusDisplay:new(self.barra1:getX(), posicaoY, self.barra1:getWidth(), BUTTON_HGT, false)
     self.barra2:initialise()
     self.barra2:createChildren()
+    self.barra2.update = function(selfBarra) ISPanel.update(selfBarra) end
     self:addChild(self.barra2)
 
     posicaoY = posicaoY + BUTTON_HGT + UI_BORDER_SPACING
@@ -447,10 +448,10 @@ function LKS_VG_PainelEnergia:update()
     if not self.janelaVG or not self.janelaVG.itemVideogame then return end
 
     local modData = self.janelaVG.itemVideogame:getModData()
-    local carga1 = (modData["LKS_VG_bateria1_carga"] or 0) / 100.0
-    local carga2 = (modData["LKS_VG_bateria2_carga"] or 0) / 100.0
-    local temBat1 = (modData["LKS_VG_bateria1_carga"] or 0) > 0 or modData["LKS_VG_bateria1_id"] ~= nil
-    local temBat2 = (modData["LKS_VG_bateria2_carga"] or 0) > 0 or modData["LKS_VG_bateria2_id"] ~= nil
+    local carga1 = (tonumber(modData["LKS_VG_bateria1_carga"]) or 0) / 100.0
+    local carga2 = (tonumber(modData["LKS_VG_bateria2_carga"]) or 0) / 100.0
+    local temBat1 = (tonumber(modData["LKS_VG_bateria1_carga"]) or 0) > 0 or modData["LKS_VG_bateria1_id"] ~= nil
+    local temBat2 = (tonumber(modData["LKS_VG_bateria2_carga"]) or 0) > 0 or modData["LKS_VG_bateria2_id"] ~= nil
 
     self.barra1:setPower(carga1)
     self.led1:setLedIsOn(temBat1 and carga1 > 0)
@@ -512,12 +513,21 @@ function LKS_VG_PainelEnergia:removerBateria(indiceSlot)
     local modData = self.janelaVG.itemVideogame:getModData()
     local chaveCarga = "LKS_VG_bateria" .. indiceSlot .. "_carga"
     local chaveId = "LKS_VG_bateria" .. indiceSlot .. "_id"
-    local carga = modData[chaveCarga]
-    if carga and carga > 0 then
+
+    -- Sempre devolver a pilha ao inventário (mesmo com 0% de carga)
+    if modData[chaveId] ~= nil or modData[chaveCarga] ~= nil then
+        local carga = tonumber(modData[chaveCarga]) or 0
         local novaBateria = self.janelaVG.character:getInventory():AddItem("Base.Battery")
         if novaBateria then
-            novaBateria:setUsedDelta(carga / 100.0)
+            -- UsedDelta mínimo de 0.001 para evitar que o PZ destrua o item Drainable com delta 0
+            local deltaCarga = math.max(0.001, carga / 100.0)
+            novaBateria:setUsedDelta(deltaCarga)
+            print("[LKS PATCH - Videogame] Bateria " .. indiceSlot .. " devolvida ao inventário com " .. math.floor(carga) .. "% de carga")
+        else
+            print("[LKS PATCH - Videogame] ERRO: Não foi possível criar Base.Battery no inventário")
         end
+    else
+        print("[LKS PATCH - Videogame] Bateria " .. indiceSlot .. " não encontrada no modData (nenhum id ou carga)")
     end
     modData[chaveCarga] = nil
     modData[chaveId] = nil
@@ -556,10 +566,19 @@ function LKS_VG_PainelSom:createChildren()
     -- Área da barra de volume (desenhada manualmente no prerender, clicável)
     local barraX = UI_BORDER_SPACING + BUTTON_HGT + UI_BORDER_SPACING + 1
     local foneX = self.width - BUTTON_HGT - UI_BORDER_SPACING - 1
+    local ledFoneX = foneX - UI_BORDER_SPACING * 2 - UI_BORDER_SPACING
     self.barraVolumeX = barraX
     self.barraVolumeY = UI_BORDER_SPACING + 3
-    self.barraVolumeLargura = foneX - barraX - UI_BORDER_SPACING
+    self.barraVolumeLargura = ledFoneX - barraX - UI_BORDER_SPACING
     self.barraVolumeAltura = BUTTON_HGT - 4
+
+    -- LED do fone (ao lado esquerdo do drop de fone)
+    self.ledFone = ISLedLight:new(ledFoneX, UI_BORDER_SPACING + 1 + (BUTTON_HGT - UI_BORDER_SPACING * 2) / 2,
+        UI_BORDER_SPACING * 2, UI_BORDER_SPACING * 2)
+    self.ledFone:initialise()
+    self.ledFone:setLedColor(1, 0, 1, 0)
+    self.ledFone:setLedColorOff(1, 0, 0.15, 0)
+    self:addChild(self.ledFone)
 
     -- DropBox de fone no final da linha
     self.dropFone = ISItemDropBox:new(foneX, UI_BORDER_SPACING + 1, BUTTON_HGT, BUTTON_HGT, false, self,
@@ -653,7 +672,6 @@ function LKS_VG_PainelSom:update()
     -- Atualizar fone (usar textura real do item inserido)
     local fone = modData["LKS_VG_fone_tipo"]
     if fone then
-        -- Obter textura do item pelo fullType (ex: "Base.Earbuds" → "Item_Earbuds")
         local nomeIcone = string.match(fone, "%.(.+)$")
         local texturaFone = getTexture("Item_" .. (nomeIcone or "Headphones"))
         if not texturaFone then
@@ -665,6 +683,9 @@ function LKS_VG_PainelSom:update()
         self.dropFone:setStoredItemFake(nil)
         self.dropFone.boxOccupied = false
     end
+
+    -- LED do fone: aceso quando fone conectado, apagado quando não
+    self.ledFone:setLedIsOn(fone ~= nil)
 end
 
 -- Callbacks fone
