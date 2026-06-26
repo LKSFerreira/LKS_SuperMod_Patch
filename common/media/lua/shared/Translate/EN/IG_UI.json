@@ -197,5 +197,20 @@
     "IGUI_LKS_Laundry_AutoTooltip": "Auto Cycle: washes and dries in sequence without intervention.",
 
     "IGUI_Oven_Celsius": "°C",
-    "IGUI_Oven_Fahrenheit": "°F"
+    "IGUI_Oven_Fahrenheit": "°F",
+
+    "IGUI_LKS_VG_Titulo": "Portable Video Game",
+    "IGUI_LKS_VG_Energia": "Power",
+    "IGUI_LKS_VG_Som": "Sound",
+    "IGUI_LKS_VG_Modo": "Mode",
+    "IGUI_LKS_VG_Auto": "Auto",
+    "IGUI_LKS_VG_Cartucho": "Cartridge",
+    "IGUI_LKS_VG_SemCartucho": "No cartridge",
+    "IGUI_LKS_VG_Jogar": "Play",
+    "IGUI_LKS_VG_Parar": "Stop",
+    "IGUI_LKS_VG_ArrasteBateria": "Drag a battery here, or right-click to remove it.",
+    "IGUI_LKS_VG_ArrasteCartucho": "Drag a game cartridge here to play manually, or right-click to remove it.",
+    "IGUI_LKS_VG_ArrasteFone": "Drag headphones/earbuds here or right-click to remove them.",
+    "IGUI_LKS_VG_TooltipMute": "Click to mute/unmute the video game sound.",
+    "IGUI_LKS_VG_LigarVideogame": "Turn On Video Game"
 }

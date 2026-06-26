@@ -1,0 +1,18 @@
+module LKS_Entretenimento
+{
+    imports
+    {
+        Base
+    }
+
+    item LKS_Videogame
+    {
+        DisplayCategory = Electronics,
+        ItemType = base:normal,
+        Weight = 1.0,
+        Icon = VideoGame,
+        WorldStaticModel = VideoGame,
+        RequiresEquippedBothHands = true,
+        Tags = base:hasmetal;base:miscelectronic,
+    }
+}

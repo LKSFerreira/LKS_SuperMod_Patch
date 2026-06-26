@@ -7,5 +7,7 @@
     "LKS_Electrical.LKS_InversorCorrente": "Inversor de Corrente",
     "LKS_Electrical.LKS_MiniTransformador": "Mini Transformador",
     "LKS_Propano.LKS_Botijao15kg": "Botijão de Gás 15kg",
-    "LKS_Propano.LKS_Botijao45kg": "Botijão de Gás 45kg"
+    "LKS_Propano.LKS_Botijao45kg": "Botijão de Gás 45kg",
+    "LKS_Entretenimento.LKS_Videogame": "Videogame Portátil",
+    "Base.VideoGame": "Videogame (Com Defeito)"
 }
