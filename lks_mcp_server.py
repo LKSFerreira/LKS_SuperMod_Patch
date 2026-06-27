@@ -42,6 +42,25 @@ except ImportError as erro_import:
     sys.stderr.write(f"Erro ao importar dependências de tools/: {erro_import}\n")
     sys.exit(1)
 
+# Imports opcionais (ferramentas que podem ter dependências extras)
+try:
+    from tools.gerar_luarc import main as gerar_luarc_main
+    TEM_GERAR_LUARC = True
+except ImportError:
+    TEM_GERAR_LUARC = False
+
+try:
+    from tools.compor_icone import compor_icone
+    TEM_COMPOR_ICONE = True
+except ImportError:
+    TEM_COMPOR_ICONE = False
+
+try:
+    from tools.normaliza_utf8_para_ascii_lua import processar_arquivo as normalizar_arquivo_lua
+    TEM_NORMALIZAR = True
+except ImportError:
+    TEM_NORMALIZAR = False
+
 
 @servidor.tool()
 def buscar_referencias_assets_pz(termo: str, caminho_jogo: str = "") -> str:
@@ -284,6 +303,103 @@ def sanitizar_e_ler_erros_console_pz(caminho_console: str = "") -> str:
             return f"Erro ao ler o relatório de exceções gerado: {erro_leitura}"
             
     return "Sanitização concluída: O arquivo de relatório de erros 'console_erros.txt' não foi gerado."
+
+
+@servidor.tool()
+def gerar_configuracao_luarc() -> str:
+    """
+    Regenera o .luarc.json e os stubs de tipos Java para o lua-language-server.
+    Elimina warnings falso-positivos de globals indefinidos nos arquivos Lua do mod.
+
+    :return: Relatório textual do processo de geração.
+    """
+    if not TEM_GERAR_LUARC:
+        return "Erro: módulo gerar_luarc não disponível (verifique imports)."
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        try:
+            gerar_luarc_main()
+        except SystemExit:
+            pass
+        except Exception as erro:
+            print(f"Exceção durante a geração do .luarc.json: {erro}")
+
+    return buffer.getvalue()
+
+
+@servidor.tool()
+def compor_icone_pz(caminho_base: str, caminho_badge: str, caminho_saida: str = "", brilho: str = "auto") -> str:
+    """
+    Compõe um ícone de menu a partir de uma imagem base escurecida + badge sobreposto (canvas 32x32px).
+
+    :param caminho_base: PNG da imagem base (ex: 'common/media/ui/Item_Firewood_Bundle.png').
+    :param caminho_badge: PNG do badge/overlay (ex: 'common/media/ui/LKS_Menu_Proibido.png').
+    :param caminho_saida: Caminho de saída (opcional, gera automaticamente em output/).
+    :param brilho: Nível de escurecimento: 'auto', 'claro', 'medio' ou 'escuro'.
+    :return: JSON com o resultado da composição e caminho do arquivo gerado.
+    """
+    if not TEM_COMPOR_ICONE:
+        return json.dumps({"sucesso": False, "erro": "Módulo compor_icone não disponível (verifique Pillow)."})
+
+    base = Path(caminho_base)
+    badge = Path(caminho_badge)
+
+    if not base.exists():
+        return json.dumps({"sucesso": False, "erro": f"Imagem base não encontrada: {caminho_base}"})
+    if not badge.exists():
+        return json.dumps({"sucesso": False, "erro": f"Badge não encontrado: {caminho_badge}"})
+
+    saida = Path(caminho_saida) if caminho_saida else Path("output") / f"{base.stem}_{badge.stem}.png"
+    saida.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        compor_icone(base, badge, saida, brilho=brilho)
+        return json.dumps({"sucesso": True, "caminho_saida": str(saida.resolve())})
+    except Exception as erro:
+        return json.dumps({"sucesso": False, "erro": str(erro)})
+
+
+@servidor.tool()
+def normalizar_logs_lua_para_ascii(caminho_alvo: str = "", aplicar: bool = False) -> str:
+    """
+    Substitui caracteres acentuados PT-BR por ASCII em strings de log/debug dos arquivos Lua.
+    NÃO toca em strings de getText(), traduções ou textos visíveis ao jogador.
+
+    :param caminho_alvo: Arquivo ou diretório Lua a processar (padrão: 'common/').
+    :param aplicar: Se True, aplica as mudanças. Se False, apenas mostra o que mudaria (dry-run).
+    :return: Relatório textual com as substituições encontradas/aplicadas.
+    """
+    if not TEM_NORMALIZAR:
+        return "Erro: módulo normaliza_utf8_para_ascii_lua não disponível."
+
+    alvo = caminho_alvo.strip() if caminho_alvo else str(DIRETORIO_RAIZ / "common")
+    if not Path(alvo).exists():
+        return f"Erro: caminho '{alvo}' não encontrado."
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        try:
+            if Path(alvo).is_file():
+                total, detalhes = normalizar_arquivo_lua(alvo, aplicar)
+                print(f"Arquivo: {alvo} — {total} substituições {'aplicadas' if aplicar else 'encontradas'}")
+                for detalhe in detalhes:
+                    print(f"  {detalhe}")
+            else:
+                arquivos_lua = list(Path(alvo).rglob("*.lua"))
+                total_geral = 0
+                for arquivo in arquivos_lua:
+                    total, detalhes = normalizar_arquivo_lua(str(arquivo), aplicar)
+                    if total > 0:
+                        total_geral += total
+                        print(f"{arquivo.name}: {total} substituições")
+                        for detalhe in detalhes:
+                            print(f"  {detalhe}")
+                print(f"\nTotal: {total_geral} substituições em {len(arquivos_lua)} arquivos")
+        except Exception as erro:
+            print(f"Exceção: {erro}")
+
+    return buffer.getvalue()
 
 
 if __name__ == "__main__":
