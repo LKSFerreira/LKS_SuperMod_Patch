@@ -1,7 +1,3 @@
----
-trigger: always_on
----
-
 # Arquitetura de Instruções do Agente
 
 Este projeto usa `.agents/` como fonte oficial de regras, skills e templates.

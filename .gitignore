@@ -4,6 +4,7 @@ console_erros.txt
 scratch/*.py
 testes_markdown.md
 output/
+installed.txt
 
 # Logs
 logs
