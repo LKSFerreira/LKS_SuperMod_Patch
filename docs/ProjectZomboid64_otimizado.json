@@ -1,0 +1,22 @@
+{
+	"mainClass": "zombie/gameStates/MainScreenState",
+	"classpath": [
+		".",
+		"projectzomboid.jar"
+	],
+	"vmArgs": [
+		"-Djava.awt.headless=true",
+		"-Xms4096m",
+		"-Xmx7144m",
+		"-Dzomboid.steam=1",
+		"-Dzomboid.znetlog=1",
+		"-Djava.library.path=win64/;.",
+		"-XX:-CreateCoredumpOnCrash",
+		"-XX:-OmitStackTraceInFastThrow",
+		"-XX:+UseZGC",
+		"-XX:+ZGenerational",
+		"-XX:SoftMaxHeapSize=4096m",
+		"-XX:+AlwaysPreTouch",
+		"-XX:+UseStringDeduplication"
+	]
+}

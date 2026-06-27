@@ -258,3 +258,43 @@ mods_externos:
       Handler único substituindo ISCampingMenu + ISBBQMenu, patch de
       combustível por ID, ícones temáticos. Workshop ID: 3575007347.
     tags: [light-my-fire, fireplace, campfire, bbq, mod-externo, fagocitacao, eurymachus]
+
+  - arquivo: catalogo_mods_instalados.md
+    titulo: Catálogo de Mods Instalados — IDs, Workshop e Categorias
+    descricao: >
+      Lista completa dos mods utilizados no ambiente de desenvolvimento,
+      organizados por categoria (UI, informação, QoL, gameplay, debug, tradução).
+      Contém ID do mod, pasta local e link da Steam Workshop.
+      Inclui notas sobre mods fagocitados e mods próprios.
+    tags: [mods, workshop, steam, catalogo, instalados, dependencias]
+
+# ---------------------------------------------------------------------------
+# CONFIGURAÇÃO DO AMBIENTE (JVM, ordem de mods, presets)
+# ---------------------------------------------------------------------------
+
+configuracao:
+  - arquivo: pz_modlist_settings.cfg
+    titulo: Preset de Ordem de Carregamento de Mods (pz_modlist_settings.cfg)
+    descricao: >
+      Cópia do preset "Ordem_LKS_SuperMod_Patch" do PZ. Define a sequência
+      de carregamento dos mods respeitando dependências (frameworks antes de
+      addons, tradução e LKS por último). Gerenciado pelo menu do jogo.
+    tags: [mods, ordem, preset, carregamento, dependencias]
+
+  - arquivo: ProjectZomboid64_original.json
+    titulo: JVM Config Original — Parâmetros Vanilla do PZ
+    descricao: >
+      Configuração JVM original do Project Zomboid (backup). Heap de 3GB,
+      ZGC condicional por versão do Windows (G1GC no Win7, ZGC no Win10+),
+      sem tuning de GC. Mantido como referência para restauração.
+    tags: [jvm, java, performance, backup, vanilla, configuracao]
+
+  - arquivo: ProjectZomboid64_otimizado.json
+    titulo: JVM Config Otimizado — Parâmetros de Performance
+    descricao: >
+      Configuração JVM otimizada para 15GB RAM. Mudanças vs vanilla:
+      Xms 4GB (pré-alocação), Xmx 7GB (teto), ZGC Generacional fixo
+      (sem fallback G1GC), SoftMaxHeapSize 4GB, AlwaysPreTouch (evita
+      stutters), UseStringDeduplication (reduz duplicatas de strings).
+      Removido bloco condicional windows (desnecessário no Win10+/Java 25).
+    tags: [jvm, java, performance, zgc, heap, tuning, configuracao]
