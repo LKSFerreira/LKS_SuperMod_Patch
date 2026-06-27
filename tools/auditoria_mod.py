@@ -658,6 +658,196 @@ def executar_auditoria_assets(diretorio_raiz):
     else:
         return False
 
+
+# ============================================================================
+# MÓDULO 5: VALIDAÇÃO DE SYMLINKS (JUNCTIONS) DO MOD
+# ============================================================================
+
+def obter_diretorios_mod_necessarios():
+    """
+    Retorna a lista de diretórios do repositório que devem existir como junctions
+    no diretório de mods do PZ. Cada entrada é uma tupla (nome_diretório, descrição).
+
+    :returns: Lista de tuplas ``(nome, descricao)`` com os diretórios obrigatórios.
+    """
+    return [
+        ("42.15", "Metadados do mod (mod.info)"),
+        ("common", "Código Lua, scripts e assets do mod"),
+    ]
+
+
+def obter_diretorio_mods_pz():
+    """
+    Descobre o diretório de mods do Project Zomboid no sistema.
+    Usa a variável de ambiente ``PZ_MODS_DIR`` se definida, caso contrário
+    assume o padrão ``~/Zomboid/mods``.
+
+    :returns: Caminho absoluto para o diretório de mods do PZ.
+    """
+    diretorio_personalizado = os.environ.get("PZ_MODS_DIR")
+    if diretorio_personalizado:
+        return diretorio_personalizado
+    return os.path.join(os.path.expanduser("~"), "Zomboid", "mods")
+
+
+def executar_validacao_symlinks(diretorio_raiz):
+    """
+    Valida que os diretórios do mod possuem junctions (symlinks) correspondentes
+    no diretório de mods do PZ (``~/Zomboid/mods/LKS_SuperMod_Patch/``).
+
+    Para cada diretório obrigatório, verifica:
+    - Se o junction existe no diretório de mods
+    - Se é de fato um junction (reparse point)
+    - Se aponta para o diretório correto no repositório
+
+    :param diretorio_raiz: Caminho raiz do repositório do mod.
+    :returns: ``True`` se todos os symlinks estão íntegros.
+
+    .. code-block:: python
+
+        executar_validacao_symlinks("/caminho/para/repo")
+    """
+    diretorio_mods_pz = obter_diretorio_mods_pz()
+    diretorio_mod_instalado = os.path.join(diretorio_mods_pz, "LKS_SuperMod_Patch")
+    diretorios_necessarios = obter_diretorios_mod_necessarios()
+
+    print(f"\n{'=' * 60}")
+    print(f"  {BOLD}🔗 VALIDAÇÃO DE SYMLINKS (JUNCTIONS){RESET}")
+    print(f"{'=' * 60}")
+    print(f"  Repositório: {CYAN}{diretorio_raiz}{RESET}")
+    print(f"  Mods PZ:     {CYAN}{diretorio_mod_instalado}{RESET}")
+    print(f"{'=' * 60}\n")
+
+    if not os.path.exists(diretorio_mods_pz):
+        print(f"  {RED}✗{RESET} Diretório de mods do PZ não encontrado: {diretorio_mods_pz}")
+        print(f"    {GRAY}Defina PZ_MODS_DIR se o diretório for diferente do padrão.{RESET}")
+        return False
+
+    if not os.path.exists(diretorio_mod_instalado):
+        print(f"  {RED}✗{RESET} Pasta do mod não existe em: {diretorio_mod_instalado}")
+        print(f"    {YELLOW}→ Crie os junctions com: python tools/auditoria_mod.py validar-symlinks --corrigir{RESET}")
+        return False
+
+    todos_validos = True
+    resultados = []
+
+    for nome_diretorio, descricao in diretorios_necessarios:
+        caminho_junction = os.path.join(diretorio_mod_instalado, nome_diretorio)
+        caminho_repositorio = os.path.join(diretorio_raiz, nome_diretorio)
+
+        if not os.path.exists(caminho_repositorio):
+            resultados.append((nome_diretorio, "AUSENTE_REPO", descricao))
+            todos_validos = False
+            continue
+
+        if not os.path.exists(caminho_junction):
+            resultados.append((nome_diretorio, "AUSENTE_JUNCTION", descricao))
+            todos_validos = False
+            continue
+
+        if not os.path.islink(caminho_junction) and not _eh_junction(caminho_junction):
+            resultados.append((nome_diretorio, "NAO_JUNCTION", descricao))
+            todos_validos = False
+            continue
+
+        alvo_real = os.path.realpath(caminho_junction)
+        esperado = os.path.realpath(caminho_repositorio)
+        if alvo_real != esperado:
+            resultados.append((nome_diretorio, "ALVO_ERRADO", descricao))
+            todos_validos = False
+            continue
+
+        resultados.append((nome_diretorio, "OK", descricao))
+
+    for nome, status, descricao in resultados:
+        if status == "OK":
+            print(f"  {GREEN}✓{RESET} {nome}/ → {descricao}")
+        elif status == "AUSENTE_JUNCTION":
+            print(f"  {RED}✗{RESET} {nome}/ → Junction não encontrado")
+        elif status == "AUSENTE_REPO":
+            print(f"  {RED}✗{RESET} {nome}/ → Diretório não existe no repositório")
+        elif status == "NAO_JUNCTION":
+            print(f"  {YELLOW}⚠{RESET} {nome}/ → Existe mas NÃO é um junction (cópia manual?)")
+        elif status == "ALVO_ERRADO":
+            print(f"  {RED}✗{RESET} {nome}/ → Junction aponta para diretório incorreto")
+
+    print()
+    if todos_validos:
+        print(f"  {GREEN}[+] Todos os symlinks estão íntegros!{RESET}")
+    else:
+        print(f"  {RED}[-] Problemas encontrados nos symlinks.{RESET}")
+        print(f"  {YELLOW}→ Execute com --corrigir para reparar automaticamente.{RESET}")
+
+    return todos_validos
+
+
+def corrigir_symlinks(diretorio_raiz):
+    """
+    Cria ou recria os junctions necessários no diretório de mods do PZ,
+    apontando para os diretórios correspondentes no repositório.
+
+    :param diretorio_raiz: Caminho raiz do repositório do mod.
+    :returns: ``True`` se todos os junctions foram criados com sucesso.
+    """
+    diretorio_mods_pz = obter_diretorio_mods_pz()
+    diretorio_mod_instalado = os.path.join(diretorio_mods_pz, "LKS_SuperMod_Patch")
+    diretorios_necessarios = obter_diretorios_mod_necessarios()
+
+    os.makedirs(diretorio_mod_instalado, exist_ok=True)
+
+    todos_ok = True
+    for nome_diretorio, descricao in diretorios_necessarios:
+        caminho_junction = os.path.join(diretorio_mod_instalado, nome_diretorio)
+        caminho_repositorio = os.path.realpath(os.path.join(diretorio_raiz, nome_diretorio))
+
+        if not os.path.exists(caminho_repositorio):
+            print(f"  {RED}✗{RESET} {nome_diretorio}/ → Não existe no repositório, pulando")
+            todos_ok = False
+            continue
+
+        if os.path.exists(caminho_junction):
+            if _eh_junction(caminho_junction) or os.path.islink(caminho_junction):
+                alvo_real = os.path.realpath(caminho_junction)
+                if alvo_real == caminho_repositorio:
+                    print(f"  {GREEN}✓{RESET} {nome_diretorio}/ → Já está correto")
+                    continue
+                else:
+                    os.rmdir(caminho_junction)
+            else:
+                print(f"  {YELLOW}⚠{RESET} {nome_diretorio}/ → É um diretório real (não junction). Remoção manual necessária.")
+                todos_ok = False
+                continue
+
+        import subprocess
+        resultado = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", caminho_junction, caminho_repositorio],
+            capture_output=True, text=True
+        )
+        if resultado.returncode == 0:
+            print(f"  {GREEN}✓{RESET} {nome_diretorio}/ → Junction criado com sucesso")
+        else:
+            print(f"  {RED}✗{RESET} {nome_diretorio}/ → Falha ao criar junction: {resultado.stderr.strip()}")
+            todos_ok = False
+
+    return todos_ok
+
+
+def _eh_junction(caminho):
+    """
+    Verifica se um caminho é um junction point (reparse point) no Windows.
+    Em sistemas não-Windows, verifica ``os.path.islink()``.
+
+    :param caminho: Caminho a verificar.
+    :returns: ``True`` se for junction/symlink.
+    """
+    if os.name == 'nt':
+        import ctypes
+        atributos = ctypes.windll.kernel32.GetFileAttributesW(str(caminho))
+        if atributos == -1:
+            return False
+        return bool(atributos & 0x400)
+    return os.path.islink(caminho)
+
 def executar_auditoria_completa(diretorio_raiz):
     """
     Executa de forma sequencial e unificada todos os módulos de auditoria do mod:
@@ -665,6 +855,7 @@ def executar_auditoria_completa(diretorio_raiz):
     2. Auditoria de Traduções (PT-BR, ignorando nativas por padrão)
     3. Auditoria de Caminhos Absolutos
     4. Auditoria de Assets (Imagens órfãs na pasta de UI)
+    5. Validação de Symlinks (Junctions) do mod no diretório do PZ
     Exibe um painel consolidado com o status de cada verificação.
     """
     print("\n" + "=" * 80)
@@ -687,6 +878,10 @@ def executar_auditoria_completa(diretorio_raiz):
     # 4. Auditoria de Assets (Imagens órfãs)
     print("\n[MÓDULO 4] Validando Imagens Órfãs/Sem Uso...")
     assets_ok = executar_auditoria_assets(diretorio_raiz)
+
+    # 5. Validação de Symlinks (Junctions)
+    print("\n[MÓDULO 5] Validando Symlinks (Junctions)...")
+    symlinks_ok = executar_validacao_symlinks(diretorio_raiz)
     
     print("\n" + "=" * 80)
     print("[*] RELATÓRIO CONSOLIDADO DE AUDITORIA")
@@ -699,9 +894,10 @@ def executar_auditoria_completa(diretorio_raiz):
     print(f"2. Auditoria de Traduções (PT-BR): {formatar_status(traducoes_ok)}")
     print(f"3. Auditoria de Caminhos:          {formatar_status(caminhos_ok)}")
     print(f"4. Auditoria de Assets (Imagens):  {formatar_status(assets_ok)}")
+    print(f"5. Validação de Symlinks:          {formatar_status(symlinks_ok)}")
     print("=" * 80)
     
-    tudo_com_sucesso = sintaxe_ok and traducoes_ok and caminhos_ok and assets_ok
+    tudo_com_sucesso = sintaxe_ok and traducoes_ok and caminhos_ok and assets_ok and symlinks_ok
     if tudo_com_sucesso:
         print(f"{GREEN}[+] Excelente! O mod passou em todos os testes de auditoria unificada.{RESET}")
     else:
@@ -1036,6 +1232,22 @@ def main():
         help="Diretório raiz do mod."
     )
 
+    # Comando: validar-symlinks
+    parser_symlinks = subparsers.add_parser(
+        "validar-symlinks",
+        help="Valida que os junctions do mod existem e apontam corretamente para o repositório."
+    )
+    parser_symlinks.add_argument(
+        "--raiz",
+        default=diretorio_raiz_padrao,
+        help="Diretório raiz do mod."
+    )
+    parser_symlinks.add_argument(
+        "--corrigir",
+        action="store_true",
+        help="Cria ou recria automaticamente os junctions ausentes ou incorretos."
+    )
+
     # Comando: documentar-api
     parser_docapi = subparsers.add_parser(
         "documentar-api",
@@ -1065,6 +1277,12 @@ def main():
         sys.exit(0 if sucesso else 1)
     elif args.comando == "auditar-assets":
         sucesso = executar_auditoria_assets(args.raiz)
+        sys.exit(0 if sucesso else 1)
+    elif args.comando == "validar-symlinks":
+        if args.corrigir:
+            sucesso = corrigir_symlinks(args.raiz)
+        else:
+            sucesso = executar_validacao_symlinks(args.raiz)
         sys.exit(0 if sucesso else 1)
     elif args.comando == "documentar-api":
         sucesso = executar_documentacao_api(args.raiz, args.saida)
