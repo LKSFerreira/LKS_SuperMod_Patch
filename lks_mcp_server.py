@@ -11,7 +11,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 # Cria o servidor FastMCP
-servidor = FastMCP("lks_supermod_tools")
+servidor = FastMCP("lks_superMod_tools")
 
 # Importa as ferramentas utilitárias refatoradas do pacote tools/
 try:
